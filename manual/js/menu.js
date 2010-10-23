@@ -217,7 +217,7 @@ var Menu = new Class({
 		var bc = $('breadcrumb');
 		var td = document.createElement('td');
 		td.id = "searchbox";
-		td.innerHTML = '<form action="http://www.google.com/cse" id="cse-search-box"><div><input type="hidden" name="cx" value="008354941032691925435:4ahuysnncow" /><input type="hidden" name="ie" value="UTF-8" />Search User Guide: <input class="input search" id="googleSearchBox" type="text" name="q" size="31" /> <input class="submit" type="submit" name="sa" value="Go" /></div></form>';
+		td.innerHTML = '<form action="http://www.google.com/cse" id="cse-search-box"><div><input type="hidden" name="cx" value="009945192369939474941:ne90ecfhzhm" /><input type="hidden" name="ie" value="UTF-8" />Search User Guide: <input class="input search" id="googleSearchBox" type="text" name="q" size="31" /> <input class="submit" type="submit" name="sa" value="Go" /></div></form>';
 		bc.parentNode.appendChild(td);
 	}
 });
