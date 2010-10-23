@@ -126,6 +126,30 @@ if(</kbd><var>$success</var><kbd>) </kbd><samp>// ...</samp>
 
 <p>As long as the database allows the fields, the object will be saved.  Remember that database rules can still prevent the fields from being saved, and you might see database errors when saving this way.</p>
 
+<h2 id="Save.Failed">Check for failed validation</h2>
+
+<p>When you use validation on the object, validation rules are run before attempting to save the contents of the object.</p>
+
+<h3>Example</h3>
+<pre>
+<samp>// set some invalid fields
+</samp><var>$user</var><kbd>-&gt;</kbd><var>email </var><kbd>= </kbd><dfn>''</dfn><kbd>;
+</kbd><var>$user</var><kbd>-&gt;</kbd><var>password </var><kbd>= </kbd><dfn>''</dfn><kbd>;
+
+</kbd><samp>// save
+</samp><var>$success </var><kbd>= </kbd><var>$user</var><kbd>-&gt;</kbd><var><u>save</u></var><kbd>();
+if(</kbd>! <var>$success</var><kbd>)
+{</kbd>
+    <samp>// did validation fail?</samp>
+    <kbd>if (</kbd> <var>$user->valid</var> <kbd>)
+    {</kbd>
+         <samp>// insert or update failure</samp>
+    <kbd>} else {</kbd>
+         <samp>// validation failure</samp>
+    <kbd>}</kbd>
+<kbd>}</kbd>
+</pre>
+
 <h2 id="Relationship">Save a Simple Relationship</h2>
 
 <p>It's easy to save the relationships your objects have with each other, and there are a few ways of doing it.</p>
