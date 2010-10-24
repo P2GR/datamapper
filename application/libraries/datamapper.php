@@ -860,7 +860,7 @@ class DataMapper implements IteratorAggregate {
 	protected static function recursive_require_once($class, $path)
 	{
 		$found = FALSE;
-		if(isdir($path))
+		if(is_dir($path))
 		{
 			$handle = opendir($path);
 			if ($handle)
@@ -2435,15 +2435,21 @@ class DataMapper implements IteratorAggregate {
 			$this_model = $related_properties['join_self_as'];
 			$object = new $class();
 
+			// Determine relationship table name
+			$relationship_table = $this->_get_relationship_table($object, $related_field);
+
 			// To ensure result integrity, group all previous queries
 			if( ! empty($this->db->ar_where))
 			{
+				// if the relationship table is different from our table, include our table in the count query
+				if ($relationship_table != $this->table)
+				{
+					$this->db->join($this->table, $this->table . '.id = ' . $relationship_table . '.' . $this_model.'_id', 'LEFT OUTER');
+				}
+
 				array_unshift($this->db->ar_where, '( ');
 				$this->db->ar_where[] = ' )';
 			}
-
-			// Determine relationship table name
-			$relationship_table = $this->_get_relationship_table($object, $related_field);
 
 			// We have to query special for in-table foreign keys that
 			// are pointing at this object
