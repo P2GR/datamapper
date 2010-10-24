@@ -56,6 +56,32 @@ Change Log
 
 <p>For more information on upgrading to the latest release, please see <a href="upgrade.html">Upgrade Instructions</a></p>
 
+<h2><a href="http://bitbucket.org/wanwizard/datamapper/downloads/">Version 1.8.0</a></h2>
+<p>Release Date: t.b.d.</p>
+<ul>
+	<li><strong>New Features</strong>
+		<ul>
+			<li>Added dutch language file.</li>
+			<li>The column name is now used as key of the <var><b>error->all</b></var> array, which allows you to reference the column name when iterating over the errors.</li>
+		</ul>
+	</li>
+	<li><strong>Bug Fixes</strong>
+		<ul>
+			<li>Fixed problem with <var><u>get_iterated</u></var> when using PHP 5.3+ which doesn't do an implicit type conversion from array to object, causing an <kbd>isset()</kbd> to fail.</li>
+			<li>Fixed PHP fatal error when loading a model when using CI 2.0 packages or Modular CI, and a package or model is missing a models directory.</li>
+			<li>Fixed incorrect SQL <var><u>count</u></var> and SQL error on <var><u>get_paged</u></var> and <var><u>get_paged_iterated</u></var> when paging through a related table, linked to the parent using a relationship table, and including a where clause on a parent column.</li>
+		</ul>
+	</li>
+	<li><strong>Other Changes</strong>
+		<ul>
+			<li>All language files have been converted to UTF-8.</li>
+			<li>When using <var><u>include_join_fields</u></var>, the <var><i>id</i></var> field of the relationship table is included as well.</li>
+			<li>Added some info about the <var><u>post_model_init</u></var> method to the documentation.</li>
+			<li>The manual now makes it clear that there are several reasons for a <var><u>save</u></var> to fail and gives some examples of what to check.</li>
+		</ul>
+	</li>
+</ul>
+
 <h2><a href="http://bitbucket.org/wanwizard/datamapper/downloads/DMZ_1.7.1.zip">Version 1.7.1</a></h2>
 <p>Release Date: March 22, 2010</p>
 <ul>
