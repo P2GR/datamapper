@@ -1,0 +1,8 @@
+"name","closed","sortorder"
+New,0,1
+Unconfirmed,0,2
+Confirmed,0,3
+In Progress,0,4
+Fixed,1,5
+"Won't Fix",1,6
+Works For Me,1,7

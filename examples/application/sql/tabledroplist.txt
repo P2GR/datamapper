@@ -1,0 +1,12 @@
+# Join Tables
+bugs_categories
+bugs_users
+dependencies_dependents
+
+# Model Tables
+bugs
+categories
+comments
+groups
+statuses
+users
