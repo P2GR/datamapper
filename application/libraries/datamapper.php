@@ -523,6 +523,7 @@ class DataMapper implements IteratorAggregate {
 							}
 
 							// Load extensions (they are not cacheable)
+							// Load extensions (they are not cacheable)
 							$this->_initiate_local_extensions($common_key);
 
 							$loaded_from_cache = TRUE;
@@ -693,8 +694,12 @@ class DataMapper implements IteratorAggregate {
 				// if requested, store the item to the production cache
 				if( ! empty(DataMapper::$config['production_cache']))
 				{
-					// attempt to load the production cache file
-					$cache_folder = APPPATH . DataMapper::$config['production_cache'];
+					// check if it's a fully qualified path first
+					if (!is_dir($cache_folder = DataMapper::$config['production_cache']))
+					{
+						// if not, it's relative to the application path
+						$cache_folder = APPPATH . DataMapper::$config['production_cache'];
+					}
 					if(file_exists($cache_folder) && is_dir($cache_folder) && is_writeable($cache_folder))
 					{
 						$cache_file = $cache_folder . '/' . $common_key . EXT;
