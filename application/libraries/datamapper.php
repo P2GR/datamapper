@@ -859,37 +859,40 @@ class DataMapper implements IteratorAggregate {
 	protected static function recursive_require_once($class, $path)
 	{
 		$found = FALSE;
-		$handle = opendir($path);
-		if ($handle)
+		if(isdir($path))
 		{
-			while (FALSE !== ($dir = readdir($handle)))
+			$handle = opendir($path);
+			if ($handle)
 			{
-				// If dir does not contain a dot
-				if (strpos($dir, '.') === FALSE)
+				while (FALSE !== ($dir = readdir($handle)))
 				{
-					// Prepare recursive path
-					$recursive_path = $path . '/' . $dir;
-
-					// Prepare file
-					$file = $recursive_path . '/' . $class . EXT;
-
-					// Check if file exists, require_once if it does
-					if (file_exists($file))
+					// If dir does not contain a dot
+					if (strpos($dir, '.') === FALSE)
 					{
-						require_once($file);
-						$found = TRUE;
+						// Prepare recursive path
+						$recursive_path = $path . '/' . $dir;
 
-						break;
-					}
-					else if (is_dir($recursive_path))
-					{
-						// Do a recursive search of the path for the class
-						DataMapper::recursive_require_once($class, $recursive_path);
+						// Prepare file
+						$file = $recursive_path . '/' . $class . EXT;
+
+						// Check if file exists, require_once if it does
+						if (file_exists($file))
+						{
+							require_once($file);
+							$found = TRUE;
+
+							break;
+						}
+						else if (is_dir($recursive_path))
+						{
+							// Do a recursive search of the path for the class
+							DataMapper::recursive_require_once($class, $recursive_path);
+						}
 					}
 				}
-			}
 
-			closedir($handle);
+				closedir($handle);
+			}
 		}
 		return $found;
 	}
