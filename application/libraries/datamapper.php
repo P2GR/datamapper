@@ -2628,7 +2628,7 @@ class DataMapper implements IteratorAggregate {
 			$this->error->{$field} = $this->error_prefix . $error . $this->error_suffix;
 
 			// Add field error to errors all list
-			$this->error->all[] = $this->error->{$field};
+			$this->error->all[$field] = $this->error->{$field};
 
 			// Append field error to error message string
 			$this->error->string .= $this->error->{$field};
