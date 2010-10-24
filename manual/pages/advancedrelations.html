@@ -163,6 +163,28 @@ Advanced Relationships
 	<li>The table structure is going to be a little different now.</li>
 </ul>
 
+<h2 id="reciprocal">Many-to-Many Reciprocal Self Relationships</h2>
+<p>In this type of relationship, you have records that related to each other, and where saving or deleting the relationship in one direction should also maintain the relationship in the reverse direction.</p>
+<pre>
+<kbd>class </kbd><var>Document </var><kbd>extends </kbd><var><u>DataMapper</u> </var><kbd>{
+    </kbd><var><i>$has_many</i> </var><kbd>= array(
+        </kbd><strong>'related_document'</strong> <kbd>=&gt; array(
+            </kbd>'class' <kbd>=&gt; </kbd><dfn><var><s>'document'</s></var></dfn><kbd>,
+            </kbd>'other_field' <kbd>=&gt; </kbd><dfn>'document'</var></dfn><kbd>,
+            </kbd>'reciprocal' <kbd>=&gt; </kbd><dfn>TRUE</dfn><kbd>
+        ),
+        </kbd><strong>'document'</strong> <kbd>=&gt; array(
+            </kbd>'other_field' <kbd>=&gt; </kbd><dfn>'related_document'</var></dfn><kbd>,
+        )
+    );
+}
+</pre>
+<p>To get this to work, you will need:</p>
+<ul>
+	<li>You need a relationship table to define this many-to-many relation, which is this case would be called '<dfn>documents_documents</dfn>'.</li>
+	<li>This table needs to contain a column called '<dfn>document_id</dfn>' and a column called '<dfn>related_document_id</dfn>'.</li>
+</ul>
+
 <h2>Setting up the Table Structure with Advanced Relationships</h2>
 <p>The table structure has one key difference.  While the names of the tables is still determined using the plural form of the model, the <em>column names</em> are now defined using the <strong>relationship key</strong>.</p>
 

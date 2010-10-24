@@ -10,7 +10,7 @@
  * @category	DataMapper ORM
  * @author  	Harro Verton, James Wardlaw
  * @author  	Phil DeJarnett (up to v1.7.1.)
- * @link    	http://datamapper.exitecms.org/
+ * @link		http://datamapper.exitecms.org/
  * @version 	1.8.dev
  */
 
@@ -524,7 +524,6 @@ class DataMapper implements IteratorAggregate {
 							}
 
 							// Load extensions (they are not cacheable)
-							// Load extensions (they are not cacheable)
 							$this->_initiate_local_extensions($common_key);
 
 							$loaded_from_cache = TRUE;
@@ -662,6 +661,15 @@ class DataMapper implements IteratorAggregate {
 							// add the key as the model to use in queries if not set
 							$rel_props['join_other_as'] = $related_field;
 						}
+						if(isset($rel_props['reciprocal']))
+						{
+							// only allow a reciprocal relationship to be defined if this is a has_many self relationship
+							$rel_props['reciprocal'] = ($rel_props['reciprocal'] && $arr == 'has_many' && $this_class == $rel_props['class']);
+						}
+						else
+						{
+							$rel_props['reciprocal'] = FALSE;
+						}
 						$new[$related_field] = $rel_props;
 
 						// load in labels for each not-already-set field
@@ -797,45 +805,46 @@ class DataMapper implements IteratorAggregate {
 	 * @param	string $class Name of class to load.
 	 */
 	public static function autoload($class)
-    {
-        // Don't attempt to autoload CI_ or MY_ prefixed classes
-        if (in_array(substr($class, 0, 3), array('CI_', 'EE_', 'MY_')))
-        {
-            return;
-        }
+	{
+		// Don't attempt to autoload CI_ or MY_ prefixed classes
+		if (in_array(substr($class, 0, 3), array('CI_', 'EE_', 'MY_')))
+		{
+			return;
+		}
 
-        // Prepare class
-        $class = strtolower($class);
+		// Prepare class
+		$class = strtolower($class);
 
 		$CI =& get_instance();
 
-        // Prepare path
-        if (isset($CI->load->_ci_model_paths) && is_array($CI->load->_ci_model_paths))
-        {
-            // use CI loader's model path
-            $paths = $CI->load->_ci_model_paths;
-        }
-        else
-        {
-            $paths = array(APPPATH);
-        }
+		// Prepare path
+		if (isset($CI->load->_ci_model_paths) && is_array($CI->load->_ci_model_paths))
+		{
+			// use CI 2.0 loader's model paths
+			$paths = $CI->load->_ci_model_paths;
+		}
+		else
+		{
+			// search only the applications models folder
+			$paths[] = APPPATH;
+		}
 
-        foreach ($paths as $path)
-        {
-            // Prepare file
-            $file = $path . 'models/' . $class . EXT;
+		foreach ($paths as $path)
+		{
+			// Prepare file
+			$file = $path . 'models/' . $class . EXT;
 
-            // Check if file exists, require_once if it does
-            if (file_exists($file))
-            {
-                require_once($file);
-                break;
-            }
-        }
+			// Check if file exists, require_once if it does
+			if (file_exists($file))
+			{
+				require_once($file);
+				break;
+			}
+		}
 
-        // if class not loaded, do a recursive search of model paths for the class
-        if (! class_exists($class))
-        {
+		// if class not loaded, do a recursive search of model paths for the class
+		if (! class_exists($class))
+		{
 			foreach($paths as $path)
 			{
 				$found = DataMapper::recursive_require_once($class, $path . 'models');
@@ -844,8 +853,8 @@ class DataMapper implements IteratorAggregate {
 					break;
 				}
 			}
-        }
-    }
+		}
+	}
 
 	// --------------------------------------------------------------------
 
@@ -1059,11 +1068,11 @@ class DataMapper implements IteratorAggregate {
 
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 *                                                                   *
-	 * Magic methods                                                     *
-	 *                                                                   *
+	 *																   *
+	 * Magic methods													 *
+	 *																   *
 	 * The following are methods to override the default PHP behaviour.  *
-	 *                                                                   *
+	 *																   *
 	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 	// --------------------------------------------------------------------
@@ -1341,12 +1350,12 @@ class DataMapper implements IteratorAggregate {
 
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 *                                                                   *
-	 * Main methods                                                      *
-	 *                                                                   *
-	 * The following are methods that form the main                      *
-	 * functionality of DataMapper.                                      *
-	 *                                                                   *
+	 *																   *
+	 * Main methods													  *
+	 *																   *
+	 * The following are methods that form the main					  *
+	 * functionality of DataMapper.									  *
+	 *																   *
 	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
@@ -1479,7 +1488,7 @@ class DataMapper implements IteratorAggregate {
 	 * $rs = $object->get_iterated();
 	 * $size = $rs->count;
 	 * foreach($rs as $o) {
-	 *     // handle $o
+	 *	 // handle $o
 	 * }
 	 * $rs can be looped through more than once.
 	 *
@@ -1646,13 +1655,6 @@ class DataMapper implements IteratorAggregate {
 				$this->{$this->created_field} = $timestamp;
 			}
 
-			// Check if object has an 'updated' field
-			if (in_array($this->updated_field, $this->fields))
-			{
-				// Update updated datetime
-				$this->{$this->updated_field} = $timestamp;
-			}
-
 			// SmartSave: if there are objects being saved, and they are stored
 			// as in-table foreign keys, we can save them at this step.
 			if( ! empty($object))
@@ -1681,14 +1683,15 @@ class DataMapper implements IteratorAggregate {
 						}
 					}
 
-					// Check if only the 'updated' field has changed, and if so, revert it
-					if (count($data) == 1 && isset($data[$this->updated_field]))
+					// if there are changes, check if we need to update the update timestamp
+					if (count($data) && isset($data[$this->updated_field]))
 					{
-						// Revert updated
-						$this->{$this->updated_field} = $this->stored->{$this->updated_field};
-
-						// Unset it
-						unset($data[$this->updated_field]);
+						// was the timestamp manually updated?
+						if ($this->{$this->updated_field} === $this->stored->{$this->updated_field})
+						{
+							// no,so update it now
+							$this->{$this->updated_field} = $timestamp;
+						}
 					}
 
 					// Only go ahead with save if there is still data
@@ -2763,12 +2766,12 @@ class DataMapper implements IteratorAggregate {
 
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 *                                                                   *
-	 * Active Record methods                                             *
-	 *                                                                   *
-	 * The following are methods used to provide Active Record           *
-	 * functionality for data retrieval.                                 *
-	 *                                                                   *
+	 *																   *
+	 * Active Record methods											 *
+	 *																   *
+	 * The following are methods used to provide Active Record		   *
+	 * functionality for data retrieval.								 *
+	 *																   *
 	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
@@ -3967,11 +3970,11 @@ class DataMapper implements IteratorAggregate {
 
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 *                                                                   *
-	 * Transaction methods                                               *
-	 *                                                                   *
-	 * The following are methods used for transaction handling.          *
-	 *                                                                   *
+	 *																   *
+	 * Transaction methods											   *
+	 *																   *
+	 * The following are methods used for transaction handling.		  *
+	 *																   *
 	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
@@ -4145,11 +4148,11 @@ class DataMapper implements IteratorAggregate {
 
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 *                                                                   *
-	 * Related methods                                                   *
-	 *                                                                   *
-	 * The following are methods used for managing related records.      *
-	 *                                                                   *
+	 *																   *
+	 * Related methods												   *
+	 *																   *
+	 * The following are methods used for managing related records.	  *
+	 *																   *
 	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 	// --------------------------------------------------------------------
@@ -4873,6 +4876,13 @@ class DataMapper implements IteratorAggregate {
 							// We can add the relation since this specific relation doesn't exist, and a "has many" to "has many" relationship exists between the objects
 							$this->db->insert($relationship_table, $data);
 
+							// Self relationships can be defined as reciprocal -- save the reverse relationship at the same time
+							if ($related_properties['reciprocal'])
+							{
+								$data = array($this_model . '_id' => $object->id, $other_model . '_id' => $this->id);
+								$this->db->insert($relationship_table, $data);
+							}
+
 							return TRUE;
 						}
 					}
@@ -5007,6 +5017,13 @@ class DataMapper implements IteratorAggregate {
 
 				// Delete relation
 				$this->db->delete($relationship_table, $data);
+
+				// Delete reverse direction if a reciprocal self relationship
+				if ($related_properties['reciprocal'])
+				{
+					$data = array($this_model . '_id' => $object->id, $other_model . '_id' => $this->id);
+					$this->db->delete($relationship_table, $data);
+				}
 			}
 
 			// Clear related object so it is refreshed on next access
@@ -5351,12 +5368,12 @@ class DataMapper implements IteratorAggregate {
 
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 *                                                                   *
-	 * Related Validation methods                                        *
-	 *                                                                   *
-	 * The following are methods used to validate the                    *
-	 * relationships of this object.                                     *
-	 *                                                                   *
+	 *																   *
+	 * Related Validation methods										*
+	 *																   *
+	 * The following are methods used to validate the					*
+	 * relationships of this object.									 *
+	 *																   *
 	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
@@ -5407,12 +5424,12 @@ class DataMapper implements IteratorAggregate {
 
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 *                                                                   *
-	 * Validation methods                                                *
-	 *                                                                   *
-	 * The following are methods used to validate the                    *
-	 * values of this objects properties.                                *
-	 *                                                                   *
+	 *																   *
+	 * Validation methods												*
+	 *																   *
+	 * The following are methods used to validate the					*
+	 * values of this objects properties.								*
+	 *																   *
 	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
@@ -5761,11 +5778,11 @@ class DataMapper implements IteratorAggregate {
 
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 *                                                                   *
-	 * Common methods                                                    *
-	 *                                                                   *
-	 * The following are common methods used by other methods.           *
-	 *                                                                   *
+	 *																   *
+	 * Common methods													*
+	 *																   *
+	 * The following are common methods used by other methods.		   *
+	 *																   *
 	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 	// --------------------------------------------------------------------
@@ -6198,58 +6215,58 @@ class DM_DatasetIterator implements Iterator, Countable
 	 * The parent DataMapper object that contains important info.
 	 * @var DataMapper
 	 */
-    protected $parent;
+	protected $parent;
 	/**
 	 * The temporary DM object used in the loops.
 	 * @var DataMapper
 	 */
-    protected $object;
+	protected $object;
 	/**
 	 * Results array
 	 * @var array
 	 */
-    protected $result;
+	protected $result;
 	/**
 	 * Number of results
 	 * @var int
 	 */
-    protected $count;
+	protected $count;
 	/**
 	 * Current position
 	 * @var int
 	 */
-    protected $pos;
+	protected $pos;
 
 	/**
 	 * @param DataMapper $object Should be cloned ahead of time
 	 * @param DB_result $query result from a CI DB query
 	 */
-    function __construct($object, $query)
-    {
+	function __construct($object, $query)
+	{
 		// store the object as a main object
 		$this->parent = $object;
 		// clone the parent object, so it can be manipulated safely.
 		$this->object = $object->get_clone();
 
 		// Now get the information on the current query object
-        $this->result = $query->result();
-        $this->count = count($this->result);
-        $this->pos = 0;
-    }
+		$this->result = $query->result();
+		$this->count = count($this->result);
+		$this->pos = 0;
+	}
 
 	/**
 	 * Gets the item at the current index $pos
 	 * @return DataMapper
 	 */
-    function current()
-    {
+	function current()
+	{
 		return $this->get($this->pos);
-    }
+	}
 
-    function key()
-    {
-        return $this->pos;
-    }
+	function key()
+	{
+		return $this->pos;
+	}
 
 	/**
 	 * Gets the item at index $index
@@ -6260,33 +6277,33 @@ class DM_DatasetIterator implements Iterator, Countable
 		// clear to ensure that the item is not duplicating data
 		$this->object->clear();
 		// set the current values on the object
-        $this->parent->_to_object($this->object, $this->result[$index]);
-        return $this->object;
+		$this->parent->_to_object($this->object, $this->result[$index]);
+		return $this->object;
 	}
 
-    function next()
-    {
-        $this->pos++;
-    }
+	function next()
+	{
+		$this->pos++;
+	}
 
-    function rewind()
-    {
-        $this->pos = 0;
-    }
+	function rewind()
+	{
+		$this->pos = 0;
+	}
 
-    function valid()
-    {
-        return ($this->pos < $this->count);
-    }
+	function valid()
+	{
+		return ($this->pos < $this->count);
+	}
 
 	/**
 	 * Returns the number of results
 	 * @return int
 	 */
-    function count()
-    {
-        return $this->count;
-    }
+	function count()
+	{
+		return $this->count;
+	}
 
 	// Alias for count();
 	function result_count() {
