@@ -8,9 +8,10 @@
  * @license 	MIT License
  * @package		DataMapper ORM
  * @category	DataMapper ORM
- * @author  	Phil DeJarnett, Harro Verton
+ * @author  	Harro Verton, James Wardlaw
+ * @author  	Phil DeJarnett (up to v1.7.1.)
  * @link    	http://datamapper.exitecms.org/
- * @version 	1.7.1
+ * @version 	1.8.dev
  */
 
 /**
@@ -21,7 +22,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '1.7.1.');
+define('DMZ_VERSION', '1.8.dev');
 
 /**
  * Data Mapper Class
@@ -4378,7 +4379,7 @@ class DataMapper implements IteratorAggregate {
 					$fields = $db->field_data($relationship_table);
 					foreach($fields as $key => $f)
 					{
-						if($f->name == 'id' || $f->name == $this_column || $f->name == $other_column)
+						if($f->name == $this_column || $f->name == $other_column)
 						{
 							unset($fields[$key]);
 						}
