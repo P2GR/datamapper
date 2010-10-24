@@ -2458,11 +2458,11 @@ class DataMapper implements IteratorAggregate {
 			else
 			{
 				// All other cases
-				$this->db->where($other_model . '_id', $this->parent['id']);
+				$this->db->where($relationship_table . '.' . $other_model . '_id', $this->parent['id']);
 			}
 			if(!empty($exclude_ids))
 			{
-				$this->db->where_not_in($this_model . '_id', $exclude_ids);
+				$this->db->where_not_in($relationship_table . '.' . $this_model . '_id', $exclude_ids);
 			}
 			if($column == 'id')
 			{
