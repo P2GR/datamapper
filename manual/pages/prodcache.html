@@ -70,7 +70,7 @@ Production Cache
 
 <p>There are three steps to enabling the production cache.</p>
 <ol>
-	<li>Create a writeable folder on the production server that can serve as the cache.  This should be located under the <strong>application</strong> folder.
+	<li>Create a writeable folder on the production server that can serve as the cache.
 	The default, and recommended folder, is <strong>application</strong>/<kbd>datamapper/cache</kbd>.</li>
 	<li>Edit your <strong>datamapper.php</strong> config file, and uncomment or add this line:
 		<pre><var>$config</var><kbd>[</kbd><dfn>'production_cache'</dfn><kbd>] = </kbd><dfn>'datamapper/cache'</dfn><kbd>;</kbd></pre>
@@ -79,6 +79,10 @@ Production Cache
 </ol>
 
 <p>Once enabled, the cache is created automatically, as models are first accessed.  After the cache has been created, it will be used instead of the database queries.</p>
+
+<p class="note">
+	Your cache directories might be outside the application directory. In that case, you can specify the fully qualified path to the production cache directory.
+</p>
 
 <h2>What is Cached?</h2>
 

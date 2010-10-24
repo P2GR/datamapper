@@ -70,7 +70,6 @@ DataMapper Models
 	<li><var>Name</var> - Replace this value with the name of your object.  For example: <var>User</var></li>
 	<li><var><u>DataMapper</u></var> - Extending DataMapper is what makes your model a DataMapper model.</li>
 	<li><kbd>__construct</kbd> - (Optional) It is highly recommended that you use this standard PHP constructor, instead of the class name, for easier management later.  If you want the ability to load a model by ID when it is created, make sure you include the <kbd>$id</kbd> parameter.</li>
-</ul>
 <pre>
 <kbd>class </kbd><var>Name </var><kbd>extends </kbd><var><u>DataMapper</u> </var><kbd>{
 
@@ -78,6 +77,11 @@ DataMapper Models
     </samp><kbd>function </kbd><var><dfn>__construct</dfn></var><kbd>(</kbd><var>$id </var><kbd>= </kbd><var>NULL</var><kbd>)
     {
         </kbd><var><dfn>parent</dfn></var><kbd>::</kbd><var><dfn>__construct</dfn></var><kbd>(</kbd><var>$id</var><kbd>);
+    }
+
+    </kbd><samp>// Optionally, you can add post model initialisation code
+    </samp><kbd>function </kbd><var><dfn>post_model_init</dfn></var><kbd>(</kbd><var>$from_cache </var><kbd>= </kbd><var>FALSE</var><kbd>)
+    {
     }
 }
 
@@ -93,6 +97,8 @@ DataMapper Models
 <var>$user </var><kbd>= new </kbd><var>User</var><kbd>();
 </kbd><var>$user</var><kbd>-&gt;</kbd><var><u>get_by_id</u></var><kbd>(</kbd><var>$user_id</var><kbd>);</kbd></pre>
 </div>
+	<li><kbd>post_model_init</kbd> - (Optional) After Datamapper has loaded and initialized the model, it calls the post_model_init() method (if defined), where you can add initialisation code specific for this model. The <kbd>$from_cache</kbd> parameter indicates if the current model configuration was generated, or was loaded from the <a href="prodcache.html">production cache</a>.</li>
+</ul>
 
 
 <h2 id="rules">Rules</h2>
