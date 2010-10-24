@@ -1,16 +1,16 @@
 <?php
 
 /**
- * Data Mapper Class, OverZealous Edition
+ * Data Mapper ORM Class
  *
  * Transforms database tables into objects.
  *
  * @license 	MIT License
- * @package		DMZ
- * @category	DMZ
- * @author  	Phil DeJarnett
- * @link    	http://www.overzealous.com/dmz/
- * @version 	1.7.1 ($Rev: 394 $)
+ * @package		DataMapper ORM
+ * @category	DataMapper ORM
+ * @author  	Phil DeJarnett, Harro Verton
+ * @link    	http://datamapper.exitecms.org/
+ * @version 	1.7.1
  */
 
 /**
@@ -19,11 +19,16 @@
 define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 
 /**
- * Data Mapper Class, OverZealous Edition
+ * DMZ version
+ */
+define('DMZ_VERSION', '1.7.1.');
+
+/**
+ * Data Mapper Class
  *
  * Transforms database tables into objects.
  *
- * @package		DMZ
+ * @package		DataMapper ORM
  *
  * Properties (for code completion)
  * @property CI_DB_driver $db The CodeIgniter Database Library
