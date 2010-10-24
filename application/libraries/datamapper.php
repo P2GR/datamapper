@@ -499,8 +499,12 @@ class DataMapper implements IteratorAggregate {
 			// Load in the production cache for this model, if it exists
 			if( ! empty(DataMapper::$config['production_cache']))
 			{
-				// attempt to load the production cache file
-				$cache_folder = APPPATH . DataMapper::$config['production_cache'];
+				// check if it's a fully qualified path first
+				if (!is_dir($cache_folder = DataMapper::$config['production_cache']))
+				{
+					// if not, it's relative to the application path
+					$cache_folder = APPPATH . DataMapper::$config['production_cache'];
+				}
 				if(file_exists($cache_folder) && is_dir($cache_folder) && is_writeable($cache_folder))
 				{
 					$cache_file = $cache_folder . '/' . $common_key . EXT;
