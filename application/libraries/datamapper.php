@@ -1803,13 +1803,13 @@ class DataMapper implements IteratorAggregate {
 				$other_column = $related_properties['join_other_as'] . '_id';
 				if(isset($this->has_one[$rf]) && in_array($other_column, $this->fields))
 				{
+					// unset, so that it doesn't get re-saved later.
+					unset($objects[$index]);
+
 					if($this->{$other_column} != $o->id)
 					{
 						// ITFK: store on the table
 						$this->{$other_column} = $o->id;
-
-						// unset, so that it doesn't get re-saved later.
-						unset($objects[$index]);
 
 						// Remove reverse relationships for one-to-ones
 						$this->_remove_other_one_to_one($rf, $o);
