@@ -3154,9 +3154,16 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function select($select = '*', $escape = NULL)
 	{
-		if ($escape !== FALSE)
-		{
-			$select = $this->add_table_name($select);
+		if ($escape !== FALSE) {
+			if (!is_array($select)) {
+				$select = $this->add_table_name($select);
+			} else {
+				$updated = array();
+				foreach ($select as $sel) {
+					$updated = $this->add_table_name($sel);
+				}
+				$select = $updated;
+			}
 		}
 		$this->db->select($select, $escape);
 
