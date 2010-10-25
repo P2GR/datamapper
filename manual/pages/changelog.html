@@ -62,9 +62,10 @@ Change Log
 	<li><strong>New Features</strong>
 		<ul>
 			<li>Added dutch language file.</li>
+			<li>Updated the select() method to accept an array of column names next to a comma delimited string, like CodeIgniters Activerecord does.</li>
 			<li>The updated column can now be modified manually. The <var><u>save</u></var> method will save the update even if the updated timestamp is the only modified field.</li>
 			<li>The column name is now used as key of the <var><b>error->all</b></var> array, which allows you to reference the column name when iterating over the errors.</li>
-			<li>Added support for reciprocal many-to-many relationships. See <a href="advancedrelations.html#reciprocal">Advanced Relationships</a>.</li>
+			<li>Added (expirimental) support for reciprocal many-to-many relationships. See <a href="advancedrelations.html#reciprocal">Advanced Relationships</a>.</li>
 		</ul>
 	</li>
 	<li><strong>Bug Fixes</strong>
@@ -72,11 +73,13 @@ Change Log
 			<li>Fixed problem with <var><u>get_iterated</u></var> when using PHP 5.3+ which doesn't do an implicit type conversion from array to object, causing an <kbd>isset()</kbd> to fail.</li>
 			<li>Fixed PHP fatal error when loading a model when using CI 2.0 packages or Modular CI, and a package or model is missing a models directory.</li>
 			<li>Fixed incorrect SQL <var><u>count</u></var> and SQL error on <var><u>get_paged</u></var> and <var><u>get_paged_iterated</u></var> when paging through a related table, linked to the parent using a relationship table, and including a where clause on a parent column.</li>
+			<li>Fixed race condition that could case a fatal error due to recursion when deleting ITFK's.</li>
 		</ul>
 	</li>
 	<li><strong>Other Changes</strong>
 		<ul>
 			<li>All language files have been converted to UTF-8.</li>
+			<li>Replaced hardcoded check for the MY_ prefix with the 'subclass_prefix' config value when autoloading classes.</li>
 			<li>When using <var><u>include_join_fields</u></var>, the <var><i>id</i></var> field of the relationship table is included as well.</li>
 			<li>Added some info about the <var><u>post_model_init</u></var> method to the documentation.</li>
 			<li>The manual now makes it clear that there are several reasons for a <var><u>save</u></var> to fail and gives some examples of what to check.</li>
