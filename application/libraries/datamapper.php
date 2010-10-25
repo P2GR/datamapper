@@ -806,16 +806,16 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public static function autoload($class)
 	{
-		// Don't attempt to autoload CI_ or MY_ prefixed classes
-		if (in_array(substr($class, 0, 3), array('CI_', 'EE_', 'MY_')))
+		$CI =& get_instance();
+
+		// Don't attempt to autoload CI_ , EE_, or custom prefixed classes
+		if (in_array(substr($class, 0, 3), array('CI_', 'EE_')) OR strpos($class, $CI->config->item('subclass_prefix')) === 0)
 		{
 			return;
 		}
 
 		// Prepare class
 		$class = strtolower($class);
-
-		$CI =& get_instance();
 
 		// Prepare path
 		if (isset($CI->load->_ci_model_paths) && is_array($CI->load->_ci_model_paths))
