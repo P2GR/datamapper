@@ -8,7 +8,7 @@
  * @license 	MIT License
  * @package		DataMapper ORM
  * @category	DataMapper ORM
- * @author  	Harro Verton, James Wardlaw
+ * @author  	Harro "WanWizard" Verton, James Wardlaw
  * @author  	Phil DeJarnett (up to v1.7.1.)
  * @link		http://datamapper.exitecms.org/
  * @version 	1.8.dev
@@ -629,62 +629,11 @@ class DataMapper implements IteratorAggregate {
 				// convert simple has_one and has_many arrays into more advanced ones
 				foreach(array('has_one', 'has_many') as $arr)
 				{
-					$new = array();
 					foreach ($this->{$arr} as $related_field => $rel_props)
 					{
-						// allow for simple (old-style) associations
-						if (is_int($related_field))
-						{
-							$related_field = $rel_props;
-						}
-						// convert value into array if necessary
-						if ( ! is_array($rel_props))
-						{
-							$rel_props = array('class' => $rel_props);
-						} else if ( ! isset($rel_props['class']))
-						{
-							// if already an array, ensure that the class attribute is set
-							$rel_props['class'] = $related_field;
-						}
-						if( ! isset($rel_props['other_field']))
-						{
-							// add this model as the model to use in queries if not set
-							$rel_props['other_field'] = $this->model;
-						}
-						if( ! isset($rel_props['join_self_as']))
-						{
-							// add this model as the model to use in queries if not set
-							$rel_props['join_self_as'] = $rel_props['other_field'];
-						}
-						if( ! isset($rel_props['join_other_as']))
-						{
-							// add the key as the model to use in queries if not set
-							$rel_props['join_other_as'] = $related_field;
-						}
-						if(isset($rel_props['reciprocal']))
-						{
-							// only allow a reciprocal relationship to be defined if this is a has_many self relationship
-							$rel_props['reciprocal'] = ($rel_props['reciprocal'] && $arr == 'has_many' && $this_class == $rel_props['class']);
-						}
-						else
-						{
-							$rel_props['reciprocal'] = FALSE;
-						}
-						$new[$related_field] = $rel_props;
-
-						// load in labels for each not-already-set field
-						if(!isset($this->validation[$related_field]))
-						{
-							$label = $this->localize_label($related_field);
-							if(!empty($label))
-							{
-								// label is re-set below, to prevent caching language-based labels
-								$this->validation[$related_field] = array('field' => $related_field, 'rules' => array());
-							}
-						}
+						// process the relationship
+						$this->_relationship($arr, $rel_props, $related_field);
 					}
-					// replace the old array
-					$this->{$arr} = $new;
 				}
 
 				// allow subclasses to add initializations
@@ -3148,7 +3097,7 @@ class DataMapper implements IteratorAggregate {
 	 *
 	 * Sets the SELECT portion of the query.
 	 *
-	 * @param	string $select Field(s) to select
+	 * @param	mixed $select Field(s) to select, array or comma separated string
 	 * @param	bool $escape If FALSE, don't escape this field (Probably won't work)
 	 * @return	DataMapper Returns self for method chaining.
 	 */
@@ -5843,6 +5792,111 @@ class DataMapper implements IteratorAggregate {
 			$label = $this->localize_by_model(substr($label, 5), $field);
 		}
 		return $label;
+	}
+
+	// --------------------------------------------------------------------
+
+	public function has_one( $parm1 = NULL, $parm2 = NULL )
+	{
+		if ( is_null($parm1) && is_null($parm2) )
+		{
+			return FALSE;
+		}
+		elseif ( is_array($parm2) )
+		{
+			return $this->_relationship('has_one', $parm2, $parm1);
+		}
+		else
+		{
+			return $this->_relationship('has_one', $parm1, 0);
+		}
+	}
+
+	// --------------------------------------------------------------------
+
+	public function has_many( $definition = array() )
+	{
+		if ( is_null($parm1) && is_null($parm2) )
+		{
+			return FALSE;
+		}
+		elseif ( is_array($parm2) )
+		{
+			return $this->_relationship('has_many', $parm2, $parm1);
+		}
+		else
+		{
+			return $this->_relationship('has_many', $parm1, 0);
+		}
+	}
+
+	/**
+	 * Define a new relationship for the current model
+	 */
+	protected function _relationship($type = '', $definition = array(), $name = 0)
+	{
+		// check the parameters
+		if (empty($type) OR ! in_array($type, array('has_one','has_many')))
+		{
+			return FALSE;
+		}
+
+		// get the current relationships
+		$new = (array) $this->{$type};
+
+		// allow for simple (old-style) associations
+		if (is_int($name))
+		{
+			$name = $definition;
+		}
+		// convert value into array if necessary
+		if ( ! is_array($definition))
+		{
+			$definition = array('class' => $definition);
+		} else if ( ! isset($definition['class']))
+		{
+			// if already an array, ensure that the class attribute is set
+			$definition['class'] = $name;
+		}
+		if( ! isset($definition['other_field']))
+		{
+			// add this model as the model to use in queries if not set
+			$definition['other_field'] = $this->model;
+		}
+		if( ! isset($definition['join_self_as']))
+		{
+			// add this model as the model to use in queries if not set
+			$definition['join_self_as'] = $definition['other_field'];
+		}
+		if( ! isset($definition['join_other_as']))
+		{
+			// add the key as the model to use in queries if not set
+			$definition['join_other_as'] = $name;
+		}
+		if(isset($definition['reciprocal']))
+		{
+			// only allow a reciprocal relationship to be defined if this is a has_many self relationship
+			$definition['reciprocal'] = ($definition['reciprocal'] && $type == 'has_many' && $definition['class'] == strtolower(get_class($this)));
+		}
+		else
+		{
+			$definition['reciprocal'] = FALSE;
+		}
+		$new[$name] = $definition;
+
+		// load in labels for each not-already-set field
+		if(!isset($this->validation[$name]))
+		{
+			$label = $this->localize_label($name);
+			if(!empty($label))
+			{
+				// label is re-set below, to prevent caching language-based labels
+				$this->validation[$name] = array('field' => $name, 'rules' => array());
+			}
+		}
+
+		// replace the old array
+		$this->{$type} = $new;
 	}
 
 	// --------------------------------------------------------------------

@@ -57,6 +57,7 @@ Advanced Relationships
 	<li>Multiple Relationships to the Same Model</li>
 	<li>Proper Self-Relationships</li>
 	<li>Storing Additional Information on the Join Table</li>
+	<li>Defining relationships after the model has been loaded</li>
 </ul>
 
 <h2>More Advanced Relationship Overview</h2>
@@ -320,6 +321,57 @@ Advanced Relationships
 
 <p>And there you have it.  Advanced relationships to allow you to manage more complex data structures.  On to <a href="controllers.html">DataMapper in Controllers</a> so we can actually <em>use</em> this information!</p>
 
+<h2 id="runtime">Defining relations after the model has been loaded</h2>
+<p>Sofar, all relationship definitions have been static, defined as a property of the datamapper model.</p>
+<p>For most applications, this works fine. However, there are situation where you would like to define the relationships between models at runtime.
+This is particularly true in a modular environment, where a module can introduce new models that have a relationship with models from an other module,
+or from the application itself.</p>
+<p>Obviously you can't define these relationships in the model itself, as the name of the model might not be known at the time of writing, or the models database structure might not be available until the module has been installed.</p>
+<h3>Runtime relationship definition</h3>
+<p>Until now, to define a relationship you are used to code it like this:</p>
+<pre>
+<kbd>class </kbd><var>Post </var><kbd>extends </kbd><var><u>DataMapper</u> </var><kbd>{
+    </kbd><var><i>$has_one</i> </var><kbd>= array(</kbd><dfn>'user'</dfn><kbd>);
+}</kbd>
+</pre>
+<p>This relation can also be defined at runtime:</p>
+<pre>
+<samp>// define a new relationship for the Posts model
+</samp><var>$p </var><kbd>= new </kbd><var>Post</var><kbd>();
+</kbd><var>$p</var><kbd>-&gt;</kbd><var><u>has_one</u></var><kbd>(</kbd><dfn>'user'</dfn><kbd>);
+</pre>
+<p>You can also do this for advanced relationships. The example used previously</p>
+<pre>
+<kbd>class </kbd><var>Post </var><kbd>extends </kbd><var><u>DataMapper</u> </var><kbd>{
+    </kbd><var><i>$has_one</i> </var><kbd>= array(
+        </kbd><strong>'creator'</strong> <kbd>=&gt; array(
+            </kbd>'class' <kbd>=&gt; </kbd><dfn><var><s>'user'</s></var></dfn><kbd>,
+            </kbd>'other_field' <kbd>=&gt; </kbd><dfn>'created_post'
+        </dfn><kbd>),
+        </kbd><strong>'editor'</strong> <kbd>=&gt; array(
+            </kbd>'class' <kbd>=&gt; </kbd><dfn><var><s>'user'</s></var></dfn><kbd>,
+            </kbd>'other_field' <kbd>=&gt; </kbd><dfn>'edited_post'
+        </dfn><kbd>)
+    );
+}</kbd>
+</pre>
+<p>can be defined at runtime like this:</p>
+<pre>
+<samp>// define new relationships for the Posts model</samp>
+<var>$p </var><kbd>= new </kbd><var>Post</var><kbd>();
+<var>$relation </var><kbd>= array(
+	</kbd>'class' <kbd>=&gt; </kbd><dfn><var><s>'user'</s></var></dfn><kbd>,
+	</kbd>'other_field' <kbd>=&gt; </kbd><dfn>'created_post'
+</dfn><kbd>);
+</kbd><var>$p</var><kbd>-&gt;</kbd><var><u>has_one</u></var><kbd>(</kbd><dfn>'creator'</dfn><kbd>, </kbd><var><i>$relation</i></var><kbd>);
+
+<var>$relation </var><kbd>= array(
+	</kbd>'class' <kbd>=&gt; </kbd><dfn><var><s>'user'</s></var></dfn><kbd>,
+	</kbd>'other_field' <kbd>=&gt; </kbd><dfn>'edited_post'
+</dfn><kbd>);
+</kbd><var>$p</var><kbd>-&gt;</kbd><var><u>has_one</u></var><kbd>(</kbd><dfn>'editor'</dfn><kbd>, </kbd><var><i>$relation</i></var><kbd>);
+</pre>
+
 </div>
 <!-- END CONTENT -->
 
@@ -334,7 +386,7 @@ Advanced Relationships
 Next Topic:&nbsp;&nbsp;<a href=""></a></span>
 </p>
 <div id="copyrights">
-<p><a href="http://datamapper.exitecms.org/">Datamapper ORM</a> &nbsp;&middot;&nbsp; Copyright &copy; 2010 &nbsp;&middot;&nbsp; Harro Verton</p>
+<p><a href="http://datamapper.exitecms.org/">Datamapper ORM</a> &nbsp;&middot;&nbsp; Copyright &copy; 2010 &nbsp;&middot;&nbsp; Harro "WanWizard" Verton</p>
 <p><a href="license.html">Other License Information</a></p>
 </div>
 </div>

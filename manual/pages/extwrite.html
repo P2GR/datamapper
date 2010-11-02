@@ -230,9 +230,11 @@ Writing an Extension
 10
 11
 12
-13</div><var>&lt;?php
-</var><kbd>class </kbd><var>DMZ_Custom_Rules </var><kbd>{
-    function </kbd><var><dfn>__construct</dfn></var><kbd>(</kbd><var>$options</var><kbd>)
+13</div><var>&lt;?php</var>
+<samp>// $options contains the options passed when the extension is loaded, or NULL if no options are defined</samp>
+<samp>// $object contains the object that is loading this extension. it allows access to the objects properties</samp>
+<kbd>class </kbd><var>DMZ_Custom_Rules </var><kbd>{
+    function </kbd><var><dfn>__construct</dfn></var><kbd>(</kbd><var>$options</var><kbd>, </kbd><var>$object</var><kbd>)
     {
         foreach(</kbd><var>$options </var><kbd>as </kbd><var>$k </var><kbd>=&gt; </kbd><var>$v</var><kbd>)
         {
@@ -262,7 +264,7 @@ Writing an Extension
 Next Topic:&nbsp;&nbsp;<a href=""></a></span>
 </p>
 <div id="copyrights">
-<p><a href="http://datamapper.exitecms.org/">Datamapper ORM</a> &nbsp;&middot;&nbsp; Copyright &copy; 2010 &nbsp;&middot;&nbsp; Harro Verton</p>
+<p><a href="http://datamapper.exitecms.org/">Datamapper ORM</a> &nbsp;&middot;&nbsp; Copyright &copy; 2010 &nbsp;&middot;&nbsp; Harro "WanWizard" Verton</p>
 <p><a href="license.html">Other License Information</a></p>
 </div>
 </div>
