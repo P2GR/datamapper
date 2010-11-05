@@ -649,35 +649,8 @@ class DataMapper implements IteratorAggregate {
 					DataMapper::$common[$common_key][$item] = $this->{$item};
 				}
 
-				// if requested, store the item to the production cache
-				if( ! empty(DataMapper::$config['production_cache']))
-				{
-					// check if it's a fully qualified path first
-					if (!is_dir($cache_folder = DataMapper::$config['production_cache']))
-					{
-						// if not, it's relative to the application path
-						$cache_folder = APPPATH . DataMapper::$config['production_cache'];
-					}
-					if(file_exists($cache_folder) && is_dir($cache_folder) && is_writeable($cache_folder))
-					{
-						$cache_file = $cache_folder . '/' . $common_key . EXT;
-						$cache = "<"."?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed'); \n";
-
-						$cache .= '$cache = ' . var_export(DataMapper::$common[$common_key], TRUE) . ';';
-
-						if ( ! $fp = @fopen($cache_file, 'w'))
-						{
-							show_error('Error creating production cache file: ' . $cache_file);
-						}
-
-						flock($fp, LOCK_EX);
-						fwrite($fp, $cache);
-						flock($fp, LOCK_UN);
-						fclose($fp);
-
-						@chmod($cache_file, FILE_WRITE_MODE);
-					}
-				}
+				// store the item to the production cache
+				$this->production_cache();
 
 				// Load extensions last, so they aren't cached.
 				$this->_initiate_local_extensions($common_key);
@@ -5829,6 +5802,44 @@ class DataMapper implements IteratorAggregate {
 			return $this->_relationship('has_many', $parm1, 0);
 		}
 	}
+
+	// --------------------------------------------------------------------
+
+	public function production_cache()
+	{
+		// if requested, store the item to the production cache
+		if( ! empty(DataMapper::$config['production_cache']))
+		{
+			// check if it's a fully qualified path first
+			if (!is_dir($cache_folder = DataMapper::$config['production_cache']))
+			{
+				// if not, it's relative to the application path
+				$cache_folder = APPPATH . DataMapper::$config['production_cache'];
+			}
+			if(file_exists($cache_folder) && is_dir($cache_folder) && is_writeable($cache_folder))
+			{
+				$common_key = DataMapper::$common[DMZ_CLASSNAMES_KEY][strtolower(get_class($this))];
+				$cache_file = $cache_folder . '/' . $common_key . EXT;
+				$cache = "<"."?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed'); \n";
+
+				$cache .= '$cache = ' . var_export(DataMapper::$common[$common_key], TRUE) . ';';
+
+				if ( ! $fp = @fopen($cache_file, 'w'))
+				{
+					show_error('Error creating production cache file: ' . $cache_file);
+				}
+
+				flock($fp, LOCK_EX);
+				fwrite($fp, $cache);
+				flock($fp, LOCK_UN);
+				fclose($fp);
+
+				@chmod($cache_file, FILE_WRITE_MODE);
+			}
+		}
+	}
+
+	// --------------------------------------------------------------------
 
 	/**
 	 * Define a new relationship for the current model
