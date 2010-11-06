@@ -5769,6 +5769,12 @@ class DataMapper implements IteratorAggregate {
 
 	// --------------------------------------------------------------------
 
+	/**
+	 * Allows you to define has_one relations at runtime
+	 * @param 	string	name of the model to make a relation with
+	 * @param 	array	optional, array with advanced relationship definitions
+	 * @return 	bool
+	 */
 	public function has_one( $parm1 = NULL, $parm2 = NULL )
 	{
 		if ( is_null($parm1) && is_null($parm2) )
@@ -5787,7 +5793,13 @@ class DataMapper implements IteratorAggregate {
 
 	// --------------------------------------------------------------------
 
-	public function has_many( $definition = array() )
+	/**
+	 * Allows you to define has_many relations at runtime
+	 * @param 	string	name of the model to make a relation with
+	 * @param 	array	optional, array with advanced relationship definitions
+	 * @return 	bool
+	 */
+	public function has_many( $parm1 = NULL, $parm2 = NULL )
 	{
 		if ( is_null($parm1) && is_null($parm2) )
 		{
@@ -5805,6 +5817,11 @@ class DataMapper implements IteratorAggregate {
 
 	// --------------------------------------------------------------------
 
+	/**
+	 * Creates or updates the production schema cache file for this model
+	 * @param 	void
+	 * @return 	void
+	 */
 	public function production_cache()
 	{
 		// if requested, store the item to the production cache
