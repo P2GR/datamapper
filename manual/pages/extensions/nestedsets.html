@@ -1,0 +1,281 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Nested Set Methods : Included Extensions : DataMapper ORM - User Guide</title>
+
+<style type="text/css" media="all">@import url('../../css/userguide.css');</style>
+<link rel="shortcut icon" type="image/png" href="../../images/favicon.png" />
+<link rel="stylesheet" type="text/css" media="all" href="../../css/userguide.css" />
+<link rel="alternate" type="application/rss+xml" title="Datamapper ORM Updates Feed" href="http://datamapper.exitecms.org/rss.xml" />
+
+<meta http-equiv="expires" content="-1" />
+<meta http-equiv= 'pragma' content="no-cache" />
+<meta name="robots" content="all" />
+
+</head>
+
+<body>
+
+<!-- START NAVIGATION -->
+<div id="nav"><div id="nav_inner"></div></div>
+<div id="nav2"><a name="top">&nbsp;</a><a id="nav_toggle" href="#"><img src="../../images/nav_toggle_darker.jpg" width="154" height="43" border="0" title="Toggle Table of Contents" alt="Toggle Table of Contents" /></a></div>
+<div id="masthead">
+<table cellpadding="0" cellspacing="0" border="0" style="width:100%">
+<tr>
+<td><h1>DataMapper ORM</h1></td>
+<td id="breadcrumb_right"><a href="../toc.html">Table of Contents Page</a></td>
+</tr>
+</table>
+</div>
+<!-- END NAVIGATION -->
+
+<!-- START BREADCRUMB -->
+<table cellpadding="0" cellspacing="0" border="0" style="width:100%">
+<tr>
+<td id="breadcrumb">
+<a href="http://datamapper.exitecms.org/">Datamapper ORM Home</a> &nbsp;&#8250;&nbsp;
+<a href="../../index.html">User Guide Home</a> &nbsp;&#8250;&nbsp;
+<a href="../extlist.html">Included Extensions</a> &nbsp;&#8250;&nbsp;
+Nested Set Methods
+</td>
+</tr>
+
+</table>
+<!-- END BREADCRUMB -->
+
+<br clear="all" />
+
+
+<!-- START CONTENT -->
+<div id="content">
+
+
+<h1>Nested Set Methods (nestedsets)</h1>
+<p class="note">To enable these methods, add <dfn>'nestedsets'</dfn> to DataMapper's config, under <strong>'extensions'</strong>.</p>
+<p>Adds methods to a Datamapper ORM object to work with nested tree database structures.</p>
+
+<h2>Introduction to nested sets</h2>
+
+<p>The nested set model is a particular technique for representing nested sets (also known as trees or hierarchies) in relational databases.
+The term was apparently introduced by Joe Celko; others describe the same technique without naming it or using different terms. (<i>source: <a href="http://en.wikipedia.org/wiki/Nested_set_model">Wikipedia</a></i>)</p>
+<p>A typical example of a tree structure is an organigram of an organisation. We'll be using this to explain how nested sets work.</p>
+<div style="text-align:center;"><img src="../../images/nestedsets.gif" border="0" alt="Nested Sets Example" /></div>
+<p>The above diagram is indicating that each node is aware of all its descendents, and vice versa.
+For example, we can see easily enough from the diagram that Ben and Angela are children of Bill.
+We can also see that Tim And James are children of Ben.
+This ultimately gives us a link between each member of the hierarchy.</p>
+<p>For us to represent this we need to store two more values per node, that define the relationship between the nodes of the tree structure.
+These are shown on the diagram in blue and red. </p>
+<p>We call these Left (Red Values) and Right (Blue Values) pointers.
+These values are stored on the table, this is all we need to fully represent a nested sets hierarchy.</p>
+
+<h3>Storing multiple tree structures</h3>
+
+<p>This Datamapper extension allows you to store multiple tree structures into a single database table.
+To make this possible, you can add a root pointer column to the table. The root pointer is the ID that identifies the tree the node belongs to.</p>
+
+<h3>Node symlinking</h3>
+
+<p>This Datamapper extension allows you to link nodes together using symlinks. This is particularly usefull to link multiple trees together into a single big tree.
+To make this possible, you can add a symlink pointer column to the table. The symlink pointer is the id of the node that is linked to.</p>
+
+<p class="note"><strong><em>Note:</em></strong> Currently, symlink functionality is not implemented yet.</p>
+
+<h2>tree_config(<i>$options</i>)</h2>
+
+<ul>
+	<li><dfn>$options</dfn>: Array of options to configure the nested sets extension for a specific model.</li>
+</ul>
+<p>You can also define the nested sets configuration inside the model.  Here's how to set that up.</p>
+<pre>
+<kbd>class </kbd><var>Menu </var><kbd>extends </kbd><var><u>DataMapper</u> </var><kbd>{
+    </kbd><var><i>$nestedsets</i> </var><kbd>= array(
+        </kbd>'name' <kbd>=&gt; </kbd><dfn><var><s>'menu_title'</s></var></dfn><kbd>,
+        </kbd>'root' <kbd>=&gt; </kbd><dfn><var><s>'tree_id'</s></var></dfn><kbd>,
+        </kbd>'follow' <kbd>=&gt; </kbd><dfn>FALSE
+    </dfn><kbd>);
+}</kbd>
+</pre>
+<p>The following options can be set:</p>
+<table cellpadding="0" cellspacing="1" border="0" class="tableborder">
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+<tr>
+<td><strong>name</strong></td>
+<td>String</td>
+<td>Name of the column in the nested sets table that contains a name used in the path methods.</td>
+<td>NULL</td>
+</tr>
+<tr>
+<td><strong>symlink</strong></td>
+<td>String</td>
+<td>Name of the column in the nested sets table that is used to symlink tree nodes to other nodes.</td>
+<td>"symlink_id"</td>
+</tr>
+<tr>
+<td><strong>left</strong></td>
+<td>String</td>
+<td>Name of the column in the nested sets table that is used to for the nodes left pointer.</td>
+<td>"left_id"</td>
+</tr>
+<tr>
+<td><strong>right</strong></td>
+<td>String</td>
+<td>Name of the column in the nested sets table that is used to for the nodes right pointer.</td>
+<td>"right_id"</td>
+</tr>
+<tr>
+<td><strong>root</strong></td>
+<td>String</td>
+<td>Name of the column in the nested sets table that is used to for the nodes tree root pointer.</td>
+<td>"root_id"</td>
+</tr>
+<tr>
+<td><strong>value</strong></td>
+<td>Integer</td>
+<td>If the table contains multiple trees, this value with select the tree identified by this value.</td>
+<td>NULL</td>
+</tr>
+<tr>
+<td><strong>follow</strong></td>
+<td>Boolean</td>
+<td>If the table nodes contain symlink pointer, set this to TRUE to follow symlink, FALSE to ignore them.</td>
+<td>TRUE</td>
+</tr>
+</table>
+
+<h2>select_root(<i>$tree_id</i>)</h2>
+<p>* todo *</p>
+
+<h2>new_root()</h2>
+<p>* todo *</p>
+
+<h2>new_first_child(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>new_last_child(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>new_previous_sibling(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>new_next_sibling(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>get_root()</h2>
+<p>* todo *</p>
+
+<h2>get_parent(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>get_node_where_left(<i>$left_id</i>)</h2>
+<p>* todo *</p>
+
+<h2>get_node_where_right(<i>$right_id</i>)</h2>
+<p>* todo *</p>
+
+<h2>get_first_child(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>get_last_child(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>get_previous_sibling(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>get_next_sibling(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>is_valid_node()</h2>
+<p>* todo *</p>
+
+<h2>is_root()</h2>
+<p>* todo *</p>
+
+<h2>is_leaf()</h2>
+<p>* todo *</p>
+
+<h2>is_child_of(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>is_parent_of(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>has_parent()</h2>
+<p>* todo *</p>
+
+<h2>has_children()</h2>
+<p>* todo *</p>
+
+<h2>has_previous_sibling()</h2>
+<p>* todo *</p>
+
+<h2>has_next_sibling()</h2>
+<p>* todo *</p>
+
+<h2>count_children()</h2>
+<p>* todo *</p>
+
+<h2>level()</h2>
+<p>* todo *</p>
+
+<h2>make_next_sibling_of(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>make_previous_sibling_of(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>make_first_child_of(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>make_last_child_of(<i>$object</i>)</h2>
+<p>* todo *</p>
+
+<h2>remove_tree(<i>$root_id</i>)</h2>
+<p>* todo *</p>
+
+<h2>remove_node()</h2>
+<p>* todo *</p>
+</div>
+<!-- END CONTENT -->
+
+
+<div id="footer">
+<p>
+<span id="footer_previous">Previous Topic:&nbsp;&nbsp;<a href=""></a>
+&nbsp;&nbsp;&nbsp;&middot;&nbsp;&nbsp;</span>
+<a href="#top">Top of Page</a>&nbsp;&nbsp;&nbsp;&middot;&nbsp;&nbsp;
+<a href="../../index.html">User Guide Home</a>
+<span id="footer_next">&nbsp;&nbsp;&nbsp;&middot;&nbsp;&nbsp;
+Next Topic:&nbsp;&nbsp;<a href=""></a></span>
+</p>
+<div id="copyrights">
+<p><a href="http://datamapper.exitecms.org/">Datamapper ORM</a> &nbsp;&middot;&nbsp; Copyright &copy; 2010 &nbsp;&middot;&nbsp; Harro "WanWizard" Verton</p>
+<p><a href="license.html">Other License Information</a></p>
+</div>
+</div>
+
+<script type="text/javascript" src="../../js/mootools.js"></script>
+<script type="text/javascript" src="../../js/menu.js"></script>
+<script type="text/javascript">
+<!--
+	window.addEvent('domready', function() {
+
+		// Create Menu
+		var menu = new Menu({
+			basepath: '../../',
+			pagespath: '../',
+			last: 'extlist'
+		});
+
+	});
+//-->
+</script>
+</body>
+</html>

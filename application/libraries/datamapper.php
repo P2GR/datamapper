@@ -182,6 +182,10 @@ define('DMZ_VERSION', '1.8.dev');
  * @method DataMapper get_cached() get_cached($limit = '', $offset = '') NEEDS SIMPLECACHE EXTENSION.  Enables cacheable queries.
  * @method DataMapper clear_cache() get_cached($segment,...) NEEDS SIMPLECACHE EXTENSION.  Clears a cache for the specfied segment.
  *
+ * Translate Extension:
+ *
+ * Nestedsets Extension:
+ *
  */
 class DataMapper implements IteratorAggregate {
 
@@ -1062,13 +1066,17 @@ class DataMapper implements IteratorAggregate {
 		// Special case to get form_validation when first accessed
 		if($name == 'form_validation')
 		{
-			$CI =& get_instance();
-			if( ! isset($CI->form_validation))
+			if ( ! isset($this->form_validation) )
 			{
-				$CI->load->library('form_validation');
+				$CI =& get_instance();
+				if( ! isset($CI->form_validation))
+				{
+					$CI->load->library('form_validation');
+					$this->lang->load('form_validation');
+					unset($CI->load->_ci_classes['form_validation']);
+				}
+				$this->form_validation = $CI->form_validation;
 			}
-			$this->form_validation = $CI->form_validation;
-			$this->lang->load('form_validation');
 			return $this->form_validation;
 		}
 
