@@ -214,8 +214,21 @@ class DMZ_Nestedsets {
 	 * @return	object	the updated DataMapper object
 	 * @access	public
 	 */
-	function new_first_child($object, $node)
+	function new_first_child($object, $node = NULL)
 	{
+		// a node passed?
+		if ( is_null($node) )
+		{
+			// no, use the object itself
+			$node = $object->get_clone();
+		}
+
+		// we need a valid node for this to work
+		if ( ! $node->exists() )
+		{
+			return $node;
+		}
+
 		// set the pointers for the root object
 		$object->id = NULL;
 		$object->{$this->_leftindex} = $node->{$this->_leftindex} + 1;
@@ -244,8 +257,21 @@ class DMZ_Nestedsets {
 	 * @return	object	the updated DataMapper object
 	 * @access	public
 	 */
-	function new_last_child($object, $node)
+	function new_last_child($object, $node = NULL)
 	{
+		// a node passed?
+		if ( is_null($node) )
+		{
+			// no, use the object itself
+			$node = $object->get_clone();
+		}
+
+		// we need a valid node for this to work
+		if ( ! $node->exists() )
+		{
+			return $node;
+		}
+
 		// set the pointers for the root object
 		$object->id = NULL;
 		$object->{$this->_leftindex} = $node->{$this->_rightindex};
@@ -274,8 +300,21 @@ class DMZ_Nestedsets {
 	 * @return	object	the updated DataMapper object
 	 * @access	public
 	 */
-	function new_previous_sibling($object, $node)
+	function new_previous_sibling($object, $node = NULL)
 	{
+		// a node passed?
+		if ( is_null($node) )
+		{
+			// no, use the object itself
+			$node = $object->get_clone();
+		}
+
+		// we need a valid node for this to work
+		if ( ! $node->exists() )
+		{
+			return $node;
+		}
+
 		// set the pointers for the root object
 		$object->id = NULL;
 		$object->{$this->_leftindex} = $node->{$this->_leftindex};
@@ -304,8 +343,21 @@ class DMZ_Nestedsets {
 	 * @return	object	the updated DataMapper object
 	 * @access	public
 	 */
-	function new_next_sibling($object, $node)
+	function new_next_sibling($object, $node = NULL)
 	{
+		// a node passed?
+		if ( is_null($node) )
+		{
+			// no, use the object itself
+			$node = $object->get_clone();
+		}
+
+		// we need a valid node for this to work
+		if ( ! $node->exists() )
+		{
+			return $node;
+		}
+
 		// set the pointers for the root object
 		$object->id = NULL;
 		$object->{$this->_leftindex} = $node->{$this->_rightindex} + 1;
@@ -592,11 +644,11 @@ class DMZ_Nestedsets {
 		{
 			return FALSE;
 		}
-		elseif ( ! isset($object->{$this->_leftindex}) )
+		elseif ( ! isset($object->{$this->_leftindex}) OR ! is_numeric($object->{$this->_leftindex}) OR $object->{$this->_leftindex} <=0 )
 		{
 			return FALSE;
 		}
-		elseif ( ! isset($object->{$this->_rightindex}) )
+		elseif ( ! isset($object->{$this->_rightindex}) OR ! is_numeric($object->{$this->_rightindex}) OR $object->{$this->_rightindex} <=0  )
 		{
 			return FALSE;
 		}
@@ -605,6 +657,10 @@ class DMZ_Nestedsets {
 			return FALSE;
 		}
 		elseif ( ! empty($this->_rootfield) && ! in_array($this->_rootfield, $object->fields) )
+		{
+			return FALSE;
+		}
+		elseif ( ! empty($this->_rootfield) && ( ! is_numeric($object->{$this->_rootfield}) OR $object->{$this->_rootfield} <=0  ) )
 		{
 			return FALSE;
 		}
@@ -624,7 +680,7 @@ class DMZ_Nestedsets {
 	 */
 	function is_root($object)
 	{
-		return ( $object->exists() && $object->{$this->_leftindex} === 1 );
+		return ( $object->exists() && $this->is_valid_node($object) && $object->{$this->_leftindex} == 1 );
 	}
 
 	// -----------------------------------------------------------------
@@ -638,7 +694,21 @@ class DMZ_Nestedsets {
 	 */
 	function is_leaf($object)
 	{
-		return ( $object->exists() && $object->{$this->_rightindex} - $object->{$this->_leftindex} == 1 );
+		return ( $object->exists() && $this->is_valid_node($object) && $object->{$this->_rightindex} - $object->{$this->_leftindex} == 1 );
+	}
+
+	// -----------------------------------------------------------------
+
+	/**
+	 * check if the object is a child node
+	 *
+	 * @param	object	the DataMapper object
+	 * @return	boolean
+	 * @access	public
+	 */
+	function is_child($object)
+	{
+		return ( $object->exists() && $this->is_valid_node($object) && $object->{$this->_leftindex} > 1 );
 	}
 
 	// -----------------------------------------------------------------
@@ -653,13 +723,13 @@ class DMZ_Nestedsets {
 	 */
 	function is_child_of($object, $node = NULL)
 	{
-		// a node passed?
-		if ( is_null($node) OR ! $node->exists() )
+		// validate the objects
+		if ( ! $this->is_valid_node($object) OR ! $this->is_valid_node($node) )
 		{
 			return FALSE;
 		}
 
-		return ( $object->exists() && $object->{$this->_leftindex} > $node->{$this->_leftindex} && $object->{$this->_rightindex} < $node->{$this->_rightindex} );
+		return ( $object->{$this->_leftindex} > $node->{$this->_leftindex} && $object->{$this->_rightindex} < $node->{$this->_rightindex} );
 	}
 
 	// -----------------------------------------------------------------
@@ -674,18 +744,16 @@ class DMZ_Nestedsets {
 	 */
 	function is_parent_of($object, $node = NULL)
 	{
-		// a node passed?
-		if ( is_null($node) OR ! $node->exists() )
+		// validate the objects
+		if ( ! $this->is_valid_node($object) OR ! $this->is_valid_node($node) )
 		{
 			return FALSE;
 		}
 
-		// fetch the parent using a clone
-		$parent = $node->get_clone();
-		$parent->get_parent($node);
+		// fetch the parent of our child node
+		$parent = $node->get_clone()->get_parent();
 
-		// found?
-		return $parent->exists();
+		return ( $parent->id === $object->id );
 	}
 
 	// -----------------------------------------------------------------
@@ -693,15 +761,15 @@ class DMZ_Nestedsets {
 	/**
 	 * check if the object has a parent
 	 *
+	 * Note: this is an alias for is_child()
+	 *
 	 * @param	object	the DataMapper object
 	 * @return	boolean
 	 * @access	public
 	 */
 	function has_parent($object)
 	{
-		// fetch the result using a clone
-		$node = $object->get_clone();
-		return $this->is_valid_node($node->get_parent($object));
+		return $this->is_child($object);
 	}
 
 	// -----------------------------------------------------------------
@@ -709,13 +777,15 @@ class DMZ_Nestedsets {
 	/**
 	 * check if the object has children
 	 *
+	 * Note: this is an alias for ! is_leaf()
+	 *
 	 * @param	object	the DataMapper object
 	 * @return	boolean
 	 * @access	public
 	 */
 	function has_children($object)
 	{
-		return ( $object->exists() && $object->{$this->_rightindex} - $object->{$this->_leftindex} > 1 );
+		return $this->is_leaf($object) ? FALSE : TRUE;
 	}
 
 	// -----------------------------------------------------------------
@@ -763,7 +833,7 @@ class DMZ_Nestedsets {
 	 */
 	function count_children($object)
 	{
-		return ( $object->exists() ? (($object->{$this->_rightindex} - $object->{$this->_leftindex} - 1) / 2) : 0 );
+		return ( $object->exists() ? (($object->{$this->_rightindex} - $object->{$this->_leftindex} - 1) / 2) : FALSE );
 	}
 
 	// -----------------------------------------------------------------
@@ -887,8 +957,8 @@ class DMZ_Nestedsets {
 			}
 			else
 			{
-			// delete them all
-			$object->db->truncate($object->table);
+				// delete them all
+				$object->db->truncate($object->table);
 			}
 		}
 		else
@@ -938,6 +1008,215 @@ class DMZ_Nestedsets {
 
 		// return the cleared object
 		return $object->clear();
+	}
+
+	// -----------------------------------------------------------------
+	// dump methods
+	// -----------------------------------------------------------------
+
+	/**
+	 * returns the tree in a key-value format suitable for html dropdowns
+	 *
+	 * @param	object	the DataMapper object
+	 * @param	string	optional, name of the column to use
+	 * @param	boolean	if true, the object itself (root of the dump) will not be included
+	 * @return	array
+	 * @access	public
+	 */
+	public function dump_dropdown($object, $field = FALSE, $skip_root = TRUE)
+	{
+		// check if a specific field has been requested
+		if ( empty($field) OR ! isset($this->fields[$field]) )
+		{
+			// no field given, check if a generic name is defined
+			if ( ! empty($this->_nodename) )
+			{
+				// yes, so use it
+				$field = $this->_nodename;
+			}
+			else
+			{
+				// can't continue without a name
+				return FALSE;
+			}
+		}
+
+		// fetch the tree as an array
+		$tree = $this->dump_tree($object, NULL, 'array', $skip_root);
+
+		// storage for the result
+		$result = array();
+
+		if ( $tree )
+		{
+			// loop trough the tree
+			foreach ( $tree as $key => $value )
+			{
+				$result[$value['__id']] = str_repeat('&nbsp;', ($value['__level']) * 3) . ($value['__level'] ? '&raquo; ' : '') . $value[$field];
+			}
+		}
+
+		// return the result
+		return $result;
+	}
+
+	// -----------------------------------------------------------------
+
+	/**
+	 * dumps the entire tree in HTML or TAB formatted output
+	 *
+	 * @param	object	the DataMapper object
+	 * @param	array	list of columns to include in the dump
+	 * @param	string	type of output requested, possible values 'html', 'tab', 'csv', 'array' ('array' = default)
+	 * @param	boolean	if true, the object itself (root of the dump) will not be included
+	 * @return	mixed
+	 * @access	public
+	 */
+	public function dump_tree($object, $attributes = NULL, $type = 'array', $skip_root = TRUE)
+	{
+		if ( $this->is_valid_node($object) )
+		{
+			// do we need a sub-selection of attributes?
+			if ( is_array($attributes) )
+			{
+				// make sure required fields are present
+				$fields = array_merge($attributes, array('id', $this->_leftindex, $this->_rightindex));
+				if ( ! empty($this->_nodename) && ! isset($fields[$this->_nodename] ) )
+				{
+					$fields[] = $this->_nodename;
+				}
+				// add a select
+				$object->db->select($fields);
+			}
+
+			// create the where clause for this query
+			if ( $skip_root === TRUE )
+			{
+				// select only all children
+				$object->db->where($this->_leftindex . ' >', $object->{$this->_leftindex});
+				$object->db->where($this->_rightindex . ' <', $object->{$this->_rightindex});
+				$level = -1;
+			}
+			else
+			{
+				// select the node and all children
+				$object->db->where($this->_leftindex . ' >=', $object->{$this->_leftindex});
+				$object->db->where($this->_rightindex . ' <=', $object->{$this->_rightindex});
+				$level = -2;
+			}
+
+			// if we have multiple roots
+			if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
+			{
+				// only delete the selected one
+				$object->db->where($this->_rootfield, $this->_rootindex);
+			}
+
+			// fetch the result
+			$result = $object->db->order_by($this->_leftindex)->get($object->table)->result_array();
+
+			// store the last left pointer
+			$last_left = $object->{$this->_leftindex};
+
+			// create the path
+			if ( ! empty($this->_nodename) )
+			{
+				$path = array( $object->{$this->_nodename} );
+			}
+			else
+			{
+				$path = array();
+			}
+
+			// add level and path to the result
+			foreach ( $result as $key => $value )
+			{
+				// for now, just store the ID
+				$result[$key]['__id'] = $value['id'];
+
+				// calculate the nest level of this node
+				$level += $last_left - $value[$this->_leftindex] + 2;
+				$last_left = $value[$this->_leftindex];
+				$result[$key]['__level'] = $level;
+
+				// create the relative path to this node
+				$result[$key]['__path'] = '';
+				if ( ! empty($this->_nodename) )
+				{
+					$path[$level] = $value[$this->_nodename];
+					for ( $i = 0; $i <= $level; $i++ )
+					{
+						$result[$key]['__path'] .= '/' . $path[$i];
+					}
+				}
+			}
+
+			// convert the result to output
+			if ( in_array($type, array('tab', 'csv', 'html')) )
+			{
+				// storage for the result
+				$convert = '';
+
+				// loop through the elements
+				foreach ( $result as $key => $value )
+				{
+					// prefix based on requested type
+					switch ($type)
+					{
+						case 'tab';
+							$convert .= str_repeat("\t", $value['__level'] * 4 );
+							break;
+						case 'csv';
+							break;
+						case 'html';
+							$convert .= str_repeat("&nbsp;", $value['__level'] * 4 );
+							break;
+					}
+
+					// print the attributes requested
+					if ( ! is_null($attributes) )
+					{
+						$att = reset($attributes);
+						while($att){
+							if ( is_numeric($value[$att]) )
+							{
+								$convert .= $value[$att];
+							}
+							else
+							{
+								$convert .= '"'.$value[$att].'"';
+							}
+							$att = next($attributes);
+							if ($att)
+							{
+								$convert .= ($type == 'csv' ? "," : " ");
+							}
+						}
+					}
+
+					// postfix based on requested type
+					switch ($type)
+					{
+						case 'tab';
+							$convert .= "\n";
+							break;
+						case 'csv';
+							$convert .= "\n";
+							break;
+						case 'html';
+							$convert .= "<br />";
+							break;
+					}
+				}
+				return $convert;
+			}
+			else
+			{
+				return $result;
+			}
+		}
+
+		return FALSE;
 	}
 
 	// -----------------------------------------------------------------
@@ -1054,6 +1333,16 @@ class DMZ_Nestedsets {
 	 */
 	private function _moveSubtree($object, $node, $destination_id)
 	{
+		// if we have multiple roots
+		if ( in_array($this->_rootfield, $object->fields) )
+		{
+			// make sure both nodes are part of the same tree
+			if ( $object->{$this->_rootfield} != $node->{$this->_rootfield} )
+			{
+				return FALSE;
+			}
+		}
+
 		// determine the size of the tree to move
 		$treesize = $object->{$this->_rightindex} - $object->{$this->_leftindex} + 1;
 
