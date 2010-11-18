@@ -138,7 +138,7 @@ Database Tables
 <p class="note">Please read this section carefully, as these rules are the foundation of Datamapper ORM's <a class="def" href="glossary.html#ORM">ORM</a> methods.</p>
 
 <ul>
-	<li><strong>Every</strong> table must have a primary numeric key named <b>id</b> that is automatically generated.</li>
+	<li><strong>Every</strong> table must have a primary numeric key named <b>id</b> that by default is automatically generated. You can <a href="save.html#Save.Existing.As.New">override</a> this behaviour.</li>
 	<li>Normal tables must be named the lowercase, pluralised version of the object name. So for a user object of <b>User</b>, the table would be named <b>users</b>.  For <b>Country</b>, it would be <b>countries</b>. (<a href="troubleshooting.html#General.Plural.Unusual">For odd pluralizations</a>, you may need to hard code the <var><i>$table</i></var> or <var><i>$model</i></var> fields.)</li>
 	<li>A joining table must exist between each <kbd>$has_many</kbd> related normal tables.  You can also use a joining table for any <var><i>$has_one</i></var> relationships.</li>
 	<li>For in-table foreign keys, the column <b>must</b> allow <dfn>NULL</dfn>s, because DataMapper saves the object first, and relationships later.</li>
