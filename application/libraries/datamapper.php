@@ -1916,12 +1916,9 @@ class DataMapper implements IteratorAggregate {
 				// Begin auto transaction
 				$this->_auto_trans_begin();
 
-				// Delete this object
-				$this->db->where('id', $this->id);
-				$this->db->delete($this->table);
-
-				// Delete all "has many" and "has one" relations for this object
-				foreach (array('has_many', 'has_one') as $type) {
+				// Delete all "has many" and "has one" relations for this object first
+				foreach (array('has_many', 'has_one') as $type)
+				{
 					foreach ($this->{$type} as $model => $properties)
 					{
 						// Prepare model
@@ -1959,6 +1956,10 @@ class DataMapper implements IteratorAggregate {
 						// Else, no reason to delete the relationships on this table
 					}
 				}
+
+				// Delete the object itself
+				$this->db->where('id', $this->id);
+				$this->db->delete($this->table);
 
 				// Complete auto transaction
 				$this->_auto_trans_complete('delete');
@@ -5877,14 +5878,20 @@ class DataMapper implements IteratorAggregate {
 			return FALSE;
 		}
 
-		// get the current relationships
-		$new = (array) $this->{$type};
-
 		// allow for simple (old-style) associations
 		if (is_int($name))
 		{
+			// delete the old style entry, we're going to convert it
+			if (isset($this->{$type}[$name]))
+			{
+				unset($this->{$type}[$name]);
+			}
 			$name = $definition;
 		}
+
+		// get the current relationships
+		$new = (array) $this->{$type};
+
 		// convert value into array if necessary
 		if ( ! is_array($definition))
 		{
