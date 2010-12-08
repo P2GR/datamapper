@@ -418,11 +418,16 @@ class DataMapper implements IteratorAggregate {
 	protected $_where_group_started = FALSE;
 
 	/**
-	 * Constructor
+	 * Constructors (both PHP4 and PHP5 style, to stay compatible)
 	 *
 	 * Initialize DataMapper.
 	 * @param	int $id if provided, load in the object specified by that ID.
 	 */
+	public function __construct($id = NULL)
+	{
+		return $this->DataMapper($id);
+	}
+
 	public function DataMapper($id = NULL)
 	{
 		$this->_dmz_assign_libraries();
@@ -5018,26 +5023,34 @@ class DataMapper implements IteratorAggregate {
 			}
 		}
 
-		$relationship_table = '';
-
- 		// Check if self referencing
-		if ($this->table == $table)
+		// was a join table defined for this relation?
+		if ( ! empty($related_properties['join_table']) )
 		{
-			// use the model names from related_properties
-			$p_this_model = plural($this_model);
-			$p_other_model = plural($other_model);
-			$relationship_table = ($p_this_model < $p_other_model) ? $p_this_model . '_' . $p_other_model : $p_other_model . '_' . $p_this_model;
+			$relationship_table = $related_properties['join_table'];
 		}
 		else
 		{
-			$relationship_table = ($this->table < $table) ? $this->table . '_' . $table : $table . '_' . $this->table;
+			$relationship_table = '';
+
+			// Check if self referencing
+			if ($this->table == $table)
+			{
+				// use the model names from related_properties
+				$p_this_model = plural($this_model);
+				$p_other_model = plural($other_model);
+				$relationship_table = ($p_this_model < $p_other_model) ? $p_this_model . '_' . $p_other_model : $p_other_model . '_' . $p_this_model;
+			}
+			else
+			{
+				$relationship_table = ($this->table < $table) ? $this->table . '_' . $table : $table . '_' . $this->table;
+			}
+
+			// Remove all occurances of the prefix from the relationship table
+			$relationship_table = str_replace($prefix, '', str_replace($this->prefix, '', $relationship_table));
+
+			// So we can prefix the beginning, using the join prefix instead, if it is set
+			$relationship_table = (empty($this->join_prefix)) ? $this->prefix . $relationship_table : $this->join_prefix . $relationship_table;
 		}
-
-		// Remove all occurances of the prefix from the relationship table
-		$relationship_table = str_replace($prefix, '', str_replace($this->prefix, '', $relationship_table));
-
-		// So we can prefix the beginning, using the join prefix instead, if it is set
-		$relationship_table = (empty($this->join_prefix)) ? $this->prefix . $relationship_table : $this->join_prefix . $relationship_table;
 
 		return $relationship_table;
 	}
@@ -5915,6 +5928,11 @@ class DataMapper implements IteratorAggregate {
 		{
 			// add the key as the model to use in queries if not set
 			$definition['join_other_as'] = $name;
+		}
+		if( ! isset($definition['join_table']))
+		{
+			// by default, automagically determine the join table name
+			$definition['join_table'] = '';
 		}
 		if(isset($definition['reciprocal']))
 		{

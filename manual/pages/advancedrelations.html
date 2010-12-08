@@ -118,6 +118,12 @@ Advanced Relationships
 	<td><dfn>other_field</dfn></td>
 	<td>Rarely used, except some unusual self-relationships.</td>
 </tr>
+<tr>
+	<td><kbd>join_table</kbd></td>
+	<td>Override the generated table name for this relation.</td>
+	<td><var>''</var></td>
+	<td>Rarely used, except in some multi-table relationships.</td>
+</tr>
 </table>
 
 <h2>Multiple Relationships to the Same Model</h2>
@@ -255,6 +261,12 @@ Advanced Relationships
 </tr>
 </table>
 <p>This stores the same information.  We only have the option in this case because the <b>posts</b> side was <var><i>$has_one</i></var>.  If posts could have many creators or many editors, then that would have to be stored in this table.</p>
+
+<h2>Multi-table Relationships</h2>
+<p>In normal circumstances, you will always have a relationship between two tables, either in a one-to-one, one-to-many, or many-to-many relationship.</p>
+<p>Occasionally however, you might have a need to define a relationship between more than two tables. In this case, you will have to create a joined table with more than two foreign keys, one to each of the tables involved in the relationship.
+In this situation Datamapper can no longer automatically generate the name of the joined table. Instead, you will have to use the <kbd>join_table</kbd> to manually define the name of the joined table.</p>
+<p>When you use this option, make sure you define the same table name in all models!</p>
 
 <h2>Self Relationships</h2>
 <p>Technically, self-relationships are the same as having multiple relationships to the same object.  There is one key difference: the table names.  First, we'll set the class up, then I'll show you the table name.</p>
