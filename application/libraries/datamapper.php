@@ -1619,14 +1619,10 @@ class DataMapper implements IteratorAggregate {
 					}
 
 					// if there are changes, check if we need to update the update timestamp
-					if (count($data) && isset($data[$this->updated_field]))
+					if (count($data) && ! isset($data[$this->updated_field]))
 					{
-						// was the timestamp manually updated?
-						if ($this->{$this->updated_field} === $this->stored->{$this->updated_field})
-						{
-							// no,so update it now
-							$this->{$this->updated_field} = $timestamp;
-						}
+						// update it now
+						$data[$this->updated_field] = $this->{$this->updated_field} = $timestamp;
 					}
 
 					// Only go ahead with save if there is still data
