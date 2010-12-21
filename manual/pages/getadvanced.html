@@ -183,6 +183,25 @@ Get (Advanced)
 </samp><var>$u</var><kbd>-&gt;</kbd><var><i>where</i><u>_related</u></var><kbd>(</kbd><var><s>'group'</s></var><kbd>, </kbd><dfn>'name'</dfn><kbd>, </kbd><dfn>'Moderator'</dfn><kbd>)-&gt;</kbd><var><u>get</u></var><kbd>();</kbd>
 </pre>
 
+<div class="note">
+	<p>
+		If the query clause is <var>where</var>, and <dfn>$value</dfn> is an array, it is assumed you want to use a <var>where_in</var> clause.
+		If <dfn>$value</dfn> is an array of objects (for example <dfn>$object->all</dfn>), the <dfn>$value</dfn> array will be converted to an
+		array of object id's, which is then used to run the <var>where_in</var> query.
+	</p>
+</div>
+
+<p>Here's an example of such a query:</p>
+<pre>
+<var></var><samp>// Get a list of all male users
+</samp><var>$u </var><kbd>= new </kbd><var>User</var><kbd>();
+</kbd><samp>$u</var><kbd>-&gt;</kbd><var><i>where</i><kbd>(</kbd><var><s>'gender'</s></var><kbd>, </kbd><dfn>'M'</dfn><kbd>)-&gt;</kbd><var><u>get</u></var><kbd>();
+
+</kbd><samp>// Get all the messages these males have posted
+</samp><var>$p </var><kbd>= new </kbd><var>Post</var><kbd>();
+</samp><var>$u</var><kbd>-&gt;</kbd><var><i>where</i><u>_related</u></var><kbd>(</kbd><var><s>'user'</s></var><kbd>, </kbd><dfn>'id'</dfn><kbd>, </kbd><var>$u</var><kbd>-&gt;</kbd><dfn>all</dfn><kbd>)-&gt;</kbd><var><u>get</u></var><kbd>();</kbd>
+</pre>
+
 
 <h2 id="Deep.Relationship.Queries">Deep Relationship Queries</h2>
 <p>This format also accepts <b>deep relationships</b>, so you can query objects that are indirectly related to the current object.</p>

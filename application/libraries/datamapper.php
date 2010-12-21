@@ -4452,6 +4452,27 @@ class DataMapper implements IteratorAggregate {
 			// Add query clause
 			if(is_null($extra))
 			{
+				// if $object->all is passed as a value, convert it to an array
+				// of object id's.
+				if (is_array($value))
+				{
+					// if it's an array of DM objects, get all the object id's
+					if (is_object($value[0]) && isset($value[0]->id))
+					{
+						$arr = array();
+						foreach($value as $obj)
+						{
+							$arr[] = $obj->id;
+						}
+						$value = $arr;
+					}
+				}
+
+				// convert the where query into a where_in if needed
+				if (is_array($value) && substr($query, -5, 5) == 'where')
+				{
+					$query .= '_in';
+				}
 				$this->{$query}($field, $value);
 			}
 			else
