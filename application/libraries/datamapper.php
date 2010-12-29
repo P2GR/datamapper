@@ -901,7 +901,7 @@ class DataMapper implements IteratorAggregate {
 					if($index == 2) // "MY_"
 					{
 						// Load in the library this class is based on
-						$CI->load->libary($ext);
+						$CI->load->library($ext);
 					}
 					$ext = $prefix.$ext;
 					break;
@@ -1694,7 +1694,7 @@ class DataMapper implements IteratorAggregate {
 
 		}
 
-		$this->force_save_as_new = FALSE;
+		$this->_force_save_as_new = FALSE;
 
 		// If no failure was recorded, return TRUE
 		return ( ! empty($result) && ! in_array(FALSE, $result));
