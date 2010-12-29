@@ -901,7 +901,7 @@ class DataMapper implements IteratorAggregate {
 					if($index == 2) // "MY_"
 					{
 						// Load in the library this class is based on
-						$CI->load->library($ext);
+						$CI->load->libary($ext);
 					}
 					$ext = $prefix.$ext;
 					break;
@@ -1619,7 +1619,7 @@ class DataMapper implements IteratorAggregate {
 					}
 
 					// if there are changes, check if we need to update the update timestamp
-					if (count($data) && ! isset($data[$this->updated_field]))
+					if (count($data) && in_array($this->updated_field, $this->fields) && ! isset($data[$this->updated_field]))
 					{
 						// update it now
 						$data[$this->updated_field] = $this->{$this->updated_field} = $timestamp;
@@ -1694,7 +1694,7 @@ class DataMapper implements IteratorAggregate {
 
 		}
 
-		$this->_force_save_as_new = FALSE;
+		$this->force_save_as_new = FALSE;
 
 		// If no failure was recorded, return TRUE
 		return ( ! empty($result) && ! in_array(FALSE, $result));
@@ -4452,10 +4452,11 @@ class DataMapper implements IteratorAggregate {
 			// Add query clause
 			if(is_null($extra))
 			{
-				// if $object->all is passed as a value, convert it to an array
-				// of object id's.
-				if (is_array($value))
+				// convert where to where_in if the value is an array
+				if ($query == 'where' && is_array($value))
 				{
+					$query = 'where_in';
+
 					// if it's an array of DM objects, get all the object id's
 					if (is_object($value[0]) && isset($value[0]->id))
 					{
@@ -4466,12 +4467,6 @@ class DataMapper implements IteratorAggregate {
 						}
 						$value = $arr;
 					}
-				}
-
-				// convert the where query into a where_in if needed
-				if (is_array($value) && substr($query, -5, 5) == 'where')
-				{
-					$query .= '_in';
 				}
 				$this->{$query}($field, $value);
 			}
