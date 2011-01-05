@@ -57,6 +57,7 @@ Advanced Relationships
 	<li>Multiple Relationships to the Same Model</li>
 	<li>Proper Self-Relationships</li>
 	<li>Storing Additional Information on the Join Table</li>
+	<li>Overriding the standard naming conventions</li>
 	<li>Defining relationships after the model has been loaded</li>
 </ul>
 
@@ -86,6 +87,15 @@ Advanced Relationships
 
 <p>Right now, nothing different will happen.  User will still be related to Post as <var>$post</var><kbd>-></kbd><var>user</var>.  To change the user into something else, we'll need to use some of the following four attributes.  You can specify any combination of them, but the most common are <var><s>class</s></var> and <dfn>other_field</dfn> together.</p>
 
+<h3>Relationship name</h3>
+
+<p>The key of the relationship array entry defines the relationship name. It is the one used in the code when you want to query the relation. In the example given above, the key used is <var><s>user</s></var>, so you would access this relation by using:</p>
+<pre>
+<samp>// define a new relationship for the Posts model
+</samp><var>$p </var><kbd>= new </kbd><var>Post</var><kbd>(<dfn>1</dfn>);
+</kbd><var>$p</var><kbd>-&gt;</kbd><var><s>user</s><kbd>-&gt;</kbd><var><u>get</u></var><kbd>();
+</pre>
+
 <h3>Attributes Table</h3>
 <table cellpadding="0" cellspacing="1" border="0" class="tableborder">
 <tr>
@@ -97,34 +107,89 @@ Advanced Relationships
 <tr>
 	<td><var><s>class</s></var></td>
 	<td>Tells DataMapper which class (model) this relationship points to.</td>
-	<td><strong>key</strong></var> on <var>$has_many</var> or <var>$has_one</var></td>
-	<td>Almost always specified.</td>
+	<td><strong>key</strong></var> used on the array entry</td>
+	<td>Almost always specified. Use it when the class name differs from the key used.</td>
 </tr>
 <tr>
 	<td><dfn>other_field</dfn></td>
 	<td>Tells DataMapper what the relationship looks like from <samp>class</samp>.</td>
 	<td><var><b>$this</b></var><kbd>-&gt;</kbd><var><i>model</i></var></td>
-	<td>Whenever this object is has a different name on the related object.</td>
+	<td>Whenever the key relation of the other model is different than this models name.</td>
 </tr>
 <tr>
 	<td>join_other_as</td>
 	<td>Override the generated column name for the other model.</td>
 	<td><strong>key</strong></var> on <var>$has_many</var> or <var>$has_one</var></td>
-	<td>Rarely used, except some unusual self-relationships.</td>
+	<td>Used with custom column names, or in some unusual self-relationships.</td>
 </tr>
 <tr>
 	<td>join_self_as</td>
 	<td>Override the generated column name for this model.</td>
 	<td><dfn>other_field</dfn></td>
-	<td>Rarely used, except some unusual self-relationships.</td>
+	<td>Used with custom column names, or in some unusual self-relationships.</td>
 </tr>
 <tr>
 	<td><kbd>join_table</kbd></td>
 	<td>Override the generated table name for this relation.</td>
 	<td><var>''</var></td>
-	<td>Rarely used, except in some multi-table relationships.</td>
+	<td>Custom table name. Also used in some multi-table (more than two) relationships.</td>
 </tr>
 </table>
+
+<h2>Manually defining the relationship</h2>
+
+<p>Under normal circumstances, this is not something you should do, but it will help you understand how Datamapper generates the relationship definition between two models, and what the role of the different fields in the relationship definition is.</p>
+<p>Consider the models Author and Book. An author can write multiple books, a book can have multiple writers, which makes this a many-to-many relationship. You can define this by a simple has_many entry in both models, and Datamapper will generate the rest. The following definition shows you the advanced relationship definition that Datamapper will generate internally for this relation.</p>
+
+<h3>Author</h3>
+<pre>
+<kbd>class </kbd><var>Author </var><kbd>extends </kbd><var><u>DataMapper</u> </var><kbd>{
+    </kbd><var><i>$has_many</i> </var><kbd>= array(
+        </kbd><strong>'book'</strong> <kbd>=&gt; array(			<samp>// in the code, we will refer to this relation by using the object name 'book'</samp>
+            </kbd>'class' <kbd>=&gt; </kbd><dfn>'book'</dfn><kbd>,			<samp>// This relationship is with the model class 'book'</samp>
+            </kbd>'other_field' <kbd>=&gt; </kbd><dfn>'author'</dfn><kbd>,		<samp>// in the Book model, this defines the array key used to identify this relationship</samp>
+            </kbd>'join_self_as' <kbd>=&gt; </kbd><dfn>'author'</dfn><kbd>,		<samp>// foreign key in the (relationship)table identifying this models table. The column name would be 'author_id'</samp>
+            </kbd>'join_other_as' <kbd>=&gt; </kbd><dfn>'book'</dfn><kbd>,		<samp>// foreign key in the (relationship)table identifying the other models table as defined by 'class'. The column name would be 'book_id'</samp>
+            </kbd>'join_table' <kbd>=&gt; </kbd><dfn>'authors_books'</dfn><kbd>)	<samp>// name of the join table that will link both Author and Book together</samp>
+    );
+}</kbd>
+</pre>
+
+<h3>Book</h3>
+<pre>
+<kbd>class </kbd><var>Book </var><kbd>extends </kbd><var><u>DataMapper</u> </var><kbd>{
+    </kbd><var><i>$has_many</i> </var><kbd>= array(
+        </kbd><strong>'author'</strong> <kbd>=&gt; array(			<samp>// in the code, we will refer to this relation by using the object name 'author'</samp>
+            </kbd>'class' <kbd>=&gt; </kbd><dfn>'author'</dfn><kbd>,		<samp>// This relationship is with the model class 'author'</samp>
+            </kbd>'other_field' <kbd>=&gt; </kbd><dfn>'book'</dfn><kbd>,		<samp>// in the Author model, this defines the array key used to identify this relationship</samp>
+            </kbd>'join_self_as' <kbd>=&gt; </kbd><dfn>'book'</dfn><kbd>,		<samp>// foreign key in the (relationship)table identifying this models table. The column name would be 'book_id'</samp>
+            </kbd>'join_other_as' <kbd>=&gt; </kbd><dfn>'author'</dfn><kbd>,	<samp>// foreign key in the (relationship)table identifying the other models table as defined by 'class'. The column name would be 'author_id'</samp>
+            </kbd>'join_table' <kbd>=&gt; </kbd><dfn>'authors_books'</dfn><kbd>)	<samp>// name of the join table that will link both Author and Book together</samp>
+    );
+}</kbd>
+</pre>
+
+<h3>Some common naming rule deviations</h3>
+
+<p>
+	You want to add a prefix or suffix to your class names to avoid class name collisions (with for example controllers or CodeIgniter libraries).
+	<ul><li>If you would use the '_model' prefix on your classes, use the <dfn>class</dfn> names 'book_model' and 'author_model' instead.</li></ul>
+	<ul><li>You would still use <var>$obj->book</var> and <var>$obj->author</var> to access the relationship.</li></ul>
+</p>
+<p>
+	You want to use alternative names to specify the relationship in the code. Say want to use <var>$obj->writer</var> instead of <var>$obj->author</var>.
+	<ul><li>In the Author class, use 'writer' for the <dfn>other_field</dfn> value.</li></ul>
+	<ul><li>In the Book class, use 'writer' for the array key value.</li></ul>
+</p>
+<p>
+	You want to use alternative table name for the relation. For example, you prefer 'written_books'.
+	<ul><li>In both the Author and the Book classes, use 'written_books' for the <dfn>join_table</dfn> value.</li></ul>
+</p>
+<p>
+You want to use alternative name for a foreign key column name. Say want to use <kbd>writer_id</kbd> instead of <kbd>author_id</kbd>.
+	<ul><li>In the Author class, use 'writer' for the <dfn>join_self_as</dfn> value.</li></ul>
+	<ul><li>In the Book class, use 'writer' for the <dfn>join_other_as</dfn> value.</li></ul>
+</p>
 
 <h2>Multiple Relationships to the Same Model</h2>
 

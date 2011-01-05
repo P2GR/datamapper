@@ -45,7 +45,7 @@ class DMZ_Nestedsets {
 	 * @var    string
 	 * @access private
 	 */
-	private $_rootfield = 'root_id';
+	private $_rootfield = NULL;
 
 	/**
 	 * value of the root field we need to filter on
