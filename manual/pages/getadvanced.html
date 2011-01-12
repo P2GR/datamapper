@@ -186,8 +186,9 @@ Get (Advanced)
 <div class="note">
 	<p>
 		If the query clause is <var>where</var>, and <dfn>$value</dfn> is an array, it is assumed you want to use a <var>where_in</var> clause.
-		If <dfn>$value</dfn> is an array of objects (for example <dfn>$object->all</dfn>), the <dfn>$value</dfn> array will be converted to an
-		array of object id's, which is then used to run the <var>where_in</var> query.
+		If <dfn>$value</dfn> is a Datamapper object, the <dfn>$value</dfn> array will be converted to an
+		array with object id's of the result set, which is then used to run the <var>where_in</var> query.
+		It is your responsability to use the correct object, it is not validated!
 	</p>
 </div>
 

@@ -22,7 +22,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '1.8.dev');
+define('DMZ_VERSION', '1.8.0');
 
 /**
  * Data Mapper Class
@@ -3484,6 +3484,15 @@ class DataMapper implements IteratorAggregate {
 	{
 		$type = $this->_get_prepend_type($type);
 
+		if ($values instanceOf DataMapper)
+		{
+			$arr = array();
+			foreach ($values as $value)
+			{
+				$arr[] = $value->id;
+			}
+			$values = $arr;
+		}
 	 	$this->db->_where_in($this->add_table_name($key), $values, $not, $type);
 
 		// For method chaining
@@ -4452,22 +4461,41 @@ class DataMapper implements IteratorAggregate {
 			// Add query clause
 			if(is_null($extra))
 			{
-				// convert where to where_in if the value is an array
-				if ($query == 'where' && is_array($value))
+				// convert where to where_in if the value is an array or a DM object
+				if ($query == 'where')
 				{
-					$query = 'where_in';
-
-					// if it's an array of DM objects, get all the object id's
-					if (is_object($value[0]) && isset($value[0]->id))
+					if ( is_array($value) )
 					{
-						$arr = array();
-						foreach($value as $obj)
+						switch(count($value))
 						{
-							$arr[] = $obj->id;
+							case 0:
+								$value = NULL;
+								break;
+							case 1:
+								$value = reset($value);
+								break;
+							default:
+								$query = 'where_in';
+								break;
 						}
-						$value = $arr;
+					}
+					elseif ( $value instanceOf DataMapper )
+					{
+						switch($value->result_count())
+						{
+							case 0:
+								$value = NULL;
+								break;
+							case 1:
+								$value = $value->id;
+								break;
+							default:
+								$query = 'where_in';
+								break;
+						}
 					}
 				}
+
 				$this->{$query}($field, $value);
 			}
 			else
