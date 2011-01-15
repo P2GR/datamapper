@@ -185,10 +185,7 @@ Get (Advanced)
 
 <div class="note">
 	<p>
-		If the query clause is <var>where</var>, and <dfn>$value</dfn> is an array, it is assumed you want to use a <var>where_in</var> clause.
-		If <dfn>$value</dfn> is a Datamapper object, the <dfn>$value</dfn> array will be converted to an
-		array with object id's of the result set, which is then used to run the <var>where_in</var> query.
-		It is your responsability to use the correct object, it is not validated!
+		If the query clause is <var>where</var>, and <dfn>$value</dfn> is a Datamapper object, Datamapper will convert the query into <var>where_in</var> clause and use the id's of the results stored in the object as parameters.
 	</p>
 </div>
 
@@ -200,7 +197,7 @@ Get (Advanced)
 
 </kbd><samp>// Get all the messages these males have posted
 </samp><var>$p </var><kbd>= new </kbd><var>Post</var><kbd>();
-</samp><var>$u</var><kbd>-&gt;</kbd><var><i>where</i><u>_related</u></var><kbd>(</kbd><var><s>'user'</s></var><kbd>, </kbd><dfn>'id'</dfn><kbd>, </kbd><var>$u</var><kbd>-&gt;</kbd><dfn>all</dfn><kbd>)-&gt;</kbd><var><u>get</u></var><kbd>();</kbd>
+</samp><var>$p</var><kbd>-&gt;</kbd><var><i>where</i><u>_related</u></var><kbd>(</kbd><var><s>'user'</s></var><kbd>, </kbd><dfn>'id'</dfn><kbd>, </kbd><var>$u</var><kbd>)-&gt;</kbd><var><u>get</u></var><kbd>();</kbd>
 </pre>
 
 
