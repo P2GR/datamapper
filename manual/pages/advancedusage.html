@@ -3,7 +3,7 @@
 <head>
 
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>Road Map: DataMapper ORM - User Guide</title>
+<title>Get By : DataMapper ORM - User Guide</title>
 
 <link rel="shortcut icon" type="image/png" href="../images/favicon.png" />
 <link rel="stylesheet" type="text/css" media="all" href="../css/userguide.css" />
@@ -36,7 +36,7 @@
 <td id="breadcrumb">
 <a href="/">Datamapper ORM Home</a> &nbsp;&#8250;&nbsp;
 <a href="../index.html">User Guide Home</a> &nbsp;&#8250;&nbsp;
-Road Map
+Advanced Usage
 </td>
 </tr>
 
@@ -50,20 +50,28 @@ Road Map
 <div id="content">
 
 
-<h1>Road Map</h1>
+<h1><a name="add_model_path"></a>Add Model Path</h1>
 
-<p>Datamapper ORM is fully functional as is.  Certain new features are in the queue to help make Datamapper ORM easier to use, as well as adding more extensions.</p>
+<p>Add Model Path is a static dynamic method that allows you to define alternative file locations for the model autoloader.
+When a model is requested the autoloader checks all defined paths for the existence of a models folder. If that exists, it will check if the request model file exists, and if so, it will be loaded.</p>
+<p>Datamapper searches the following locations:
+	<ul>
+		<li>The application model directory</li>
+		<li>The module directories of <b>loaded</b> modules (HMVC &amp; Modular CI)</li>
+		<li>All defined CodeIgniter packages (CI 2.0+, added with <var>$this->load->add_package_path</var>)</li>
+		<li>All manually added paths</li>
+	</ul>
+</p>
+<p>You can add model search paths to Datamapper manually using the Add Model Path static method:</p>
+<pre>
+<samp>// add the users, groups and admin modules to the model autoloader search path</samp>
+<var>Datamapper</var><kbd>::</kbd><var><u>add_model_path</u></var><kbd>(</kbd><var> array(</var> <dfn>APPPATH.'modules/users'</dfn>, <dfn>APPPATH.'modules/groups'</dfn>, <dfn>APPPATH.'modules/admin'</dfn> <var>)</var><kbd> );</kbd>
+</pre>
+<p class="note">Note that this is a global operation, you will have to do this only once per page request, for example in the controlller constructor.</p>
 
-<ul>
-	<li>Add hooks for extensions, so they can directly modify core functions (like <var><u>get</u></var>, <var><u>save</u></var>, and <var><u>delete</u></var>).</li>
-	<li><strong>Debugging Extension</strong>: An extension to aid in debugging Datamapper ORM models and queries.</li>
-	<li><strong>Symmetric Relationships</strong>: Automatically create a relationship between B-and-A when A-and-B is saved.</li>
-	<li><strong>Instant App Maker</strong>: Browser-based or standalone tool to generate all the code needed to create a simple application based on user input.</li>
-	<li>Some sort of intelligent <strong>inheritance</strong> system, whether through classes or some internal Datamapper ORM magic.</li>
-</ul>
+<p>&nbsp;</p>
 
-<p>If you have any suggestions or ideas on what you'd like to see in Datamapper ORM, feel free to add a feature request to <a href="http://bitbucket.org/wanwizard/datamapper/issues">the BitBucket tracker</a>!</p>
-
+</div>
 
 </div>
 <!-- END CONTENT -->
@@ -86,7 +94,6 @@ Next Topic:&nbsp;&nbsp;<a href=""></a></span>
 
 <script type="text/javascript" src="../js/mootools.js"></script>
 <script type="text/javascript" src="../js/menu.js"></script>
-<script type="text/javascript" src="../js/rot13.js"></script>
 <script type="text/javascript">
 <!--
 	window.addEvent('domready', function() {
@@ -96,6 +103,7 @@ Next Topic:&nbsp;&nbsp;<a href=""></a></span>
 			basepath: '../',
 			pagespath: ''
 		});
+
 	});
 //-->
 </script>

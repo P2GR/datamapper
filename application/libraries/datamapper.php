@@ -8,10 +8,11 @@
  * @license 	MIT License
  * @package		DataMapper ORM
  * @category	DataMapper ORM
- * @author  	Harro "WanWizard" Verton, James Wardlaw
- * @author  	Phil DeJarnett (up to v1.7.1.)
- * @link		http://datamapper.exitecms.org/
- * @version 	1.8.dev
+ * @author  	Harro Verton, James Wardlaw
+ * @author  	Phil DeJarnett (up to v1.7.1)
+ * @author  	Simon Stenhouse (up to v1.6.0)
+ * @link		http://datamapper.wanwizard.eu/
+ * @version 	1.8.1-dev
  */
 
 /**
@@ -22,7 +23,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '1.8.0');
+define('DMZ_VERSION', '1.8.1-dev');
 
 /**
  * Data Mapper Class
@@ -417,6 +418,9 @@ class DataMapper implements IteratorAggregate {
 	// If true, the next where statement will not be prefixed with an AND or OR.
 	protected $_where_group_started = FALSE;
 
+	// storage for additional model paths for the autoloader
+	protected static $model_paths = array();
+
 	/**
 	 * Constructors (both PHP4 and PHP5 style, to stay compatible)
 	 *
@@ -760,7 +764,7 @@ class DataMapper implements IteratorAggregate {
 			$paths[] = APPPATH;
 		}
 
-		foreach ($paths as $path)
+		foreach (array_merge($paths, self::$model_paths) as $path)
 		{
 			// Prepare file
 			$file = $path . 'models/' . $class . EXT;
@@ -783,6 +787,32 @@ class DataMapper implements IteratorAggregate {
 				{
 					break;
 				}
+			}
+		}
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Add Model Path
+	 *
+	 * Manually add paths for the model autoloader
+	 *
+	 * @param	mixed $paths path or array of paths to search
+	 */
+	protected static function add_model_path($paths)
+	{
+		if ( ! is_array($paths) )
+		{
+			$paths = array($paths);
+		}
+
+		foreach($paths as $path)
+		{
+			$path = rtrim($path, '/') . '/';
+			if ( is_dir($path.'models') && ! in_array($path, self::$model_paths))
+			{
+				self::$model_paths[] = $path;
 			}
 		}
 	}
@@ -5973,6 +6003,14 @@ class DataMapper implements IteratorAggregate {
 		{
 			// by default, automagically determine the join table name
 			$definition['join_table'] = '';
+		}
+		if( isset($definition['model_path']))
+		{
+			$definition['model_path'] = rtrim($definition['model_path'], '/') . '/';
+			if ( is_dir($definition['model_path'].'models') && ! in_array($definition['model_path'], self::$model_paths))
+			{
+				self::$model_paths[] = $definition['model_path'];
+			}
 		}
 		if(isset($definition['reciprocal']))
 		{

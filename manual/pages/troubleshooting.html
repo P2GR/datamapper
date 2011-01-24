@@ -74,9 +74,10 @@ Troubleshooting
 
 <p>In the event you've tried the above but you're still having issues, you are welcome to contact me at the below address.</p>
 
-<div class="highlight">
+<div class="important">
 	<p><strong><em>Please do not</em></strong> ask for help with messages that says <em>&ldquo;I tried doing X, it didn't work.  Why?&ldquo;</em>, where X looks like an example from the manual.  Between the manual and the forums, you should at least be able to provide some basic troubleshooting.</p>
-	<p>Please contact me directly as a last resort as I prefer to respond on the forums directly, as then everyone can learn.  You can also send me private messages through the forums.</p>
+	<p>Please contact me directly <strong><em>only as a last resort</em></strong> as I prefer to respond on the forums directly, as then everyone can learn.  You can also send me private messages through the forums.</p>
+	<p>Questions I receive via email that do <strong><em>not</em></strong> contain a link to a forum thread discussing the issue will not be dealt with!</p>
 	<p id="rot13">Contact Info: <b>JavaScript must be enabled to see my email.</b></p>
 </div>
 
@@ -93,6 +94,11 @@ Troubleshooting
 			<li><a href="#Database.QueryGrouping">Why is DataMapper returning objects that shouldn't be in my results?</a></li>
 			<li><a href="#Database.Ids">Why can I not save an item with a specific ID? Why do I get errors with non-numeric IDs?</a></li>
 			<li><a href="#Database.SeeQuery">How can I see the queries being generated?</a></li>
+		</ul>
+	</li>
+	<li><strong>Models</strong>
+		<ul>
+			<li><a href="#Models.Modules">Does Datamapper support modularity or multiple model folders?</a></li>
 		</ul>
 	</li>
 	<li><strong>General Problems</strong>
@@ -202,6 +208,10 @@ SELECT `objects`.*
 FROM `objects`
 WHERE `objects`.`thing` = 1
 </pre>
+
+<h2 id="Models.Modules">Does Datamapper support modularity or multiple model folders?</h2>
+<h3>1.8.1 and newer:</h3>
+<p>Datamapper supports model classes from CodeIgniter 2.0+ packages, HMVC Modular Extensions and Modular CI modules, or through the <a href="advancedusage.html#add_model_path">add_model_path</a> static method.</p>
 
 <h2 id="General.Foreach">Why can't I loop over this result set?</h2>
 <h3>1.7.0 and newer:</h3>
@@ -392,7 +402,7 @@ Next Topic:&nbsp;&nbsp;<a href=""></a></span>
 		// Create ROT13
 		var rot = new ROT13();
 
-		$('rot13').set('html', 'Contact Info: ' + rot.convert('<n uers="znvygb:jnajvmneq@tznvy.pbz">Uneeb "JnaJvmneq" Iregba</n>'));
+		$('rot13').set('html', 'Contact Info: ' + rot.convert('<n uers="znvygb:qngnznccre@jnajvmneq.rh">Uneeb Iregba</n>'));
 	});
 //-->
 </script>
