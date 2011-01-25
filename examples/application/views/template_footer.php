@@ -6,7 +6,7 @@
 
 <div class="legal">
 	<div class="copyright">
-		<div class="license"><a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/us/"><img alt="Creative Commons License" style="border-width:0" src="<?= str_replace('index.php/','',site_url('img/cc.png')) ?>" /></a></div>
+		<div class="license"><a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/us/"><img alt="Creative Commons License" style="border-width:0" src="<?php echo str_replace('index.php/','',site_url('img/cc.png')); ?>" /></a></div>
 		<div class="licenseInfo">Squash Bug Tracker App &copy;2009  <a href="http://www.overzealous.com/dmz/">Phil DeJarnett</a></div>
 	</div>
 	<div class="resources">

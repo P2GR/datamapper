@@ -2,19 +2,19 @@
 
 	if(isset($title))
 	{
-		$page_title = $title . ' - '; 
+		$page_title = $title . ' - ';
 	}
 	else
 	{
 		$title = '';
 		$page_title = '';
 	}
-	
+
 	if(!isset($section))
 	{
 		$section = 'welcome';
 	}
-	
+
 	$sections = array(
 		'welcome' => array(
 			'name' => 'Welcome',
@@ -38,9 +38,9 @@
 			'url' => 'logout'
 		)
 	);
-	
+
 	$user = isset($this->login_manager) ? $this->login_manager->get_user() : FALSE;
-	
+
 	if( ! isset($message))
 	{
 		$message = $this->session->flashdata('message');
@@ -50,8 +50,8 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-	<title><?= $page_title ?>Squash Bug Tracker</title>
-	<link type="text/css" rel="stylesheet" href="<?= str_replace('index.php/', '', site_url('css/style.css')) ?>" />
+	<title><?php echo $page_title; ?>Squash Bug Tracker</title>
+	<link type="text/css" rel="stylesheet" href="<?php echo str_replace('index.php/', '', site_url('css/style.css')); ?>" />
 </head>
 <body>
 <!--
@@ -61,10 +61,10 @@ More Info: http://creativecommons.org/licenses/by-sa/3.0/us/
 <!-- Header -->
 <div class="header">
 	<h1 title="Squash Bug Tracker">Squash Bug Tracker</h1>
-<? if(!isset($hide_nav) || !$hide_nav): ?>
+<?php if(!isset($hide_nav) || !$hide_nav): ?>
 	<div class="nav">
 		<ul>
-<?			foreach($sections as $key => $s):
+<?php			foreach($sections as $key => $s):
 				if($user !== FALSE)
 				{
 					if(isset($s['restrict']))
@@ -76,27 +76,27 @@ More Info: http://creativecommons.org/licenses/by-sa/3.0/us/
 					}
 				}
 				$sel = ($section == $key) ? ' selected' : ''; ?>
-			<li class="<?= $key . $sel ?>"><a href="<?= site_url($s['url']) ?>"><?= $s['name'] ?></a></li>
-<?			endforeach; ?>
+			<li class="<?php echo $key . $sel; ?>"><a href="<?php echo site_url($s['url']); ?>"><?php echo $s['name']; ?></a></li>
+<?php			endforeach; ?>
 
 		</ul>
 	</div>
-<?	if($user !== FALSE): ?>
-	<div class="username">Welcome, <?= htmlspecialchars($user->name) ?></div>
-<?	endif; ?>
-<? endif; ?>
+<?php	if($user !== FALSE): ?>
+	<div class="username">Welcome, <?php htmlspecialchars($user->name); ?></div>
+<?php endif; ?>
+<?php endif; ?>
 </div>
 <!-- End Header -->
 
-<? if( ! empty($title)): ?>
+<?php if( ! empty($title)): ?>
 <!-- Page Title -->
-<h2><?= $title ?></h2>
-<? endif; ?>
+<h2><?php $title; ?></h2>
+<?php endif; ?>
 
 <!-- Page Content -->
 <div class="content">
 
-<? if( ! empty($message)): ?>
-<!-- Form Result Message --> 
-<div id="page_message"><?= htmlspecialchars($message) ?></div>
-<? endif; ?>
+<?php if( ! empty($message)): ?>
+<!-- Form Result Message -->
+<div id="page_message"><?php echo htmlspecialchars($message); ?></div>
+<?php endif; ?>
