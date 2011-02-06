@@ -142,7 +142,10 @@ Troubleshooting
 </p>
 
 <h2 id="Database.UnknownColumn">Database Error: Unknown Column 'table.*' in 'field list'</h2>
-<p>If you're getting an error that looks very similar to the one below, it's because you need to update your CodeIgniter <strong>MySQL Driver</strong> with the latest version from the <a href="http://dev.ellislab.com/svn/CodeIgniter/trunk/">CodeIgniter SVN</a>.</p>
+<div class="important">
+	<h3><strong><em>CodeIgniter 1.6.x only!</em></strong></h3>
+</div>
+<p>If you're getting an error that looks very similar to the one below, it's because you need to update your CodeIgniter <strong>MySQL Driver</strong> with the latest version from the <a href="https://bitbucket.org/ellislab/codeigniter/downloads">CodeIgniter downloads</a>.</p>
 
 <pre>A Database Error Occurred
 
@@ -153,7 +156,7 @@ Unknown column `table.*` in 'field list'</pre>
 <p>How to update your MySQL Driver:</p>
 
 <ol>
-	<li>Download the latest version of the <a href="http://dev.ellislab.com/svn/CodeIgniter/trunk/system/database/drivers/mysql/mysql_driver.php">mysql_driver.php</a> file from the <a href="http://dev.ellislab.com/svn/CodeIgniter/trunk/">CodeIgniter SVN</a>.</li>
+	<li>Get the correct version of the <kbd>mysql_driver.php</kbd> file from the CodeIgniter repository.</li>
 	<li>Upload it to your CodeIgniter <kbd>system/database/drivers/mysql</kbd> folder.</li>
 </ol>
 
@@ -381,7 +384,7 @@ foreach(</kbd><var>$parts</var><kbd> as </kbd><var>$part</var><kbd>) {
 Next Topic:&nbsp;&nbsp;<a href=""></a></span>
 </p>
 <div id="copyrights">
-<p><a href="/">Datamapper ORM</a> &nbsp;&middot;&nbsp; Copyright &copy; 2010 &nbsp;&middot;&nbsp; Harro "WanWizard" Verton</p>
+<p><a href="/">Datamapper ORM</a> &nbsp;&middot;&nbsp; Copyright &copy; 2010-2011 &nbsp;&middot;&nbsp; Harro "WanWizard" Verton</p>
 <p><a href="license.html">Other License Information</a></p>
 </div>
 </div>
