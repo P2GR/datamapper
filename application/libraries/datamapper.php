@@ -1060,12 +1060,20 @@ class DataMapper implements IteratorAggregate {
 			$CI =& get_instance();
 			if($this->db_params === FALSE)
 			{
+				if ( ! isset($CI->db) || ! is_object($CI->db) || ! isset($CI->db->dbdriver) )
+				{
+					show_error('DataMapper Error: CodeIgniter database library not loaded.');
+				}
 				$this->db =& $CI->db;
 			}
 			else
 			{
 				if($this->db_params == '' || $this->db_params === TRUE)
 				{
+					if ( ! isset($CI->db) || ! is_object($CI->db) || ! isset($CI->db->dbdriver) )
+					{
+						show_error('DataMapper Error: CodeIgniter database library not loaded.');
+					}
 					// ensure the shared DB is disconnected, even if the app exits uncleanly
 					if(!isset($CI->db->_has_shutdown_hook))
 					{
@@ -1083,7 +1091,7 @@ class DataMapper implements IteratorAggregate {
 					$this->db = $CI->load->database($this->db_params, TRUE, TRUE);
 				}
 				// these items are shared (for debugging)
-				if(isset($CI->db))
+				if(is_object($CI->db) && isset($CI->db->dbdriver))
 				{
 					$this->db->queries =& $CI->db->queries;
 					$this->db->query_times =& $CI->db->query_times;
