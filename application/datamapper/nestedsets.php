@@ -1247,9 +1247,12 @@ class DMZ_Nestedsets {
 				$object->where($this->_rootfield, $this->_rootindex);
 			}
 
+			// set the delta
+			$delta = $delta >= 0 ? (' + '.$delta) : (' - '.($delta * -1));
+
 			// select the range
 			$object->where($this->_leftindex.' >=', $first);
-			$object->update(array($this->_leftindex => $this->_leftindex.' + '.$delta), FALSE);
+			$object->update(array($this->_leftindex => $this->_leftindex.$delta), FALSE);
 
 			// if we have multiple roots
 			if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
@@ -1260,9 +1263,6 @@ class DMZ_Nestedsets {
 
 			// select the range
 			$object->where($this->_rightindex.' >=', $first);
-
-			// set the delta
-			$delta = $delta >= 0 ? (' + '.$delta) : (' - '.($delta * -1));
 
 			$object->update(array($this->_rightindex => $this->_rightindex.$delta), FALSE);
 		}
@@ -1360,6 +1360,13 @@ class DMZ_Nestedsets {
 
 		// shift to make some space
 		$this->_shiftRLValues($node, $destination_id, $treesize);
+
+		// correct pointers if there were shifted to
+		if ($object->{$this->_leftindex} >= $destination_id)
+		{
+			$left_id += $treesize;
+			$right_id += $treesize;
+		}
 
 		// enough room now, start the move
 		$this->_shiftRLRange($node, $left_id, $right_id, $destination_id - $left_id);
