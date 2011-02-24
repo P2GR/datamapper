@@ -1260,7 +1260,11 @@ class DMZ_Nestedsets {
 
 			// select the range
 			$object->where($this->_rightindex.' >=', $first);
-			$object->update(array($this->_rightindex => $this->_rightindex.' + '.$delta), FALSE);
+
+			// set the delta
+			$delta = $delta >= 0 ? (' + '.$delta) : (' - '.($delta * -1));
+
+			$object->update(array($this->_rightindex => $this->_rightindex.$delta), FALSE);
 		}
 
 		// return the object
@@ -1296,7 +1300,11 @@ class DMZ_Nestedsets {
 			// select the range
 			$object->where($this->_leftindex.' >=', $first);
 			$object->where($this->_rightindex.' <=', $last);
-			$object->update(array($this->_leftindex => $this->_leftindex.' + '.$delta, $this->_rightindex => $this->_rightindex.' + '.$delta), FALSE);
+
+			// set the delta
+			$delta = $delta >= 0 ? (' + '.$delta) : (' - '.($delta * -1));
+
+			$object->update(array($this->_leftindex => $this->_leftindex.$delta, $this->_rightindex => $this->_rightindex.$delta), FALSE);
 		}
 
 		// return the object
