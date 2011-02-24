@@ -4376,7 +4376,7 @@ class DataMapper implements IteratorAggregate {
 		else
 		{
 			$object_as = $name_prepend . $related_field . '_' . $object->table;
-			$relationship_as = $name_prepend . $related_field . '_' . $relationship_table;
+			$relationship_as = str_replace('.', '_', $name_prepend . $related_field . '_' . $relationship_table);
 		}
 
 		$other_column = $other_model . '_id';
