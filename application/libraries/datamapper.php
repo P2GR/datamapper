@@ -944,11 +944,11 @@ class DataMapper implements IteratorAggregate {
 			// create class
 			if(is_null($options))
 			{
-				$o = new $ext();
+				$o = new $ext(NULL, $this);
 			}
 			else
 			{
-				$o = new $ext($options);
+				$o = new $ext($options, $this);
 			}
 			$extensions[$name] = $o;
 

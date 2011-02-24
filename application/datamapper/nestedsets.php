@@ -93,7 +93,7 @@ class DMZ_Nestedsets {
 	{
 		// do we have the datamapper object
 		if ( ! is_null($object) )
-		{			// no, extension is loaded manually
+		{
 			// update the config
 			$this->tree_config($object, $options);
 		}
