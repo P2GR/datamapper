@@ -3098,7 +3098,7 @@ class DataMapper implements IteratorAggregate {
 
 		// Table Name pattern should be
 		$tablename = $this->db->_escape_identifiers($this->table);
-		$table_pattern = '(?:' . preg_quote($this->table) . '|' . preg_quote($tablename) . ')';
+		$table_pattern = '(?:' . preg_quote($this->table) . '|' . preg_quote($tablename) . '|\(' . preg_quote($tablename) . '\))';
 
 		$fieldname = $this->db->_escape_identifiers('__field__');
 		$field_pattern = '([-\w]+|' . str_replace('__field__', '[-\w]+', preg_quote($fieldname)) . ')';
@@ -3121,7 +3121,6 @@ class DataMapper implements IteratorAggregate {
 		$pattern = "/FROM $table_pattern([,\\s])/i";
 		$replacement = "FROM $tablename " . $this->db->_escape_identifiers($this->table . '_subquery') . '$1';
 		$sql = preg_replace($pattern, $replacement, $sql);
-
 		$sql = str_replace("\n", "\n\t", $sql);
 
 		return str_replace('${parent}', $this->table, $sql);
