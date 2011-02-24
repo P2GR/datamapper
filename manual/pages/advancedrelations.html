@@ -242,25 +242,33 @@ You want to use alternative name for a foreign key column name. Say want to use 
 </ul>
 
 <h2 id="reciprocal">Many-to-Many Reciprocal Self Relationships</h2>
+
 <p>In this type of relationship, you have records that related to each other, and where saving or deleting the relationship in one direction should also maintain the relationship in the reverse direction.</p>
+
+<p>The best example I can think of is in the area of genealogy.</p>
+<p>Suppose you have a table with information about people, and you want to relate them
+(grandparent-parent-child etc). You always have to make the relation both ways, since it can’t be that person A is the child of person B,
+but B is not the parent of A. If you define this relation as reciprocal, when you save the relation between A and B, automatically the
+relation between B and A is saved as well. And when you delete the relationship, both relations are deleted.</p>
+
 <pre>
-<kbd>class </kbd><var>Document </var><kbd>extends </kbd><var><u>DataMapper</u> </var><kbd>{
+<kbd>class </kbd><var>Person </var><kbd>extends </kbd><var><u>DataMapper</u> </var><kbd>{
     </kbd><var><i>$has_many</i> </var><kbd>= array(
-        </kbd><strong>'related_document'</strong> <kbd>=&gt; array(
-            </kbd>'class' <kbd>=&gt; </kbd><dfn><var><s>'document'</s></var></dfn><kbd>,
-            </kbd>'other_field' <kbd>=&gt; </kbd><dfn>'document'</var></dfn><kbd>,
+        </kbd><strong>'related_person'</strong> <kbd>=&gt; array(
+            </kbd>'class' <kbd>=&gt; </kbd><dfn><var><s>'person'</s></var></dfn><kbd>,
+            </kbd>'other_field' <kbd>=&gt; </kbd><dfn>'person'</var></dfn><kbd>,
             </kbd>'reciprocal' <kbd>=&gt; </kbd><dfn>TRUE</dfn><kbd>
         ),
-        </kbd><strong>'document'</strong> <kbd>=&gt; array(
-            </kbd>'other_field' <kbd>=&gt; </kbd><dfn>'related_document'</var></dfn><kbd>,
+        </kbd><strong>'person'</strong> <kbd>=&gt; array(
+            </kbd>'other_field' <kbd>=&gt; </kbd><dfn>'related_person'</var></dfn><kbd>,
         )
     );
 }
 </pre>
 <p>To get this to work, you will need:</p>
 <ul>
-	<li>You need a relationship table to define this many-to-many relation, which is this case would be called '<dfn>documents_documents</dfn>'.</li>
-	<li>This table needs to contain a column called '<dfn>document_id</dfn>' and a column called '<dfn>related_document_id</dfn>'.</li>
+	<li>You need a relationship table to define this many-to-many relation, which is this case would be called '<dfn>persons_persons</dfn>'.</li>
+	<li>This table needs to contain a column called '<dfn>person_id</dfn>' and a column called '<dfn>related_person_id</dfn>'.</li>
 </ul>
 
 <h2>Setting up the Table Structure with Advanced Relationships</h2>
