@@ -3786,7 +3786,7 @@ class DataMapper implements IteratorAggregate {
 				$k = 'UPPER(' . $this->db->protect_identifiers($k) .')';
 				$v = strtoupper($v);
 			}
-			$f = "$k $not LIKE";
+			$f = "$k $not LIKE ";
 
 			if ($side == 'before')
 			{
@@ -3801,7 +3801,7 @@ class DataMapper implements IteratorAggregate {
 				$m = "%{$v}%";
 			}
 
-			$this->_where($f, $m, $type);
+			$this->_where($f, $m, $type, TRUE);
 		}
 
 		// For method chaining
