@@ -4713,10 +4713,6 @@ class DataMapper implements IteratorAggregate {
 		$last = $this;
 		foreach($rfs as $rf)
 		{
-			if ( ! isset($last->has_one[$rf]) )
-			{
-				show_error("Invalid request to include_related: $rf is not a has_one relationship to {$last->model}.");
-			}
 			// prevent populating the related items.
 			$last =& $last->_get_without_auto_populating($rf);
 		}
