@@ -1140,7 +1140,7 @@ class DataMapper implements IteratorAggregate {
 			// Check if Auto Populate for "has many" or "has one" is on
 			// (but only if this object exists in the DB, and we aren't instantiating)
 			if ($this->exists() &&
-					($has_many && $this->auto_populate_has_many) || ($has_one && $this->auto_populate_has_one))
+					($has_many && ($this->auto_populate_has_many || $this->has_many[$name]['auto_populate'])) || ($has_one && ($this->auto_populate_has_one || $this->has_one[$name]['auto_populate'])))
 			{
 				$this->{$name}->get();
 			}
@@ -6087,6 +6087,11 @@ class DataMapper implements IteratorAggregate {
 		{
 			$definition['reciprocal'] = FALSE;
 		}
+		if(!isset($definition['auto_populate']) OR ! is_bool($definition['auto_populate']))
+		{
+			$definition['auto_populate'] = NULL;
+		}
+
 		$new[$name] = $definition;
 
 		// load in labels for each not-already-set field
