@@ -2110,6 +2110,69 @@ class DataMapper implements IteratorAggregate {
 	// --------------------------------------------------------------------
 
 	/**
+	 * Truncate
+	 *
+	 * Deletes all records in this objects table.
+	 *
+	 * @return	bool Success or Failure of the truncate
+	 */
+	public function truncate()
+	{
+		// Begin auto transaction
+		$this->_auto_trans_begin();
+
+		// Delete all "has many" and "has one" relations for this object first
+		foreach (array('has_many', 'has_one') as $type)
+		{
+			foreach ($this->{$type} as $model => $properties)
+			{
+				// Prepare model
+				$class = $properties['class'];
+				$object = new $class();
+
+				$this_model = $properties['join_self_as'];
+				$other_model = $properties['join_other_as'];
+
+				// Determine relationship table name
+				$relationship_table = $this->_get_relationship_table($object, $model);
+
+				// We have to just set NULL for in-table foreign keys that
+				// are pointing at this object
+				if($relationship_table == $object->table  && // ITFK
+						 // NOT ITFKs that point at the other object
+						 ! ($object->table == $this->table && // self-referencing has_one join
+							in_array($other_model . '_id', $this->fields)) // where the ITFK is for the other object
+						)
+				{
+					$data = array($this_model . '_id' => NULL);
+
+					// Update table to remove all ITFK relations
+					$this->db->update($object->table, $data);
+				}
+				else if ($relationship_table != $this->table)
+				{
+					// Delete all relationship records
+					$this->db->truncate($relationship_table);
+				}
+				// Else, no reason to delete the relationships on this table
+			}
+		}
+
+		// Delete all records
+		$this->db->truncate($this->table);
+
+		// Complete auto transaction
+		$this->_auto_trans_complete('truncate');
+
+		// Clear this object
+		$this->clear();
+
+		return TRUE;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
 	 * Refresh All
 	 *
 	 * Removes any empty objects in this objects all list.
