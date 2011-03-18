@@ -129,22 +129,28 @@ Advanced Relationships
 	<td>Used with custom column names, or in some unusual self-relationships.</td>
 </tr>
 <tr>
-	<td><kbd>join_table</kbd></td>
+	<td>join_table</td>
 	<td>Override the generated table name for this relation.</td>
 	<td><var>''</var></td>
 	<td>Custom table name. Also used in some multi-table (more than two) relationships.</td>
 </tr>
 <tr>
-	<td><kbd>model_path</kbd></td>
+	<td>model_path</td>
 	<td>Alternative location for this model.</td>
 	<td><b>APPPATH</b></td>
 	<td>Used in a modular context, where models are used cross-module. Note that is it the module path, <b>NOT</b> the model path!</td>
 </tr>
 <tr>
-	<td><kbd>auto_populate</kbd></td>
+	<td>auto_populate</td>
 	<td>Autopopulate the objects for this relation.</td>
 	<td><var><b>FALSE</b></var></td>
-	<td>Use the same as the global settings <var>$auto_populate_has_one</var> and <var>$auto_populate_has_one</var>, but then on a per-relationship basis.</td>
+	<td>Use the same as the global settings <var>$auto_populate_has_one</var> and <var>$auto_populate_has_many</var>, but then on a per-relationship basis.</td>
+</tr>
+<tr>
+	<td>cascade_delete</td>
+	<td>Delete the relation when deleting the parent object.</td>
+	<td><var><b>TRUE</b></var></td>
+	<td>Use the same as the configuration variable and the global setting <var>$cascade_delete</var>, but then on a per-relationship basis.</td>
 </tr>
 </table>
 

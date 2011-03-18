@@ -215,6 +215,7 @@ class DataMapper implements IteratorAggregate {
 		'updated_field' => 'updated',
 		'extensions_path' => 'datamapper',
 		'field_label_lang_format' => '${model}_${field}',
+		'cascade_delete' => TRUE,
 	);
 
 	/**
@@ -325,6 +326,12 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public $timestamp_format = '';
 	/**
+	 * delete relations on delete of an object. Defaults to TRUE.
+	 * set to FALSE if you RDBMS takes care of this using constraints
+	 * @var bool
+	 */
+	public $cascade_delete = true;
+	/**
 	 * Contains the database fields for this object.
 	 * ** Automatically configured **
 	 * @var array
@@ -405,6 +412,8 @@ class DataMapper implements IteratorAggregate {
 
 	// tracks whether or not the object has already been validated
 	protected $_validated = FALSE;
+	// tracks whether validation needs to be forced before save
+	protected $_force_validation = FALSE;
 	// Tracks the columns that need to be instantiated after a GET
 	protected $_instantiations = NULL;
 	// Tracks get_rules, matches, and intval rules, to spped up _to_object
@@ -1960,39 +1969,43 @@ class DataMapper implements IteratorAggregate {
 				{
 					foreach ($this->{$type} as $model => $properties)
 					{
-						// Prepare model
-						$class = $properties['class'];
-						$object = new $class();
-
-						$this_model = $properties['join_self_as'];
-						$other_model = $properties['join_other_as'];
-
-						// Determine relationship table name
-						$relationship_table = $this->_get_relationship_table($object, $model);
-
-						// We have to just set NULL for in-table foreign keys that
-						// are pointing at this object
-						if($relationship_table == $object->table  && // ITFK
-								 // NOT ITFKs that point at the other object
-								 ! ($object->table == $this->table && // self-referencing has_one join
-								 	in_array($other_model . '_id', $this->fields)) // where the ITFK is for the other object
-								)
+						// do we want cascading delete's?
+						if ($properties['cascade_delete'])
 						{
-							$data = array($this_model . '_id' => NULL);
+							// Prepare model
+							$class = $properties['class'];
+							$object = new $class();
 
-							// Update table to remove relationships
-							$this->db->where($this_model . '_id', $this->id);
-							$this->db->update($object->table, $data);
+							$this_model = $properties['join_self_as'];
+							$other_model = $properties['join_other_as'];
+
+							// Determine relationship table name
+							$relationship_table = $this->_get_relationship_table($object, $model);
+
+							// We have to just set NULL for in-table foreign keys that
+							// are pointing at this object
+							if($relationship_table == $object->table  && // ITFK
+									 // NOT ITFKs that point at the other object
+									 ! ($object->table == $this->table && // self-referencing has_one join
+										in_array($other_model . '_id', $this->fields)) // where the ITFK is for the other object
+									)
+							{
+								$data = array($this_model . '_id' => NULL);
+
+								// Update table to remove relationships
+								$this->db->where($this_model . '_id', $this->id);
+								$this->db->update($object->table, $data);
+							}
+							else if ($relationship_table != $this->table)
+							{
+
+								$data = array($this_model . '_id' => $this->id);
+
+								// Delete relation
+								$this->db->delete($relationship_table, $data);
+							}
+							// Else, no reason to delete the relationships on this table
 						}
-						else if ($relationship_table != $this->table)
-						{
-
-							$data = array($this_model . '_id' => $this->id);
-
-							// Delete relation
-							$this->db->delete($relationship_table, $data);
-						}
-						// Else, no reason to delete the relationships on this table
 					}
 				}
 
@@ -2126,35 +2139,39 @@ class DataMapper implements IteratorAggregate {
 		{
 			foreach ($this->{$type} as $model => $properties)
 			{
-				// Prepare model
-				$class = $properties['class'];
-				$object = new $class();
-
-				$this_model = $properties['join_self_as'];
-				$other_model = $properties['join_other_as'];
-
-				// Determine relationship table name
-				$relationship_table = $this->_get_relationship_table($object, $model);
-
-				// We have to just set NULL for in-table foreign keys that
-				// are pointing at this object
-				if($relationship_table == $object->table  && // ITFK
-						 // NOT ITFKs that point at the other object
-						 ! ($object->table == $this->table && // self-referencing has_one join
-							in_array($other_model . '_id', $this->fields)) // where the ITFK is for the other object
-						)
+				// do we want cascading delete's?
+				if ($properties['cascade_delete'])
 				{
-					$data = array($this_model . '_id' => NULL);
+					// Prepare model
+					$class = $properties['class'];
+					$object = new $class();
 
-					// Update table to remove all ITFK relations
-					$this->db->update($object->table, $data);
+					$this_model = $properties['join_self_as'];
+					$other_model = $properties['join_other_as'];
+
+					// Determine relationship table name
+					$relationship_table = $this->_get_relationship_table($object, $model);
+
+					// We have to just set NULL for in-table foreign keys that
+					// are pointing at this object
+					if($relationship_table == $object->table  && // ITFK
+							 // NOT ITFKs that point at the other object
+							 ! ($object->table == $this->table && // self-referencing has_one join
+								in_array($other_model . '_id', $this->fields)) // where the ITFK is for the other object
+							)
+					{
+						$data = array($this_model . '_id' => NULL);
+
+						// Update table to remove all ITFK relations
+						$this->db->update($object->table, $data);
+					}
+					else if ($relationship_table != $this->table)
+					{
+						// Delete all relationship records
+						$this->db->truncate($relationship_table);
+					}
+					// Else, no reason to delete the relationships on this table
 				}
-				else if ($relationship_table != $this->table)
-				{
-					// Delete all relationship records
-					$this->db->truncate($relationship_table);
-				}
-				// Else, no reason to delete the relationships on this table
 			}
 		}
 
@@ -2244,7 +2261,7 @@ class DataMapper implements IteratorAggregate {
 			$related = (isset($this->has_many[$field]) || isset($this->has_one[$field]));
 
 			// Check if property has changed since validate last ran
-			if ($related || ! isset($this->stored->{$field}) || $this->{$field} !== $this->stored->{$field})
+			if ($related || $this->_force_validation || ! isset($this->stored->{$field}) || $this->{$field} !== $this->stored->{$field})
 			{
 				// Only validate if field is related or required or has a value
 				if ( ! $related && ! in_array('required', $rules) && ! in_array('always_validate', $rules))
@@ -2376,6 +2393,21 @@ class DataMapper implements IteratorAggregate {
 	{
 		$this->_validated = $skip;
 		$this->valid = $skip;
+		return $this;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Force revalidation for the next call to save.
+	 * This allows you to run validation rules on fields that haven't been modified
+	 *
+	 * @param	object $force If TRUE, forces validation on all fields.
+	 * @return	DataMapper Returns self for method chaining.
+	 */
+	public function force_validation($force = TRUE)
+	{
+		$this->_force_validation = $force;
 		return $this;
 	}
 
@@ -4535,7 +4567,7 @@ class DataMapper implements IteratorAggregate {
 				}
 			}
 
-			if($field == 'id')
+			if(preg_replace('/[!=<> ]/ ', '', $field) == 'id')
 			{
 				// special case to prevent joining unecessary tables
 				$field = $this->_add_related_table($object, $related_field, TRUE);
@@ -6090,6 +6122,10 @@ class DataMapper implements IteratorAggregate {
 		if(!isset($definition['auto_populate']) OR ! is_bool($definition['auto_populate']))
 		{
 			$definition['auto_populate'] = NULL;
+		}
+		if(!isset($definition['cascade_delete']) OR ! is_bool($definition['cascade_delete']))
+		{
+			$definition['cascade_delete'] = $this->cascade_delete;
 		}
 
 		$new[$name] = $definition;

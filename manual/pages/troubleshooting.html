@@ -122,6 +122,8 @@ Troubleshooting
 			<li><a href="#Relationships.Symmetric">Why does my relationship work from one object, but fail from the other?</a></li>
 			<li><a href="#Relationships.NtoM">Why isn't Datamapper saving the same object more than once?</a></li>
 			<li><a href="#Relationships.Delete">Does DataMapper delete related objects automatically?</a></li>
+			<li><a href="#Relationships.CascadingDeletes">I have implemented cascading deletes in my RDBMS. Is that a problem?</a></li>
+			<li><a href="#Relationships.NotRelated">How do I retrieve all records that do NOT have a relationship?</a></li>
 		</ul>
 	</li>
 </ul>
@@ -370,6 +372,26 @@ foreach(</kbd><var>$parts</var><kbd> as </kbd><var>$part</var><kbd>) {
 <p>In short, no.  DataMapper automatically deletes the relationship between two objects if you delete one of those objects.  However, it does not delete related objects automatically.</p>
 <p>If you need to handle this in multiple locations, I recommend creating an extra method on the model (I usually call <var>delete_deep()</var>), and delete the related objects you want removed.</p>
 
+<h2 id="Relationships.CascadingDeletes">I have implemented cascading deletes in my RDBMS. Is that a problem?</h2>
+<p>No, as long as you have installed Datamapper v1.8.1 or higher, and have configured Datamapper to not automatically remove relations when deleting an object.</p>
+<p>To disable automatic deletion of relations, set the config variable <var>cascading_delete</var> to <var><dfn>FALSE</dfn></var>. You can do this globally, per model and per relation.</p>
+<p>You need to disable this option (set to <var><dfn>FALSE</dfn></var>) when you use 'ON DELETE CASCADE' in your RDBMS.</p>
+
+<h2 id="Relationships.NotRelated">How do I retrieve all records that do NOT have a relationship?</h2>
+<p>Exactly like you would do it when you write your native SQL statement: using a subquery:</p>
+<pre>
+<samp>// create the parent and child objects</samp>
+<var>$parent</var> <kbd>= new</kbd> <var>Parent</var><kbd>();</kbd>
+<var>$child</var> <kbd>=</kbd> <var>$parent</var><kbd>-></kbd><var>child</var><kbd>;</kbd>
+
+<samp>// subquery: select all parent_id's of parent related to child with id 1</samp>
+<var>$child</var><kbd>-></kbd><var><u>select</u></var><kbd>(</kbd><dfn>'parent_id'</dfn>);
+<var>$child</var><kbd>-></kbd><var><u>where</u></var><kbd>(</kbd><dfn>'child_id'</dfn>, <dfn>1</dfn><kbd>);</kbd>
+<var>$child</var><kbd>-></kbd><var><u>where_related</u></var><kbd>(</kbd><dfn>'parent'</dfn><kbd>,</kbd> <dfn>'id'</dfn><kbd>,</kbd> <dfn>'${parent}.id'</dfn><kbd>);</kbd>
+
+<samp>// now retrieve all parents that are NOT related to child with id 1</samp>
+<var>$parent</var><kbd>-></kbd><var><u>where_not_in_subquery</u></var><kbd>(</kbd><dfn>'id'</dfn><kbd>,</kbd> <var>$child</var><kbd>)-></kbd><var><u>get</u></var><kbd>();</kbd>
+</pre>
 </div>
 <!-- END CONTENT -->
 

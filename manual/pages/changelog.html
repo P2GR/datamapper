@@ -66,12 +66,15 @@ Change Log
 			<li>Added new <var><u>truncate</u></var> method to delete all records, and relations to those records.</li>
 			<li>You can now pass a string as parameter to the to_array() and all_to_array() methods of the array extension, if you want to select only a single field.</li>
 			<li>You can now run include_related on 'many' relations, see <a href="getadvanced.html#include_related">runtime</a> for an explaination.</li>
+			<li>Added new <var><u>force_validation()</u></var> method to force revalidation when you read a record from the database that would not pass the save rules.</li>
+			<li>A new configuration value <var><b>cascade_delete</b></var> determines if delete operations need to cascade. See <a href="troubleshooting.html#Relationships.CascadingDeletes">here</a>.</li>
 		</ul>
 	</li>
 	<li><strong>Bug Fixes</strong>
 		<ul>
 			<li>Added support for a database prefix when specifying a join table ('database.tablename').</li>
 			<li>Extensions now receive the object that loads then as second parameter of the constructor, as documented.</li>
+			<li>Do not unnecessarily join tables in a many to many relationship when defining a where clause on the related 'id' field.</li>
 			<li>Fixed broken subqueries.</li>
 		</ul>
 	</li>
