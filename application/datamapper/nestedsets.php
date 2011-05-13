@@ -1372,7 +1372,7 @@ class DMZ_Nestedsets {
 		$this->_shiftRLRange($node, $left_id, $right_id, $destination_id - $left_id);
 
 		// and correct index values after the source
-		$this->_shiftRLValues($object, $right_id + 1, $treesize * -1);
+		$this->_shiftRLValues($object, $right_id + 1, -$treesize);
 
 		// return the object
 		return $object->get_by_id($object->id);

@@ -215,7 +215,6 @@ class DataMapper implements IteratorAggregate {
 		'updated_field' => 'updated',
 		'extensions_path' => 'datamapper',
 		'field_label_lang_format' => '${model}_${field}',
-		'cascade_delete' => TRUE,
 	);
 
 	/**
@@ -252,6 +251,12 @@ class DataMapper implements IteratorAggregate {
 	 * @var string
 	 */
 	public $model = '';
+	/**
+	 * The primary key used for this models table
+	 * the classname).
+	 * @var string
+	 */
+	public $primary_key = 'id';
 	/**
 	 * Can be used to override the default database behavior.
 	 * @var mixed
@@ -330,7 +335,7 @@ class DataMapper implements IteratorAggregate {
 	 * set to FALSE if you RDBMS takes care of this using constraints
 	 * @var bool
 	 */
-	public $cascade_delete = true;
+	public $cascade_delete = TRUE;
 	/**
 	 * Contains the database fields for this object.
 	 * ** Automatically configured **
@@ -762,10 +767,10 @@ class DataMapper implements IteratorAggregate {
 		$class = strtolower($class);
 
 		// Prepare path
-		if (isset($CI->load->_ci_model_paths) && is_array($CI->load->_ci_model_paths))
+		if (method_exists($CI->load, 'get_package_paths'))
 		{
 			// use CI 2.0 loader's model paths
-			$paths = $CI->load->_ci_model_paths;
+			$paths = $CI->load->get_package_paths(false);
 		}
 		else
 		{

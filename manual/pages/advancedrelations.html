@@ -273,6 +273,7 @@ relation between B and A is saved as well. And when you delete the relationship,
         ),
         </kbd><strong>'person'</strong> <kbd>=&gt; array(
             </kbd>'other_field' <kbd>=&gt; </kbd><dfn>'related_person'</var></dfn><kbd>,
+            </kbd>'reciprocal' <kbd>=&gt; </kbd><dfn>TRUE</dfn><kbd>
         )
     );
 }
@@ -282,7 +283,7 @@ relation between B and A is saved as well. And when you delete the relationship,
 	<li>You need a relationship table to define this many-to-many relation, which is this case would be called '<dfn>persons_persons</dfn>'.</li>
 	<li>This table needs to contain a column called '<dfn>person_id</dfn>' and a column called '<dfn>related_person_id</dfn>'.</li>
 </ul>
-
+<p class="note">Note that this defined per relation. If you want this to work both ways, you need to specify the '<dfn>reciprocal</dfn>' setting on <b>BOTH</b> relationship definitions.</p>
 <h2>Setting up the Table Structure with Advanced Relationships</h2>
 <p>The table structure has one key difference.  While the names of the tables is still determined using the plural form of the model, the <em>column names</em> are now defined using the <strong>relationship key</strong>.</p>
 
