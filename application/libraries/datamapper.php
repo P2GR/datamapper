@@ -3179,8 +3179,8 @@ class DataMapper implements IteratorAggregate {
 
 		if ($this->db->ar_caching === TRUE)
 		{
-			$this->ar_cache_select[] = $value;
-			$this->ar_cache_exists[] = 'select';
+			$this->db->ar_cache_select[] = $value;
+			$this->db->ar_cache_exists[] = 'select';
 		}
 	}
 
