@@ -23,7 +23,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '1.8.1-dev');
+define('DMZ_VERSION', '1.8.1');
 
 /**
  * Data Mapper Class
@@ -1135,8 +1135,7 @@ class DataMapper implements IteratorAggregate {
 				{
 					$CI->load->library('form_validation');
 					$this->lang->load('form_validation');
-// not supported anymore since CI 2.0.2
-//					unset($CI->load->_ci_classes['form_validation']);
+					$this->load->unset_form_validation_class();
 				}
 				$this->form_validation = $CI->form_validation;
 			}
@@ -6541,15 +6540,21 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _dmz_assign_libraries()
 	{
-		$CI =& get_instance();
-		if ($CI)
+		static $CI;
+		if ($CI || $CI =& get_instance())
 		{
 			if ( ! isset($CI->dm_lang))
 			{
 				$CI->dm_lang = new DM_Lang();
 			}
+
 			$this->lang = $CI->dm_lang;
-			$this->load = $CI->load;
+			if ( ! isset($CI->dm_load))
+			{
+				$CI->dm_load = new DM_Load();
+			}
+			$this->load = $CI->dm_load;
+
 			$this->config = $CI->config;
 		}
 	}
@@ -6752,6 +6757,18 @@ class DM_Lang extends CI_Lang
 	}
 }
 
+/**
+ * Hack into the Loader core class
+ *
+ * @package DMZ
+ */
+class DM_Load extends CI_Loader
+{
+	public function unset_form_validation_class()
+	{
+		unset($this->_ci_classes['form_validation']);
+	}
+}
 
 // --------------------------------------------------------------------------
 
