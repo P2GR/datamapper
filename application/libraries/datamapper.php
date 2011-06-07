@@ -3520,16 +3520,8 @@ class DataMapper implements IteratorAggregate {
 		foreach ($key as $k => $v)
 		{
 			$new_k = $this->add_table_name($k);
-			if ($new_k != $k)
-			{
-				$key[$new_k] = $v;
-				unset($key[$k]);
-			}
+			$this->db->_where($new_k, $v, $this->_get_prepend_type($type), $escape);
 		}
-
-		$type = $this->_get_prepend_type($type);
-
-		$this->db->_where($key, $value, $type, $escape);
 
 		// For method chaining
 		return $this;
