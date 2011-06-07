@@ -1133,7 +1133,8 @@ class DataMapper implements IteratorAggregate {
 				{
 					$CI->load->library('form_validation');
 					$this->lang->load('form_validation');
-					unset($CI->load->_ci_classes['form_validation']);
+// not supported anymore since CI 2.0.2
+//					unset($CI->load->_ci_classes['form_validation']);
 				}
 				$this->form_validation = $CI->form_validation;
 			}
