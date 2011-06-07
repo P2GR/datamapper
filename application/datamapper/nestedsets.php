@@ -724,8 +724,7 @@ class DMZ_Nestedsets {
 	function is_child_of($object, $node = NULL)
 	{
 		// validate the objects
-		if ( ! $this->is_valid_node($object) OR ! $this->is_valid_node($node) )
-		{
+		if ( ! $this->is_valid_node($object) OR ! $this->is_valid_node($node) )		{
 			return FALSE;
 		}
 
@@ -879,7 +878,14 @@ class DMZ_Nestedsets {
 	 */
 	function make_next_sibling_of($object, $node)
 	{
-		return $this->_moveSubtree($object, $node, $node->{$this->_rightindex}+1);
+		if ( ! $this->is_root($node) )
+		{
+			return $this->_moveSubtree($object, $node, $node->{$this->_rightindex}+1);
+		}
+		else
+		{
+			return FALSE;
+		}
 	}
 
 	// -----------------------------------------------------------------
@@ -894,7 +900,14 @@ class DMZ_Nestedsets {
 	 */
 	function make_previous_sibling_of($object, $node)
 	{
-		return $this->_moveSubtree($object, $node, $node->{$this->_leftindex});
+		if ( ! $this->is_root($node) )
+		{
+			return $this->_moveSubtree($object, $node, $node->{$this->_leftindex});
+		}
+		else
+		{
+			return FALSE;
+		}
 	}
 
 	// -----------------------------------------------------------------
@@ -1248,7 +1261,7 @@ class DMZ_Nestedsets {
 			}
 
 			// set the delta
-			$delta = $delta >= 0 ? (' + '.$delta) : (' - '.($delta * -1));
+			$delta = $delta >= 0 ? (' + '.$delta) : (' - '.(abs($delta)));
 
 			// select the range
 			$object->where($this->_leftindex.' >=', $first);
@@ -1302,7 +1315,7 @@ class DMZ_Nestedsets {
 			$object->where($this->_rightindex.' <=', $last);
 
 			// set the delta
-			$delta = $delta >= 0 ? (' + '.$delta) : (' - '.($delta * -1));
+			$delta = $delta >= 0 ? (' + '.$delta) : (' - '.(abs($delta)));
 
 			$object->update(array($this->_leftindex => $this->_leftindex.$delta, $this->_rightindex => $this->_rightindex.$delta), FALSE);
 		}
