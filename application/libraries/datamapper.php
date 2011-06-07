@@ -6544,7 +6544,11 @@ class DataMapper implements IteratorAggregate {
 		$CI =& get_instance();
 		if ($CI)
 		{
-			$this->lang = $CI->lang;
+			if ( ! isset($CI->dm_lang))
+			{
+				$CI->dm_lang = new DM_Lang();
+			}
+			$this->lang = $CI->dm_lang;
 			$this->load = $CI->load;
 			$this->config = $CI->config;
 		}
@@ -6723,6 +6727,28 @@ class DM_DatasetIterator implements Iterator, Countable
 	// Alias for count();
 	function result_count() {
 		return $this->count;
+	}
+}
+
+
+/**
+ * Hack into the Lang core class
+ *
+ * @package DMZ
+ */
+class DM_Lang extends CI_Lang
+{
+	/**
+	 * Fetch a single line of text from the language array
+	 *
+	 * @access	public
+	 * @param	string	$line	the language line
+	 * @return	string
+	 */
+	function line($line = '')
+	{
+		$value = ($line == '' OR ! isset($this->language[$line])) ? FALSE : $this->language[$line];
+		return $value !== FALSE ? $value : $line;
 	}
 }
 
