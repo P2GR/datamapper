@@ -56,8 +56,20 @@ Change Log
 
 <p>For more information on upgrading to the latest release, please see <a href="upgrade.html">Upgrade Instructions</a></p>
 
-<h2><a href="http://bitbucket.org/wanwizard/datamapper/downloads/">Version 1.8.1</a></h2>
+<h2><a href="http://bitbucket.org/wanwizard/datamapper/downloads/">Version 1.8.2</a></h2>
 <p>Release Date: t.b.d.</p>
+
+<ul>
+	<li><strong>New Features</strong>
+	</li>
+	<li><strong>Bug Fixes</strong>
+	</li>
+	<li><strong>Other Changes</strong>
+	</li>
+</ul>
+
+<h2><a href="http://bitbucket.org/wanwizard/datamapper/downloads/">Version 1.8.1</a></h2>
+<p>Release Date: June 7th, 2011</p>
 
 <ul>
 	<li><strong>New Features</strong>
@@ -68,6 +80,9 @@ Change Log
 			<li>You can now run include_related on 'many' relations, see <a href="getadvanced.html#include_related">runtime</a> for an explaination.</li>
 			<li>Added new <var><u>force_validation()</u></var> method to force revalidation when you read a record from the database that would not pass the save rules.</li>
 			<li>A new configuration value <var><b>cascade_delete</b></var> determines if delete operations need to cascade. See <a href="troubleshooting.html#Relationships.CascadingDeletes">here</a>.</li>
+			<li>Added support for the new CI reactor versions, in which Lang and Loader library properties are no longer public.</li>
+			<li>Added new <var><u>where_between()</u></var> methods to support "WHERE field BETWEEN a AND b" type queries.</li>
+			<li>The json extension now supports related objects, which will be exported as nested objects ('id' fields only).</li>
 		</ul>
 	</li>
 	<li><strong>Bug Fixes</strong>
@@ -76,6 +91,11 @@ Change Log
 			<li>Extensions now receive the object that loads then as second parameter of the constructor, as documented.</li>
 			<li>Do not unnecessarily join tables in a many to many relationship when defining a where clause on the related 'id' field.</li>
 			<li>Fixed broken subqueries.</li>
+			<li>Fixed broken <var><u>like()</u></var> queries: missing trailing space and no automatic escaping.</li>
+			<li>Fixed nestedsets extension methods for moving sibling and child objects.</li>
+			<li>Fixed language error messages in the log due to undefined validation labels when using CI Reactor or CI 2.0.2.</li>
+			<li>Fixed incorrect SQL generated when using <var><u>where()</u></var> with a multi-value array just after a <var><u>group_start()</u></var>.</li>
+			<li>Fixed broken query caching when using <var><u>group_start()</u></var>.</li>
 		</ul>
 	</li>
 	<li><strong>Other Changes</strong>
