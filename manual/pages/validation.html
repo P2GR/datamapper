@@ -147,13 +147,14 @@ Validation
         </kbd><dfn>'label' </dfn><kbd>=&gt; </kbd><dfn>'Email Address'</dfn><kbd>,
         </kbd><dfn>'rules' </dfn><kbd>=&gt; array(</kbd><dfn>'required'</dfn><kbd>, </kbd><dfn>'valid_email'</dfn><kbd>)
     ),
-<em class="new">        </kbd><dfn>'confirm_email' </dfn><kbd>=&gt; array( </kbd><samp>// accessed via $this-&gt;confirm_email
-        </samp><dfn>'label' </dfn><kbd>=&gt; </kbd><dfn>'Confirm Email Address'</dfn><kbd>,
+<em class="new">    array( </kbd><samp>// accessed via $this-&gt;confirm_email
+        </samp></kbd><dfn>'field' </dfn><kbd>=&gt; </kbd><dfn>'confirm_email'</dfn><kbd>,
+        <dfn>'label' </dfn><kbd>=&gt; </kbd><dfn>'Confirm Email Address'</dfn><kbd>,
         </kbd><dfn>'rules' </dfn><kbd>=&gt; array(</kbd><dfn>'matches' </dfn><kbd>=&gt; </kbd><dfn>'email'</dfn><kbd>)
     )</em>
 );</kbd>
 </pre>
-
+<p class="note">You can also define the fieldname by specifying a 'field' element in the array, as 'confirm_email' shows.</p>
 <h2 id="Related.Rules">Setting Related Validation Rules</h2>
 
 <p>DataMapper also lets you set validation rules for your relationships. Using <a href="save.html"><strong>save()</strong></a>, you can save both an object and its relationships at the same time.  This is useful if you, for example, have a requirement that a User must relate to a Group.  To validate this requirement, you would add rules for the Group relationship to the User <var><i>$validation</i></var> array in this way:</p>
@@ -345,6 +346,7 @@ Validation
 <var>$u </var><kbd>= new </kbd><var>User</var><kbd>();
 </kbd><var>$u</var><kbd>-&gt;</kbd><var>username </var><kbd>= </kbd><dfn>"foo"</dfn><kbd>;
 </kbd><var>$u</var><kbd>-&gt;</kbd><var>password </var><kbd>= </kbd><dfn>"bar"</dfn><kbd>;
+</kbd><var>$u</var><kbd>-&gt;</kbd><var>email </var><kbd>= </kbd><dfn>"foo@example.org"</dfn><kbd>;
 </kbd><var>$u</var><kbd>-&gt;</kbd><var><u>save</u></var><kbd>();</kbd>
 </pre>
 
