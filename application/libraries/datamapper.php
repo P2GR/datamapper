@@ -434,6 +434,8 @@ class DataMapper implements IteratorAggregate {
 	protected $_force_save_as_new = FALSE;
 	// If true, the next where statement will not be prefixed with an AND or OR.
 	protected $_where_group_started = FALSE;
+	// Tracks total number of groups created
+	protected $_group_count = 0;
 
 	// storage for additional model paths for the autoloader
 	protected static $model_paths = array();
@@ -3388,12 +3390,18 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function group_start($not = '', $type = 'AND ')
 	{
+		// Increment group count number to make them unique
+		$this->_group_count++;
+
 		// in case groups are being nested
 		$type = $this->_get_prepend_type($type);
 
 		$prefix = (count($this->db->ar_where) == 0 AND count($this->db->ar_cache_where) == 0) ? '' : $type;
-		$this->db->ar_where[] = $prefix . $not .  ' (';
-		$this->_where_group_started = TRUE;
+
+		$value =  $prefix . $not . str_repeat(' ', $this->_group_count) . ' (';
+		$this->db->ar_where[] = $value;
+		if($this->db->ar_caching) $this->db->ar_cache_where[] = $value;
+
 		return $this;
 	}
 
@@ -3438,9 +3446,11 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function group_end()
 	{
-		$this->db->ar_where[] = ')';
+		$value = str_repeat(' ', $this->_group_count) . ')';
+		$this->db->ar_where[] = $value;
+		if($this->db->ar_caching) $this->db->ar_cache_where[] = $value;
+
 		$this->_where_group_started = FALSE;
-		return $this;
 	}
 
 	// --------------------------------------------------------------------
