@@ -54,6 +54,7 @@ define('DMZ_VERSION', '1.8.1-dev');
  *
  * Related:
  * @method DataMapper where_related() where_related(mixed $related, string $field = NULL, string $value = NULL) Limits results based on a related field.
+ * @method DataMapper where_between_related() where_related(mixed $related, string $field = NULL, string $value1 = NULL, string $value2 = NULL) Limits results based on a related field, via BETWEEN.
  * @method DataMapper or_where_related() or_where_related(mixed $related, string $field = NULL, string $value = NULL) Limits results based on a related field, via OR.
  * @method DataMapper where_in_related() where_in_related(mixed $related, string $field, array $values) Limits results by comparing a related field to a range of values.
  * @method DataMapper or_where_in_related() or_where_in_related(mixed $related, string $field, array $values) Limits results by comparing a related field to a range of values.
@@ -75,6 +76,7 @@ define('DMZ_VERSION', '1.8.1-dev');
  *
  * Join Fields:
  * @method DataMapper where_join_field() where_join_field(mixed $related, string $field = NULL, string $value = NULL) Limits results based on a join field.
+ * @method DataMapper where_between_join_field() where_related(mixed $related, string $field = NULL, string $value1 = NULL, string $value2 = NULL) Limits results based on a join field, via BETWEEN.
  * @method DataMapper or_where_join_field() or_where_join_field(mixed $related, string $field = NULL, string $value = NULL) Limits results based on a join field, via OR.
  * @method DataMapper where_in_join_field() where_in_join_field(mixed $related, string $field, array $values) Limits results by comparing a join field to a range of values.
  * @method DataMapper or_where_in_join_field() or_where_in_join_field(mixed $related, string $field, array $values) Limits results by comparing a join field to a range of values.
@@ -116,6 +118,7 @@ define('DMZ_VERSION', '1.8.1-dev');
  *
  * Field -> SQL functions:
  * @method DataMapper where_field_field_func() where_field_func($field, string $function_name, mixed $args,...) Limits results based on a SQL function.
+ * @method DataMapper where_between_field_field_func() where_between_field_func($field, string $function_name, mixed $args,...) Limits results based on a SQL function, via BETWEEN.
  * @method DataMapper or_where_field_field_func() or_where_field_func($field, string $function_name, mixed $args,...) Limits results based on a SQL function, via OR.
  * @method DataMapper where_in_field_field_func() where_in_field_func($field, string $function_name, mixed $args,...) Limits results by comparing a SQL function to a range of values.
  * @method DataMapper or_where_in_field_field_func() or_where_in_field_func($field, string $function_name, mixed $args,...) Limits results by comparing a SQL function to a range of values.
@@ -3530,6 +3533,78 @@ class DataMapper implements IteratorAggregate {
 	// --------------------------------------------------------------------
 
 	/**
+	 * Where Between
+	 *
+	 * Sets the WHERE field BETWEEN 'value1' AND 'value2' SQL query joined with
+	 * AND if appropriate.
+	 *
+	 * @param	string $key A field to check.
+	 * @param	mixed $value value to start with
+	 * @param	mixed $value value to end with
+	 * @return	DataMapper Returns self for method chaining.
+	 */
+	public function where_between($key = NULL, $value1 = NULL, $value2 = NULL)
+	{
+	 	return $this->_where_between($key, $value1, $value2);
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Where Between
+	 *
+	 * Sets the WHERE field BETWEEN 'value1' AND 'value2' SQL query joined with
+	 * AND if appropriate.
+	 *
+	 * @param	string $key A field to check.
+	 * @param	mixed $value value to start with
+	 * @param	mixed $value value to end with
+	 * @return	DataMapper Returns self for method chaining.
+	 */
+	public function where_not_between($key = NULL, $value1 = NULL, $value2 = NULL)
+	{
+	 	return $this->_where_between($key, $value1, $value2, TRUE);
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Where Between
+	 *
+	 * Sets the WHERE field BETWEEN 'value1' AND 'value2' SQL query joined with
+	 * AND if appropriate.
+	 *
+	 * @param	string $key A field to check.
+	 * @param	mixed $value value to start with
+	 * @param	mixed $value value to end with
+	 * @return	DataMapper Returns self for method chaining.
+	 */
+	public function or_where_between($key = NULL, $value1 = NULL, $value2 = NULL)
+	{
+	 	return $this->_where_between($key, $value1, $value2, FALSE, 'OR ');
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Where Between
+	 *
+	 * Sets the WHERE field BETWEEN 'value1' AND 'value2' SQL query joined with
+	 * AND if appropriate.
+	 *
+	 * @param	string $key A field to check.
+	 * @param	mixed $value value to start with
+	 * @param	mixed $value value to end with
+	 * @return	DataMapper Returns self for method chaining.
+	 */
+	public function or_where_not_between($key = NULL, $value1 = NULL, $value2 = NULL)
+	{
+	 	return $this->_where_between($key, $value1, $value2, TRUE, 'OR ');
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
 	 * Where In
 	 *
 	 * Sets the WHERE field IN ('item', 'item') SQL query joined with
@@ -3623,6 +3698,31 @@ class DataMapper implements IteratorAggregate {
 			$values = $arr;
 		}
 	 	$this->db->_where_in($this->add_table_name($key), $values, $not, $type);
+
+		// For method chaining
+		return $this;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Where Between
+	 *
+	 * Called by where_between(), or_where_between(), where_not_between(), or or_where_not_between().
+	 *
+	 * @ignore
+	 * @param	string $key A field to check.
+	 * @param	mixed $value value to start with
+	 * @param	mixed $value value to end with
+	 * @param	bool $not If TRUE, use NOT IN instead of IN.
+	 * @param	string $type The type of connection (AND or OR)
+	 * @return	DataMapper Returns self for method chaining.
+	 */
+	protected function _where_between($key = NULL, $value1 = NULL, $value2 = NULL, $not = FALSE, $type = 'AND ')
+	{
+		$type = $this->_get_prepend_type($type);
+
+	 	$this->db->_where("`$key` ".($not?"NOT ":"")."BETWEEN ".$value1." AND ".$value2, NULL, $type, NULL);
 
 		// For method chaining
 		return $this;
