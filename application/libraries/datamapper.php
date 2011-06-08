@@ -3395,6 +3395,8 @@ class DataMapper implements IteratorAggregate {
 		// in case groups are being nested
 		$type = $this->_get_prepend_type($type);
 
+		$this->_where_group_started = TRUE;
+
 		$prefix = (count($this->db->ar_where) == 0 AND count($this->db->ar_cache_where) == 0) ? '' : $type;
 
 		$value =  $prefix . $not . str_repeat(' ', $this->_group_count) . ' (';
