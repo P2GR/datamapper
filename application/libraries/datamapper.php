@@ -3450,6 +3450,8 @@ class DataMapper implements IteratorAggregate {
 		if($this->db->ar_caching) $this->db->ar_cache_where[] = $value;
 
 		$this->_where_group_started = FALSE;
+
+		return $this;
 	}
 
 	// --------------------------------------------------------------------
