@@ -77,6 +77,13 @@ Associative Array Conversion Methods
 </ul>
 <p>Converts <var>$object<kbd>-></kbd><i>all</i></var> into an array of associative arrays, using the <var><s>to_array</s></var> method.</p>
 
+<h2>all_to_single_array(<i>$field</i>)</h2>
+<ul>
+	<li><dfn>$field</dfn>: (Required) field who's value has to be added to the array.  If empty or not provided, an empty array is returned. The id value of the objects in the resultset will be used a key of the array.</li>
+	<li><b>Returns</b>: An array of <var>$field</var> valuues in <var>$object<kbd>-></kbd><i>all</i></var>.</li>
+</ul>
+<p>Converts the value of the column $field in <var>$object<kbd>-></kbd><i>all</i></var> into an array, using the <var>id</var> value as key. One possible use of this method is to generate HTML select dropdowns.</p>
+
 <h2>from_array($data, <i>$fields</i>, <i>$save</i>)</h2>
 <ul>
 	<li><dfn>$data</dfn>: An associative array of key/value pairs to set on the object.</li>
