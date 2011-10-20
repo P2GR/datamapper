@@ -23,7 +23,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '1.8.1');
+define('DMZ_VERSION', '1.8.1-dev');
 
 /**
  * Data Mapper Class
@@ -482,7 +482,7 @@ class DataMapper implements IteratorAggregate {
 		foreach (DataMapper::$config as $config_key => &$config_value)
 		{
 			// Only if they're not already set
-			if (empty($this->{$config_key}))
+			if (property_exists($this, $config_key))
 			{
 				$this->{$config_key} =& $config_value;
 			}
@@ -772,18 +772,14 @@ class DataMapper implements IteratorAggregate {
 		$class = strtolower($class);
 
 		// Prepare path
+		$paths = array();
 		if (method_exists($CI->load, 'get_package_paths'))
 		{
 			// use CI 2.0 loader's model paths
 			$paths = $CI->load->get_package_paths(false);
 		}
-		else
-		{
-			// search only the applications models folder
-			$paths[] = APPPATH;
-		}
 
-		foreach (array_merge($paths, self::$model_paths) as $path)
+		foreach (array_merge(array(APPPATH),$paths, self::$model_paths) as $path)
 		{
 			// Prepare file
 			$file = $path . 'models/' . $class . EXT;
@@ -1213,11 +1209,10 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function __call($method, $arguments)
 	{
-
 		// List of watched method names
 		// NOTE: order matters: make sure more specific items are listed before
 		// less specific items
-		$watched_methods = array(
+		static $watched_methods = array(
 			'save_', 'delete_',
 			'get_by_related_', 'get_by_related', 'get_by_',
 			'_related_subquery', '_subquery',
@@ -1226,37 +1221,41 @@ class DataMapper implements IteratorAggregate {
 			'_field_func', '_func'
 		);
 
-		foreach ($watched_methods as $watched_method)
-		{
-			// See if called method is a watched method
-			if (strpos($method, $watched_method) !== FALSE)
-			{
-				$pieces = explode($watched_method, $method);
-				if ( ! empty($pieces[0]) && ! empty($pieces[1]))
-				{
-					// Watched method is in the middle
-					return $this->{'_' . trim($watched_method, '_')}($pieces[0], array_merge(array($pieces[1]), $arguments));
-				}
-				else
-				{
-					// Watched method is a prefix or suffix
-					return $this->{'_' . trim($watched_method, '_')}(str_replace($watched_method, '', $method), $arguments);
-				}
-			}
-		}
-
-		// attempt to call an extension
 		$ext = NULL;
+
+		// attempt to call an extension first
 		if($this->_extension_method_exists($method, 'local'))
 		{
 			$name = $this->extensions['_methods'][$method];
 			$ext = $this->extensions[$name];
 		}
-		else if($this->_extension_method_exists($method, 'global'))
+		elseif($this->_extension_method_exists($method, 'global'))
 		{
 			$name = DataMapper::$global_extensions['_methods'][$method];
 			$ext = DataMapper::$global_extensions[$name];
 		}
+		else
+		{
+			foreach ($watched_methods as $watched_method)
+			{
+				// See if called method is a watched method
+				if (strpos($method, $watched_method) !== FALSE)
+				{
+					$pieces = explode($watched_method, $method);
+					if ( ! empty($pieces[0]) && ! empty($pieces[1]))
+					{
+						// Watched method is in the middle
+						return $this->{'_' . trim($watched_method, '_')}($pieces[0], array_merge(array($pieces[1]), $arguments));
+					}
+					else
+					{
+						// Watched method is a prefix or suffix
+						return $this->{'_' . trim($watched_method, '_')}(str_replace($watched_method, '', $method), $arguments);
+					}
+				}
+			}
+		}
+
 		if( ! is_null($ext))
 		{
 			array_unshift($arguments, $this);
@@ -1364,6 +1363,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function get($limit = NULL, $offset = NULL)
 	{
+
 		// Check if this is a related object and if so, perform a related get
 		if (! $this->_handle_related())
 		{
@@ -2828,9 +2828,8 @@ class DataMapper implements IteratorAggregate {
 			else
 			{
 				// provide feedback on errors
-				$parent = $this->parent['model'];
 				$this_model = get_class($this);
-				show_error("DataMapper Error: '$parent' is not a valid parent relationship for $this_model.  Are your relationships configured correctly?");
+				show_error("DataMapper Error: '".$this->parent['model']."' is not a valid parent relationship for $this_model.  Are your relationships configured correctly?");
 			}
 		}
 
@@ -6188,7 +6187,8 @@ class DataMapper implements IteratorAggregate {
 		if ( ! is_array($definition))
 		{
 			$definition = array('class' => $definition);
-		} else if ( ! isset($definition['class']))
+		}
+		else if ( ! isset($definition['class']))
 		{
 			// if already an array, ensure that the class attribute is set
 			$definition['class'] = $name;
@@ -6673,6 +6673,7 @@ class DM_DatasetIterator implements Iterator, Countable
 	{
 		// store the object as a main object
 		$this->parent = $object;
+
 		// clone the parent object, so it can be manipulated safely.
 		$this->object = $object->get_clone();
 
