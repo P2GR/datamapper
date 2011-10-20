@@ -4256,7 +4256,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function trans_status()
 	{
-		return $this->_trans_status;
+		return $this->db->trans_status();
 	}
 
 	// --------------------------------------------------------------------
