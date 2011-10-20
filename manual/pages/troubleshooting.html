@@ -374,11 +374,30 @@ foreach(</kbd><var>$parts</var><kbd> as </kbd><var>$part</var><kbd>) {
 
 <h2 id="Relationships.CascadingDeletes">I have implemented cascading deletes in my RDBMS. Is that a problem?</h2>
 <p>No, as long as you have installed Datamapper v1.8.1 or higher, and have configured Datamapper to not automatically remove relations when deleting an object.</p>
-<p>To disable automatic deletion of relations, set the config variable <var>cascading_delete</var> to <var><dfn>FALSE</dfn></var>. You can do this globally, per model and per relation.</p>
+<p>To disable automatic deletion of relations, set the config variable <var>cascade_delete</var> to <var><dfn>FALSE</dfn></var>. You can do this globally, per model and per relation.</p>
 <p>You need to disable this option (set to <var><dfn>FALSE</dfn></var>) when you use 'ON DELETE CASCADE' in your RDBMS.</p>
 
 <h2 id="Relationships.NotRelated">How do I retrieve all records that do NOT have a relationship?</h2>
 <p>Exactly like you would do it when you write your native SQL statement: using a subquery:</p>
+<pre>
+<samp>// find all books related to user "John"</samp>
+<var>$sub_books</var> <kbd>= new</kbd> <var>Book</var><kbd>();</kbd>
+<var>$sub_books</var><kbd>-></kbd><var><u>select</u></var><kbd>(</kbd><dfn>'id'</dfn><kbd>)-></kbd><var><u>where_related_user</u></var><kbd>(</kbd><dfn>'name'</dfn><kbd>,</kbd> <dfn>"John"<dfn><kbd>);</kbd>
+
+<samp>// now get all books not related</samp>
+<var>$book</var><kbd> = new </kbd><var>Book</var><kbd>();</kbd>
+<var>$book</var><kbd>-></kbd><var><u>where_not_in_subquery</u></var><kbd>(</kbd><dfn>'id'</dfn><kbd>,</kbd> <var>$sub_books</var><kbd>)-></kbd><var><u>get</u></var><kbd>();</kbd>
+</pre>
+<p>This will generate the following query, exactly like you would code it by hand:</p>
+<pre>
+<var>SELECT *
+FROM (<dfn>`books`</dfn>)
+WHERE books.id NOT IN (SELECT <dfn>`books_subquery`</dfn>.<dfn>`id`</dfn>
+ FROM <dfn>`books`</dfn> <dfn>`books_subquery`</dfn>
+ LEFT OUTER JOIN <dfn>`books_users`</dfn> books_users ON <dfn>`books_subquery`</dfn>.<dfn>`id`</dfn> = <dfn>`books_users`</dfn>.<dfn>`book_id`</dfn>
+ WHERE <dfn>`books_users`</dfn>.<dfn>`book_id`</dfn> IN (<dfn>1</dfn>, <dfn>16</dfn>, <dfn>23</dfn>) )
+</var></pre>
+<p>A more complex example:</p>
 <pre>
 <samp>// create the parent and child objects</samp>
 <var>$parent</var> <kbd>= new</kbd> <var>Parent</var><kbd>();</kbd>
