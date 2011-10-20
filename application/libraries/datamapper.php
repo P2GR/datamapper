@@ -919,20 +919,24 @@ class DataMapper implements IteratorAggregate {
 			}
 
 			// determine the file name and class name
-			if(strpos($name, '/') === FALSE)
+			$file = DataMapper::$config['extensions_path'] . '/' . $name . EXT;
+			if ( ! file_exists($file))
 			{
-				$file = APPPATH . DataMapper::$config['extensions_path'] . '/' . $name . EXT;
-				$ext = $name;
-			}
-			else
-			{
-				$file = APPPATH . $name . EXT;
-				$ext = array_pop(explode('/', $name));
-			}
+				if(strpos($name, '/') === FALSE)
+				{
+					$file = APPPATH . DataMapper::$config['extensions_path'] . '/' . $name . EXT;
+					$ext = $name;
+				}
+				else
+				{
+					$file = APPPATH . $name . EXT;
+					$ext = array_pop(explode('/', $name));
+				}
 
-			if(!file_exists($file))
-			{
-				show_error('DataMapper Error: loading extension ' . $name . ': File not found.');
+				if(!file_exists($file))
+				{
+					show_error('DataMapper Error: loading extension ' . $name . ': File not found.');
+				}
 			}
 
 			// load class
