@@ -53,7 +53,7 @@ Installation Instructions
 <h1>Installation Instructions</h1>
 
 <h2>Short Version</h2>
-<p>Unzip and copy everything within <var>application</var> into your CodeIgniter installation's <var>application</var> folder, edit the config, and go map some data!</p>
+<p>Unzip and copy everything within <var>application</var> into your CodeIgniter installation's <var>application</var> folder, add the <strong>bootstrap</strong> to the index.php file, edit the config, and go map some data!</p>
 
 <h2>Long Version</h2>
 <p>DataMapper is installed in seven steps, with two optional steps:</p>
@@ -63,7 +63,8 @@ Installation Instructions
 	<li>Open the <var>application/config/datamapper.php</var> file with a text editor and set your <a href="config.html">preferred DataMapper settings</a>.</li>
 	<li>Upload the <var>application/config/datamapper.php</var> file to your CodeIgniter <kbd>application/config</kbd> folder.</li>
 	<li>Upload the <var>application/libraries/datamapper.php</var> file to your CodeIgniter <kbd>application/libraries</kbd> folder.</li>
-	<li>Upload the <var>application/languages/english/datamapper_lang.php</var> file to your CodeIgniter <kbd>application/language/english</kbd> folder.</li>
+	<li>Upload the <var>application/third_party/datamapper</var> folder to your CodeIgniter <kbd>application/third_party</kbd> folder.</li>
+	<li>Upload the <var>application/language</var> folder to your CodeIgniter <kbd>application/language</kbd> folder.</li>
 	<li>Open your CodeIgniter <kbd>application/config/autoload.php</kbd> file with a text editor and add the <dfn>database</dfn> and <dfn>datamapper</dfn> libraries to the <var><i>autoload</i></var> libraries array.
 		<pre><var>$autoload</var><kbd>[</kbd><dfn>'libraries'</dfn><kbd>] = array(</kbd><dfn>'database'</dfn><kbd>, </kbd><dfn>'datamapper'</dfn><kbd>);</kbd></pre>
 		Also, make sure you clear the <dfn>models</dfn> array, because DataMapper automatically loads these.
@@ -73,6 +74,12 @@ Installation Instructions
 		<pre><var>$db</var><kbd>[</kbd><dfn>'default'</dfn><kbd>][</kbd><dfn>'dbprefix'</dfn><kbd>] = </kbd><dfn>""</dfn><kbd>;</kbd></pre>
 		For information on using table prefixes with DataMapper, read <a href="prefix.html">Setting up Table Prefixes</a>.
 	</li>
+	<li>Open your CodeIgniter <var>/index.php</var> file with a text editor and add the DataMapper bootstrap, directly BEFORE the Codeigniter bootstrap.
+		<pre>/* --------------------------------------------------------------------
+ * LOAD THE DATAMAPPER BOOTSTRAP FILE
+ * --------------------------------------------------------------------
+ */<var>
+require_once APPPATH.'third_party/datamapper/bootstrap.php';</var></pre>
 	<li>Optionally, upload the <var>application/helpers/inflector_helper.php</var> file to your CodeIgniter <kbd>application/helpers</kbd> folder.</li>
 	<li>Optionally, upload the <var>application/datamapper</var> directory to your CodeIgniter <kbd>application</kbd> folder, to enable the use of extensions.  <strong>Highly Recommended</strong>! This doesn't have any performance penalty if you do not load the extensions.
 		<div class="note">
@@ -82,7 +89,7 @@ Installation Instructions
 </ol>
 
 <p>That's it!</p>
-
+<br />
 <p>If you're new to DataMapper, please read the <a href="gettingstarted.html">Getting Started</a> section of the User Guide to begin learning how
 to use DataMapper. Enjoy!</p>
 
