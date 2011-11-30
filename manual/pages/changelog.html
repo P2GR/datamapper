@@ -57,14 +57,29 @@ Change Log
 <p>For more information on upgrading to the latest release, please see <a href="upgrade.html">Upgrade Instructions</a></p>
 
 <h2><a href="http://bitbucket.org/wanwizard/datamapper/downloads/">Version 1.8.2</a></h2>
-<p>Release Date: t.b.d.</p>
+<p>Release Date: November 30th, 2011</p>
 
 <ul>
 	<li><strong>New Features</strong>
+		<ul>
+			<li>Backported the DataMapper 2.0 bootstrap to get access to core classes in CodeIgniter version 2.0.3 and above.</li>
+			<li>Changed the way watched methods are processed. This allows extensions to replace core methods.</li>
+			<li>Add support for an absolute path for "extensions_path".</li>
+			<li>Added a all_to_single_array() method to the array extension.</li>
+		</ul>
 	</li>
 	<li><strong>Bug Fixes</strong>
+		<ul>
+			<li>Added a default for nestedsets root field name as described in the documentation.</li>
+			<li>Fixed ignoring model configuration properties with a NULL or FALSE value.</li>
+			<li>Fixed broken trans_status() method.</li>
+		</ul>
 	</li>
 	<li><strong>Other Changes</strong>
+		<ul>
+			<li>Improved the way the available model paths are determined.</li>
+			<li>Several corrections to the documentation.</li>
+		</ul>
 	</li>
 </ul>
 

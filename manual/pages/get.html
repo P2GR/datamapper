@@ -235,7 +235,7 @@ instead of using the $object->where() function:</p>
 
 <pre>
 <var>$o </var><kbd>= new </kbd><var>Object</var><kbd>();
-</kbd><var>$o</var><kbd>-&gt;</kbd><var><u>get_where</u></var><kbd>(array(</kbd><dfn>'id'</dfn><kbd>, =&gt; </kbd><var>$id</var><kbd>), </kbd><var>$limit</var><kbd>, </kbd><var>$offset</var><kbd>);</kbd>
+</kbd><var>$o</var><kbd>-&gt;</kbd><var><u>get_where</u></var><kbd>(array(</kbd><dfn>'id'</dfn><kbd> =&gt; </kbd><var>$id</var><kbd>), </kbd><var>$limit</var><kbd>, </kbd><var>$offset</var><kbd>);</kbd>
 </pre>
 
 <p>Please read the <var><u>where</u></var> function below for more information.</p>
@@ -387,7 +387,7 @@ instead of using the $object->where() function:</p>
 
 	<p>You can write your own clauses manually:</p>
 <pre>
-<var>$where </var><kbd>= </kbd><dfn>"name="</dfn><var>Joe</var><dfn>" AND status="</dfn><var>boss</var><dfn>" OR status="</dfn><var>active</var><dfn>""</dfn><kbd>;
+<var>$where </var><kbd>= </kbd><dfn>"name='</dfn><var>Joe</var><dfn>' AND status='</dfn><var>boss</var><dfn>' OR status='</dfn><var>active</var><dfn>'"</dfn><kbd>;
 </kbd><var>$o </var><kbd>= new </kbd><var>Object</var><kbd>();
 </kbd><var>$o</var><kbd>-&gt;</kbd><var><u>where</u></var><kbd>(</kbd><var>$where</var><kbd>);</kbd>
 </pre>

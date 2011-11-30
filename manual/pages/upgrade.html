@@ -71,14 +71,29 @@ Upgrading Instructions
 
 <p class="note">You can determine which version of Datamapper ORM you are using by looking at the top of <var>application/libraries/datamapper.php</var></p>
 
+<h3>From 1.8.1 to 1.8.2</h3>
+<ul>
+	<li>DataMapper 1.8.2 is mainly a bugfix release, altough it does add some new features. One important feature is support for CodeIgniter 2.0.3 and newer (including Reactor).</li>
+	<li>To use this version, you need to install the DataMapper bootstrap in your index.php file:
+		<pre style="background-color:#B4FFBB;font-weight:bold;">/*
+ * --------------------------------------------------------------------
+ * LOAD THE DATAMAPPER BOOTSTRAP FILE
+ * -------------------------------------------------------------------- *
+ */
+require_once APPPATH.'third_party/datamapper/bootstrap.php';</pre>
+Place this line of code at the end of your applications index.php file, just <strong>ABOVE</strong> the CodeIgniter bootstrap file!
+	</li>
+	<li><p class="important" style="color:red;">DataMapper 1.8.2. only works on CodeIgniter version 2.0.3. and above!</p></li>
+</ul>
+
+
 <h3>From 1.8.0 to 1.8.1</h3>
 <ul>
 	<li>DataMapper 1.8.1 is mainly a bugfix release, altough it does add some new features. There are no additional upgrade instructions for this release.</li>
+	<li><p class="important" style="color:red;">DataMapper 1.8.1. only works on CodeIgniter version 2.0.2. and below!</p></li>
 </ul>
 
 <h2 id="Upgrade.DMZ">Upgrading from Datamapper DMZ "OverZealous" Edition</h2>
-
-<p class="note">You can determine which version of DMZ you are using by looking at the top of <var>application/libraries/datamapper.php</var></p>
 
 <h3>From 1.7.1 to 1.8.0</h3>
 <ul>
