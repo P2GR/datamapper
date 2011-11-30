@@ -12,7 +12,7 @@
  * @author  	Phil DeJarnett (up to v1.7.1)
  * @author  	Simon Stenhouse (up to v1.6.0)
  * @link		http://datamapper.wanwizard.eu/
- * @version 	1.8.1-dev
+ * @version 	1.8.2
  */
 
 /**
@@ -23,7 +23,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '1.8.1-dev');
+define('DMZ_VERSION', '1.8.2');
 
 /**
  * Data Mapper Class
@@ -1101,7 +1101,7 @@ class DataMapper implements IteratorAggregate {
 					}
 					// clone, so we don't create additional connections to the DB
 					$this->db = clone($CI->db);
-					$this->db->_reset_select();
+					$this->db->dm_call_method('_reset_select');
 				}
 				else
 				{
@@ -1438,7 +1438,7 @@ class DataMapper implements IteratorAggregate {
 			$this->_handle_related();
 		}
 
-		$this->db->_track_aliases($this->table);
+		$this->db->dm_call_method('_track_aliases', $this->table);
 		$this->db->from($this->table);
 
 		$this->_handle_default_order_by();
@@ -1448,7 +1448,7 @@ class DataMapper implements IteratorAggregate {
 			$this->limit($limit, $offset);
 		}
 
-		$sql = $this->db->_compile_select();
+		$sql = $this->db->dm_call_method('_compile_select');
 		$this->_clear_after_query();
 		return $sql;
 	}
@@ -2481,7 +2481,7 @@ class DataMapper implements IteratorAggregate {
 	protected function _clear_after_query()
 	{
 		// clear the query as if it was run
-		$this->db->_reset_select();
+		$this->db->dm_call_method('_reset_select');
 
 		// in case some include_related instantiations were set up, clear them
 		$this->_instantiations = NULL;
@@ -2582,12 +2582,12 @@ class DataMapper implements IteratorAggregate {
 		if(!empty($column))
 		{
 			// COUNT DISTINCT
-			$select = 'SELECT COUNT(DISTINCT ' . $this->db->_protect_identifiers($column) . ') AS ';
+			$select = 'SELECT COUNT(DISTINCT ' . $this->db->dm_call_method('_protect_identifiers', $column) . ') AS ';
 		}
-		$sql = $this->db->_compile_select($select . $this->db->_protect_identifiers('numrows'));
+		$sql = $this->db->dm_call_method('_compile_select', $select . $this->db->dm_call_method('_protect_identifiers', 'numrows'));
 
 		$query = $this->db->query($sql);
-		$this->db->_reset_select();
+		$this->db->dm_call_method('_reset_select');
 
 		if ($query->num_rows() == 0)
 		{
@@ -3142,10 +3142,10 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		// Table Name pattern should be
-		$tablename = $this->db->_escape_identifiers($this->table);
+		$tablename = $this->db->dm_call_method('_escape_identifiers', $this->table);
 		$table_pattern = '(?:' . preg_quote($this->table) . '|' . preg_quote($tablename) . '|\(' . preg_quote($tablename) . '\))';
 
-		$fieldname = $this->db->_escape_identifiers('__field__');
+		$fieldname = $this->db->dm_call_method('_escape_identifiers', '__field__');
 		$field_pattern = '([-\w]+|' . str_replace('__field__', '[-\w]+', preg_quote($fieldname)) . ')';
 
 		// replace all table.field references
@@ -3153,18 +3153,18 @@ class DataMapper implements IteratorAggregate {
 		// the NOT _ at the beginning is to prevent replacing of advanced relationship table references.
 		$pattern = '/([^_])' . $table_pattern . '\.' . $field_pattern . '/i';
 		// replacement ends up being `table_subquery`.`$1`
-		$replacement = '$1' . $this->db->_escape_identifiers($this->table . '_subquery') . '.$2';
+		$replacement = '$1' . $this->db->dm_call_method('_escape_identifiers', $this->table . '_subquery') . '.$2';
 		$sql = preg_replace($pattern, $replacement, $sql);
 
 		// now replace all "table table" aliases
 		// important: the space at the end is required
 		$pattern = "/$table_pattern $table_pattern /i";
-		$replacement = $tablename . ' ' . $this->db->_escape_identifiers($this->table . '_subquery') . ' ';
+		$replacement = $tablename . ' ' . $this->db->dm_call_method('_escape_identifiers', $this->table . '_subquery') . ' ';
 		$sql = preg_replace($pattern, $replacement, $sql);
 
 		// now replace "FROM table" for self relationships
 		$pattern = "/FROM $table_pattern([,\\s])/i";
-		$replacement = "FROM $tablename " . $this->db->_escape_identifiers($this->table . '_subquery') . '$1';
+		$replacement = "FROM $tablename " . $this->db->dm_call_method('_escape_identifiers', $this->table . '_subquery') . '$1';
 		$sql = preg_replace($pattern, $replacement, $sql);
 		$sql = str_replace("\n", "\n\t", $sql);
 
@@ -3540,7 +3540,7 @@ class DataMapper implements IteratorAggregate {
 		foreach ($key as $k => $v)
 		{
 			$new_k = $this->add_table_name($k);
-			$this->db->_where($new_k, $v, $this->_get_prepend_type($type), $escape);
+			$this->db->dm_call_method('_where', $new_k, $v, $this->_get_prepend_type($type), $escape);
 		}
 
 		// For method chaining
@@ -3714,7 +3714,7 @@ class DataMapper implements IteratorAggregate {
 			}
 			$values = $arr;
 		}
-	 	$this->db->_where_in($this->add_table_name($key), $values, $not, $type);
+	 	$this->db->dm_call_method('_where_in', $this->add_table_name($key), $values, $not, $type);
 
 		// For method chaining
 		return $this;
@@ -3739,7 +3739,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		$type = $this->_get_prepend_type($type);
 
-	 	$this->db->_where("`$key` ".($not?"NOT ":"")."BETWEEN ".$value1." AND ".$value2, NULL, $type, NULL);
+	 	$this->db->dm_call_method('_where', "`$key` ".($not?"NOT ":"")."BETWEEN ".$value1." AND ".$value2, NULL, $type, NULL);
 
 		// For method chaining
 		return $this;
@@ -4025,7 +4025,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _having($key, $value = '', $type = 'AND ', $escape = TRUE)
 	{
-		$this->db->_having($this->add_table_name($key), $value, $type, $escape);
+		$this->db->dm_call_method('_having', $this->add_table_name($key), $value, $type, $escape);
 
 		// For method chaining
 		return $this;
@@ -4974,7 +4974,7 @@ class DataMapper implements IteratorAggregate {
 		$object->select_func('COUNT', '*', 'count');
 		$this_rel = $related_properties['other_field'];
 		$tablename = $object->_add_related_table($this, $this_rel);
-		$object->where($tablename . '.id  = ', $this->db->_escape_identifiers('${parent}.id'), FALSE);
+		$object->where($tablename . '.id  = ', $this->db->dm_call_method('_escape_identifiers', '${parent}.id'), FALSE);
 		$this->select_subquery($object, $alias);
 		return $this;
 	}
@@ -4997,7 +4997,7 @@ class DataMapper implements IteratorAggregate {
 		if (empty($related_field) || empty($id))
 		{
 			// Reset query
-			$this->db->_reset_select();
+			$this->db->dm_call_method('_reset_select');
 
 			return FALSE;
 		}
@@ -6551,19 +6551,19 @@ class DataMapper implements IteratorAggregate {
 		static $CI;
 		if ($CI || $CI =& get_instance())
 		{
-			if ( ! isset($CI->dm_lang))
-			{
-				$CI->dm_lang = new DM_Lang();
-			}
+			// make sure these exists to not trip __get()
+			$this->load = null;
+			$this->config = null;
+			$this->lang = null;
 
-			$this->lang = $CI->dm_lang;
-			if ( ! isset($CI->dm_load))
-			{
-				$CI->dm_load = new DM_Load();
-			}
-			$this->load = $CI->dm_load;
+			// access to the loader
+			$this->load =& $CI->load;
 
-			$this->config = $CI->config;
+			// to the config
+			$this->config =& $CI->config;
+
+			// and the language class
+			$this->lang =& $CI->lang;
 		}
 	}
 
@@ -6744,40 +6744,6 @@ class DM_DatasetIterator implements Iterator, Countable
 	}
 }
 
-
-/**
- * Hack into the Lang core class
- *
- * @package DMZ
- */
-class DM_Lang extends CI_Lang
-{
-	/**
-	 * Fetch a single line of text from the language array
-	 *
-	 * @access	public
-	 * @param	string	$line	the language line
-	 * @return	string
-	 */
-	function line($line = '')
-	{
-		$value = ($line == '' OR ! isset($this->language[$line])) ? FALSE : $this->language[$line];
-		return $value !== FALSE ? $value : $line;
-	}
-}
-
-/**
- * Hack into the Loader core class
- *
- * @package DMZ
- */
-class DM_Load extends CI_Loader
-{
-	public function unset_form_validation_class()
-	{
-		unset($this->_ci_classes['form_validation']);
-	}
-}
 
 // --------------------------------------------------------------------------
 
