@@ -104,6 +104,26 @@ User Guide Home
 	<li>Lots of little improvements, such as <a href="pages/get.html#Default.Order.By">default ordering</a>, <a href="pages/save.html#Save.Existing.As.New">saving objects with existing ids</a>, <a href="pages/get.html#Query.Grouping">query grouping</a>, performance improvements, <a href="pages/changelog.html">and much more</a>.</li>
 </ul>
 <p>If you would like to upgrade to Datamapper ORM from DMZ or the original DataMapper, please <a href="pages/upgrade.html#Upgrade.DataMapper">see the upgrade guide.</a></p>
+
+<h2>Support DataMapper</h2>
+
+<p>
+	If you use DataMapper in your applications, please consider <em>donating</em> to support the ongoing development, maintenance and support of DataMapper.
+	Any amount is highly appreciated.
+</p>
+<p>
+	You can donate via <em>PayPal</em> using the button in the upper-right corner of the page.
+</p>
+
+<h2>Custom Development</h2>
+
+<p>
+	Are you looking for some custom development for DataMapper? Do you need an experienced PHP developer that knows both
+	DataMapper and CodeIgniter inside and out to help you build your application?
+</p>
+<p>
+	Please contact <span id="rot13"><b>JavaScript must be enabled to see my email.</b></span> for details.
+</p>
 </div>
 <!-- END CONTENT -->
 
@@ -117,6 +137,7 @@ User Guide Home
 </div>
 
 <script type="text/javascript" src="./js/mootools.js"></script>
+<script type="text/javascript" src="./js/rot13.js"></script>
 <script type="text/javascript" src="./js/menu.js"></script>
 <script type="text/javascript">
 <!--
@@ -128,6 +149,9 @@ User Guide Home
 			pagespath: './pages/'
 		});
 
+		// Create ROT13
+		var rot = new ROT13();
+		$('rot13').set('html', rot.convert('<n uers="znvygb:qngnznccre@jnajvmneq.rh">JnaJvmneq Jro Qrirybczrag</n>'));
 	});
 //-->
 </script>

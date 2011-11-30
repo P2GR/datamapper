@@ -39,6 +39,16 @@ a.def:hover {
     color: #0134c5;
 }
 
+#paypal {
+    width: 1%;
+    white-space: nowrap;
+    padding: 0 40px 0 0;
+}
+
+#paypal input {
+    margin-top: 10px;
+}
+
 #googleSearchBox:focus {
 	background-color: #FFF9D1;
 	border-color: Black;

@@ -221,5 +221,11 @@ var Menu = new Class({
 		td.id = "searchbox";
 		td.innerHTML = '<form action="http://www.google.com/cse" id="cse-search-box"><div><input type="hidden" name="cx" value="009945192369939474941:ne90ecfhzhm" /><input type="hidden" name="ie" value="UTF-8" />Search User Guide: <input class="input search" id="googleSearchBox" type="text" name="q" size="31" /> <input class="submit" type="submit" name="sa" value="Go" /></div></form>';
 		bc.parentNode.appendChild(td);
+
+		// add donate box
+		var td = document.createElement('td');
+		td.id = "paypal";
+		td.innerHTML = '<form action="https://www.paypal.com/cgi-bin/webscr" method="post"><input type="hidden" name="cmd" value="_donations"><input type="hidden" name="business" value="paypal@wanwizard.eu"><input type="hidden" name="lc" value="GB"><input type="hidden" name="no_note" value="0"><input type="hidden" name="item_name" value="One-time donation to support the development of DataMapper"><input type="hidden" name="currency_code" value="EUR"><input type="hidden" name="bn" value="PP-DonationsBF:btn_donate_LG.gif:NonHostedGuest"><input type="image" src="./images/donate_button.gif" height="30" "border="0" name="submit" alt="PayPal — The safer, easier way to pay online."><img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1"></form>';
+		bc.parentNode.appendChild(td);
 	}
 });
