@@ -760,7 +760,10 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public static function autoload($class)
 	{
-		$CI =& get_instance();
+		static $CI = NULL;
+
+		// get the CI instance
+		is_null($CI) AND $CI =& get_instance();
 
 		// Don't attempt to autoload CI_ , EE_, or custom prefixed classes
 		if (in_array(substr($class, 0, 3), array('CI_', 'EE_')) OR strpos($class, $CI->config->item('subclass_prefix')) === 0)
@@ -815,12 +818,10 @@ class DataMapper implements IteratorAggregate {
 	 *
 	 * @param	mixed $paths path or array of paths to search
 	 */
-	protected static function add_model_path($paths)
+	public static function add_model_path($paths)
 	{
-		if ( ! is_array($paths) )
-		{
-			$paths = array($paths);
-		}
+		// make sure paths is an array
+		is_array($paths) OR $paths = array($paths);
 
 		foreach($paths as $path)
 		{
@@ -893,7 +894,11 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected static function _load_extensions(&$extensions, $names)
 	{
-		$CI =& get_instance();
+		static $CI = NULL;
+
+		// get the CI instance
+		is_null($CI) AND $CI =& get_instance();
+
 		$class_prefixes = array(
 			0 => 'DMZ_',
 			1 => 'DataMapper_',
@@ -1072,11 +1077,15 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function __get($name)
 	{
+		static $CI = NULL;
+
+		// get the CI instance
+		is_null($CI) AND $CI =& get_instance();
+
 		// We dynamically get DB when needed, and create a copy.
 		// This allows multiple queries to be generated at the same time.
 		if($name == 'db')
 		{
-			$CI =& get_instance();
 			if($this->db_params === FALSE)
 			{
 				if ( ! isset($CI->db) || ! is_object($CI->db) || ! isset($CI->db->dbdriver) )
@@ -1130,14 +1139,12 @@ class DataMapper implements IteratorAggregate {
 		{
 			if ( ! isset($this->form_validation) )
 			{
-				$CI =& get_instance();
 				if( ! isset($CI->form_validation))
 				{
 					$CI->load->library('form_validation');
 					$this->lang->load('form_validation');
-					$this->load->unset_form_validation_class();
 				}
-				$this->form_validation = $CI->form_validation;
+				$this->form_validation =& $CI->form_validation;
 			}
 			return $this->form_validation;
 		}
@@ -1498,7 +1505,7 @@ class DataMapper implements IteratorAggregate {
 		// because these are cleared after the call to get_raw
 		$object = $this->get_clone();
 		// need to clear query from the clone
-		$object->db->_reset_select();
+		$object->db->dm_call_method('_reset_select');
 		// Clear the query related list from the clone
 		$object->_query_related = array();
 
@@ -6552,9 +6559,9 @@ class DataMapper implements IteratorAggregate {
 		if ($CI || $CI =& get_instance())
 		{
 			// make sure these exists to not trip __get()
-			$this->load = null;
-			$this->config = null;
-			$this->lang = null;
+			$this->load = NULL;
+			$this->config = NULL;
+			$this->lang = NULL;
 
 			// access to the loader
 			$this->load =& $CI->load;
