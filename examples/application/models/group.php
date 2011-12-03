@@ -15,20 +15,20 @@ class Group extends DataMapper {
 	// Relationships
 	// --------------------------------------------------------------------
 
-	var $has_many = array("user");
+	public $has_many = array("user");
 	
 	// --------------------------------------------------------------------
 	// Validation
 	// --------------------------------------------------------------------	
 	
-	var $validation = array(
+	public $validation = array(
 		'name' => array(
 			'rules' => array('required', 'trim', 'unique', 'min_length' => 3, 'max_length' => 20)
 		)
 	);
 	
 	// Default to ordering by name
-	var $default_order_by = array('id' => 'desc');
+	public $default_order_by = array('id' => 'desc');
 	
 	/**
 	 * Returns the name of this status.

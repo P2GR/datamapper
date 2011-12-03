@@ -17,11 +17,9 @@ class User extends DataMapper {
 	// Relationships
 	// --------------------------------------------------------------------
 	
-	var $has_one = array(
-		'group'
-	);
+	public $has_one = array('group');
 	
-	var $has_many = array(
+	public $has_many = array(
 		// bugs created by this user
 		'created_bug' => array(
 			'class' => 'bug',
@@ -40,7 +38,7 @@ class User extends DataMapper {
 	// Validation
 	// --------------------------------------------------------------------
 
-	var $validation = array(
+	public $validation = array(
 		'name' => array(
 			'rules' => array('required', 'trim', 'unique', 'max_length' => 100)
 		),
@@ -64,7 +62,7 @@ class User extends DataMapper {
 	);
 	
 	// Default to ordering by name
-	var $default_order_by = array('name');
+	public $default_order_by = array('name');
 	
 	// --------------------------------------------------------------------
 	

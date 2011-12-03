@@ -81,8 +81,8 @@ More Info: http://creativecommons.org/licenses/by-sa/3.0/us/
 
 		</ul>
 	</div>
-<?php	if($user !== FALSE): ?>
-	<div class="username">Welcome, <?php htmlspecialchars($user->name); ?></div>
+<?php if($user !== FALSE): ?>
+	<div class="username">Welcome, <?php echo htmlspecialchars($user->name); ?></div>
 <?php endif; ?>
 <?php endif; ?>
 </div>
@@ -90,7 +90,7 @@ More Info: http://creativecommons.org/licenses/by-sa/3.0/us/
 
 <?php if( ! empty($title)): ?>
 <!-- Page Title -->
-<h2><?php $title; ?></h2>
+<h2><?php echo $title; ?></h2>
 <?php endif; ?>
 
 <!-- Page Content -->

@@ -12,20 +12,20 @@
 class Status extends DataMapper {
 
 	// Overridden because inflector has trouble convering status <> statuses
-	var $model = 'status';
-	var $table = 'statuses';
+	public $model = 'status';
+	public $table = 'statuses';
 
 	// --------------------------------------------------------------------
 	// Relationships
 	// --------------------------------------------------------------------
 
-	var $has_many = array('bug');
+	public $has_many = array('bug');
 	
 	// --------------------------------------------------------------------
 	// Validation
 	// --------------------------------------------------------------------	
 	
-	var $validation = array(
+	public $validation = array(
 		'name' => array(
 			'rules' => array('required', 'trim', 'unique', 'max_length' => 40)
 		),
@@ -36,7 +36,7 @@ class Status extends DataMapper {
 	);
 	
 	// Default to ordering by sortorder
-	var $default_order_by = array('sortorder');
+	public $default_order_by = array('sortorder');
 	
 	// --------------------------------------------------------------------	
 	

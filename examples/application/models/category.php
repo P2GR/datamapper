@@ -15,20 +15,20 @@ class Category extends DataMapper {
 	// Relationships
 	// --------------------------------------------------------------------
 
-	var $has_many = array('bug');
+	public $has_many = array('bug');
 	
 	// --------------------------------------------------------------------
 	// Validation
 	// --------------------------------------------------------------------	
 	
-	var $validation = array(
+	public $validation = array(
 		'name' => array(
 			'rules' => array('required', 'trim', 'unique', 'max_length' => 40)
 		)
 	);
 	
 	// Default to ordering by name
-	var $default_order_by = array('name');
+	public $default_order_by = array('name');
 	
 	// --------------------------------------------------------------------	
 	

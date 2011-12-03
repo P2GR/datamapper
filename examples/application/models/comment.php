@@ -15,7 +15,7 @@ class Comment extends DataMapper {
 	// Relationships
 	// --------------------------------------------------------------------
 
-	var $has_one = array(
+	public $has_one = array(
 		// Must be associated with a bug
 		'bug',
 		// Has a user
@@ -26,7 +26,7 @@ class Comment extends DataMapper {
 	// Validation
 	// --------------------------------------------------------------------	
 	
-	var $validation = array(
+	public $validation = array(
 		'comment' => array(
 			'rules' => array('required')
 		),
@@ -41,7 +41,7 @@ class Comment extends DataMapper {
 	);
 	
 	// Default to ordering by updated
-	var $default_order_by = array('updated');
+	public $default_order_by = array('updated');
 	
 }
 

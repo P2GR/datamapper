@@ -1,13 +1,13 @@
 <?php
-    
+class Admin extends CI_Controller
+{
 
-class Admin extends Controller {
-	
-	function __construct() {
+	function __construct()
+	{
 		parent::__construct();
 		$this->load->library('login_manager', array('autologin' => FALSE));
 	}
-	
+
 	function index()
 	{
 		$this->login_manager->check_login(1);
@@ -15,8 +15,9 @@ class Admin extends Controller {
 		$this->load->view('admin/index');
 		$this->load->view('template_footer');
 	}
-	
-	function reset_warning() {
+
+	function reset_warning()
+	{
 		if( ! $this->session->userdata('first_time') &&
 				$this->db->table_exists('users') && $this->login_manager->get_user() !== FALSE)
 		{
@@ -26,48 +27,49 @@ class Admin extends Controller {
 		$this->load->view('admin/reset', array('first_time' => TRUE));
 		$this->load->view('template_footer');
 	}
-	
+
 	/**
 	 * Resets the entire Database
 	 */
-	function reset() {
+	function reset()
+	{
 		$this->load->dbforge();
 		try {
 			// force disabling of g-zip so output can be streamed
 			apache_setenv('no-gzip', '1');
 		} catch(Exception $e) { /* ignore */ }
-		
+
 		$success = TRUE;
-		
+
 		$first_time = $this->session->userdata('first_time') ||
 				( ! $this->db->table_exists('users') && $this->login_manager->get_user() === FALSE);
-		
+
 		if( ! $first_time)
 		{
 			$this->login_manager->check_login(1);
 		}
-		
+
 		$this->session->set_userdata('first_time', TRUE);
-		
+
 		echo $this->load->view('template_header', array('title' => 'Resetting Database', 'section' => 'admin', 'hide_nav' => $first_time), TRUE);
-		?><div class="database_setup"><?
+		?><div class="database_setup"><?php
 		$this->_message('Creating the Squash database at <strong>' . $this->db->database . '</strong><br/>', '');
 		$success = $success && $this->_drop_tables();
 		echo("<br/><br/>");
 		$success = $success && $this->_create_tables();
 		echo("<br/><br/>");
 		$success = $success && $this->_init_data();
-		
-		?></div><?
+
+		?></div><?php
 		if($success) {
-			?><p><a href="<?= site_url('admin/init') ?>">Continue</a></p><?
+			?><p><a href="<?= site_url('admin/init') ?>">Continue</a></p><?php
 		} else {
-			?>An error occurred.  Please reset the database and try again.<?
+			?>An error occurred.  Please reset the database and try again.<?php
 		}
-		
+
 		$this->load->view('template_footer');
 	}
-	
+
 	function _drop_tables() {
 		$list = file(APPPATH . 'sql/tabledroplist.txt');
 		foreach($list as $table) {
@@ -87,7 +89,7 @@ class Admin extends Controller {
 		}
 		return TRUE;
 	}
-	
+
 	function _create_tables() {
 		$this->load->helper('file');
 		$path = APPPATH . 'sql/' . $this->db->dbdriver;
@@ -108,7 +110,7 @@ class Admin extends Controller {
 		}
 		return TRUE;
 	}
-	
+
 	function _init_data() {
 		$this->load->helper('file');
 		$success = TRUE;
@@ -127,10 +129,10 @@ class Admin extends Controller {
 			$n = ($num == 1) ? $class : plural($class);
 			echo(" $num $n  were imported.");
 		}
-		
+
 		return $success;
 	}
-	
+
 	function _save_object($obj) {
 		if(!$obj->save())
 		{
@@ -140,16 +142,16 @@ class Admin extends Controller {
 		$this->_message('.', '');
 		return TRUE;
 	}
-	
+
 	function _message($msg, $lb = '<br/>') {
 		echo($lb . $msg);
 		ob_flush();
 		flush();
 	}
-	
+
 	/**
 	 * Allows the creation of an Administrator
-	 *  
+	 *
 	 */
 	function init($save = FALSE) {
 		$first_time = $this->session->userdata('first_time');
@@ -157,7 +159,7 @@ class Admin extends Controller {
 			show_error('This page can only be accessed the first time.');
 		}
 		$user = new User();
-		
+
 		if($save)
 		{
 			$user->trans_start();
@@ -174,9 +176,9 @@ class Admin extends Controller {
 				redirect('welcome');
 			}
 		}
-		
+
 		$user->load_extension('htmlform');
-		
+
 		// ID is not included because it is not necessary
 		$form_fields = array(
 			'Contact Information' => 'section',
@@ -189,10 +191,10 @@ class Admin extends Controller {
 			'password',
 			'confirm_password'
 		);
-		
+
 		$this->load->view('template_header', array('title' => 'Set Up Your Account', 'section' => 'admin'));
 		$this->load->view('admin/init', array('user' => $user, 'form_fields' => $form_fields));
 		$this->load->view('template_footer');
 	}
-	
+
 }
