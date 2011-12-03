@@ -570,7 +570,7 @@ class DataMapper implements IteratorAggregate {
 				// Determine table name
 				if (empty($this->table))
 				{
-					$this->table = plural(get_class($this));
+					$this->table = strtolower(plural(get_class($this)));
 				}
 
 				// Add prefix to table
