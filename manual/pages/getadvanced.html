@@ -389,7 +389,7 @@ foreach(</kbd><var>$groups </var><kbd>as </kbd><var>$group</var><kbd>) {
 </pre>
 
 <h2 id="include_join_fields">$object->include_join_fields()</h2>
-<p>There are no options for this method.  Set it right before adding a relationship.  You can either use it before a <strong>{$query}_related_{$model}</strong>, or before calling <strong>get()</strong> on a related item.  All fields on the table that are not part of the relationship are included, and are prepended with <b>"join_"</b>.</p>
+<p>There are no options for this method.  Set it right <b>before</b> adding a relationship.  You can either use it before a <strong>{$query}_related_{$model}</strong>, or before calling <strong>get()</strong> on a related item.  All fields on the table that are not part of the relationship are included, and are prepended with <b>"join_"</b>.</p>
 <p class="note">This method may return unexpected results or throw errors with deep relationships.</p>
 
 <p>Usage:</p>
