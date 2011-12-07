@@ -62,7 +62,7 @@ class Admin extends CI_Controller
 
 		?></div><?php
 		if($success) {
-			?><p><a href="<?= site_url('admin/init') ?>">Continue</a></p><?php
+			?><p><a href="<?php echo site_url('admin/init'); ?>">Continue</a></p><?php
 		} else {
 			?>An error occurred.  Please reset the database and try again.<?php
 		}
