@@ -831,6 +831,7 @@ class DataMapper implements IteratorAggregate {
 
 			// determine the file name and class name
 			$file = DataMapper::$config['extensions_path'] . '/' . $name . EXT;
+
 			if ( ! file_exists($file))
 			{
 				if(strpos($name, '/') === FALSE)
@@ -848,6 +849,10 @@ class DataMapper implements IteratorAggregate {
 				{
 					show_error('DataMapper Error: loading extension ' . $name . ': File not found.');
 				}
+			}
+			else
+			{
+				$ext = $name;
 			}
 
 			// load class
