@@ -28,9 +28,10 @@ class DMZ_Json {
 	 * @param	DataMapper $object The DataMapper Object to convert
 	 * @param	array $fields Array of fields to include.  If empty, includes all database columns.
 	 * @param	boolean $pretty_print Format the JSON code for legibility.
+	 * @param	boolean		$no_encode		Internal use only. if true, return the result without encoding
 	 * @return	string A JSON formatted String, or FALSE if an error occurs.
 	 */
-	public function to_json($object, $fields = '', $pretty_print = FALSE)
+	public function to_json($object, $fields = '', $pretty_print = FALSE, $no_encode = FALSE)
 	{
 		if(empty($fields))
 		{
@@ -57,15 +58,24 @@ class DMZ_Json {
 				$result[$f] = $object->{$f};
 			}
 		}
+
+		if ($no_encode)
+		{
+			return $result;
+		}
+
 		$json = json_encode($result);
+
 		if($json === FALSE)
 		{
 			return FALSE;
 		}
+
 		if($pretty_print)
 		{
 			$json = $this->_json_format($json);
 		}
+
 		return $json;
 	}
 
@@ -82,7 +92,7 @@ class DMZ_Json {
 		$result = array();
 		foreach($object as $o)
 		{
-			$result[] = $o->to_json($fields);
+			$result[] = $o->to_json($fields, FALSE, TRUE);
 		}
 		$json = json_encode($result);
 		if($json === FALSE)
