@@ -3962,7 +3962,10 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function order_by($orderby, $direction = '')
 	{
-		$this->db->order_by($this->add_table_name($orderby), $direction);
+		// prefix the field with the table name if no prefix is given
+		strpos($orderby, '.') === FALSE AND $orderby = $this->add_table_name($orderby);
+
+		$this->db->order_by($orderby, $direction);
 
 		// For method chaining
 		return $this;
