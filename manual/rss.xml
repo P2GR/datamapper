@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+ <channel>
+  <title>Datamapper ORM - Updates</title>
+  <link>http://datamapper.wanwizard.eu/</link>
+  <description>Updates feed for DataMapper ORM.</description>
+  <lastBuildDate>Wed, 2 May 2012 23:30:00 GMT</lastBuildDate>
+  <generator>ListGarden Program 1.3.1</generator>
+  <docs>http://blogs.law.harvard.edu/tech/rss</docs>
+  <item>
+    <title>Datamapper Version 1.8.2.1</title>
+    <link>http://datamapper.wanwizard.eu/download.html</link>
+    <description>Announcing Datamapper Version 1.8.2.1:
+	&lt;ul&gt;
+		&lt;li&gt;Bug Fixes
+			&lt;ul&gt;
+				&lt;li&gt;Added a default timestamp format to the example config to be compliant with MySQL's datetime format.&lt;/li&gt;
+				&lt;li&gt;Fixed broken overriding default configuration using model class properties.&lt;/li&gt;
+				&lt;li&gt;Updated the bootloader to support multiple database instances.&lt;/li&gt;
+				&lt;li&gt;Fixed loading extensions with a fully qualified extensions path in the config.&lt;/li&gt;
+			&lt;/ul&gt;
+		&lt;/li&gt;
+	&lt;/ul&gt;
+    </description>
+   <pubDate>Fri, 30 Dec 2011 23:30:00 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2011-12-30-23-30-00</guid>
+  </item>
+  <item>
+    <title>Datamapper Version 1.8.2</title>
+    <link>http://datamapper.wanwizard.eu/download.html</link>
+    <description>Announcing Datamapper Version 1.8.2:
+	&lt;ul&gt;
+		&lt;li&gt;New Features
+			&lt;ul&gt;
+				&lt;li&gt;Backported the DataMapper 2.0 bootstrap to get access to core classes in CodeIgniter version 2.0.3 and above.&lt;/li&gt;
+				&lt;li&gt;Changed the way watched methods are processed. This allows extensions to replace core methods.&lt;/li&gt;
+				&lt;li&gt;Add support for an absolute path for "extensions_path".&lt;/li&gt;
+				&lt;li&gt;Added an all_to_single_array() method to the array extension.&lt;/li&gt;
+			&lt;/ul&gt;
+		&lt;/li&gt;
+		&lt;li&gt;Bug Fixes
+			&lt;ul&gt;
+				&lt;li&gt;Added a default for nestedsets root field name as described in the documentation.&lt;/li&gt;
+				&lt;li&gt;Fixed ignoring model configuration properties with a NULL or FALSE value.&lt;/li&gt;
+				&lt;li&gt;Fixed broken trans_status() method.&lt;/li&gt;
+			&lt;/ul&gt;
+		&lt;/li&gt;
+		&lt;li&gt;Other Changes
+			&lt;ul&gt;
+				&lt;li&gt;Improved the way the available model paths are determined.&lt;/li&gt;
+				&lt;li&gt;Several corrections to the documentation.&lt;/li&gt;
+			&lt;/ul&gt;
+		&lt;/li&gt;
+	&lt;/ul&gt;
+    </description>
+   <pubDate>Wed, 30 Nov 2011 20:30:00 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2011-11-30-20-30-00</guid>
+  </item>
+  <item>
+    <title>Datamapper Version 1.8.1</title>
+    <link>http://datamapper.wanwizard.eu/download.html</link>
+    <description>Announcing Datamapper Version 1.8.1:
+
+	&lt;ul&gt;
+		&lt;li&gt;New Features
+			&lt;ul&gt;
+				&lt;li&gt;Alternative model locations are supported through the model_path advanced relationship parameter, or through the &lt;a href="advancedusage.html#add_model_path"&gt;add_model_path&lt;/a&gt; static method.&lt;/li&gt;
+				&lt;li&gt;Added new truncate method to delete all records, and relations to those records.&lt;/li&gt;
+				&lt;li&gt;You can now pass a string as parameter to the to_array() and all_to_array() methods of the array extension, if you want to select only a single field.&lt;/li&gt;
+				&lt;li&gt;You can now run include_related on 'many' relations, see &lt;a href="getadvanced.html#include_related"&gt;runtime&lt;/a&gt; for an explaination.&lt;/li&gt;
+				&lt;li&gt;Added new force_validation() method to force revalidation when you read a record from the database that would not pass the save rules.&lt;/li&gt;
+				&lt;li&gt;A new configuration value cascade_delete determines if delete operations need to cascade. See &lt;a href="troubleshooting.html#Relationships.CascadingDeletes"&gt;here&lt;/a&gt;.&lt;/li&gt;
+				&lt;li&gt;Added support for the new CI reactor versions, in which Lang and Loader library properties are no longer public.&lt;/li&gt;
+				&lt;li&gt;Added new where_between() methods to support "WHERE field BETWEEN a AND b" type queries.&lt;/li&gt;
+				&lt;li&gt;The json extension now supports related objects, which will be exported as nested objects ('id' fields only).&lt;/li&gt;
+			&lt;/ul&gt;
+		&lt;/li&gt;
+		&lt;li&gt;Bug Fixes
+			&lt;ul&gt;
+				&lt;li&gt;Added support for a database prefix when specifying a join table ('database.tablename').&lt;/li&gt;
+				&lt;li&gt;Extensions now receive the object that loads then as second parameter of the constructor, as documented.&lt;/li&gt;
+				&lt;li&gt;Do not unnecessarily join tables in a many to many relationship when defining a where clause on the related 'id' field.&lt;/li&gt;
+				&lt;li&gt;Fixed broken subqueries.&lt;/li&gt;
+				&lt;li&gt;Fixed broken like() queries: missing trailing space and no automatic escaping.&lt;/li&gt;
+				&lt;li&gt;Fixed nestedsets extension methods for moving sibling and child objects.&lt;/li&gt;
+				&lt;li&gt;Fixed language error messages in the log due to undefined validation labels when using CI Reactor or CI 2.0.2.&lt;/li&gt;
+				&lt;li&gt;Fixed incorrect SQL generated when using where() with a multi-value array just after a group_start().&lt;/li&gt;
+				&lt;li&gt;Fixed broken query caching when using group_start().&lt;/li&gt;
+			&lt;/ul&gt;
+		&lt;/li&gt;
+		&lt;li&gt;Other Changes
+			&lt;ul&gt;
+				&lt;li&gt;Datamapper now checks if the CodeIgniter database library is loaded when the Datamapper class is instantiated, and exits with an error message if not.&lt;/li&gt;
+				&lt;li&gt;The functionality of reciprocal self relationships is more clearly documented.&lt;/li&gt;
+			&lt;/ul&gt;
+		&lt;/li&gt;
+	&lt;/ul&gt;
+    </description>
+   <pubDate>Tue, 7 Jun 2011 16:00:00 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2011-06-07-16-00-00</guid>
+  </item>
+  <item>
+   <title>Datamapper Version 1.8.0</title>
+   <link>http://datamapper.wanwizard.eu/download.html</link>
+   <description>Announcing Datamapper Version 1.8.0:
+
+	&lt;ul&gt;
+		&lt;li&gt;&lt;strong&gt;New Features&lt;/strong&gt;
+			&lt;ul&gt;
+				&lt;li&gt;Added dutch language file.&lt;/li&gt;
+				&lt;li&gt;Added a new extension which allows you to use Datamapper for nested set tree management.&lt;/li&gt;
+				&lt;li&gt;It is now possible to define model relations, and update the model production cache, at runtime.&lt;/li&gt;
+				&lt;li&gt;Updated the select() method to accept an array of column names next to a comma delimited string, like CodeIgniters Activerecord does.&lt;/li&gt;
+				&lt;li&gt;The updated column can now be modified manually. The save method will save the update even if the updated timestamp is the only modified field.&lt;/li&gt;
+				&lt;li&gt;The column name is now used as key of the error->all array, which allows you to reference the column name when iterating over the errors.&lt;/li&gt;
+				&lt;li&gt;Added (experimental) support for reciprocal many-to-many relationships. See Advanced Relationships.&lt;/li&gt;
+				&lt;li&gt;Added the option to define the name of the relationship table in an advanced relationship definition.&lt;/li&gt;
+				&lt;li&gt;Added the option to run &lt;var&gt;&lt;u&gt;$object-&gt;{query}_related&lt;/u&gt;&lt;/var&gt; using a Datamapper object as &lt;var&gt;&lt;i&gt;$value&lt;/i&gt;&lt;/var&gt;. In case the object contains multiple values, the query will be transformed to a 'where_in' query using the id's in the objects resultset.&lt;/li&gt;
+				&lt;li&gt;Added the option to run &lt;var&gt;&lt;u&gt;$object-&gt;{query}_related&lt;/u&gt;&lt;/var&gt; using an array of id's. If the array contains multiple values, the query will be transformed to a 'where_in' query using the id's in the objects resultset.&lt;/li&gt;
+			&lt;/ul&gt;
+		&lt;/li&gt;
+		&lt;li&gt;&lt;strong&gt;Bug Fixes&lt;/strong&gt;
+			&lt;ul&gt;
+				&lt;li&gt;Fixed problem with get_iterated when using PHP 5.3+ which doesn't do an implicit type conversion from array to object, causing an isset() to fail.&lt;/li&gt;
+				&lt;li&gt;Fixed PHP fatal error when loading a model when using CI 2.0 packages or Modular CI, and a package or module is missing a models directory.&lt;/li&gt;
+				&lt;li&gt;Fixed incorrect SQL count and SQL error on get_paged and get_paged_iterated when paging through a related table, linked to the parent using a relationship table, and including a where clause on a parent column.&lt;/li&gt;
+				&lt;li&gt;Fixed race condition that could case a fatal error due to recursion when deleting ITFK's.&lt;/li&gt;
+			&lt;/ul&gt;
+		&lt;/li&gt;
+		&lt;li&gt;&lt;strong&gt;Other Changes&lt;/strong&gt;
+			&lt;ul&gt;
+				&lt;li&gt;All language files have been converted to UTF-8.&lt;/li&gt;
+				&lt;li&gt;Replaced hardcoded check for the MY_ prefix with the 'subclass_prefix' config value when autoloading classes.&lt;/li&gt;
+				&lt;li&gt;When using include_join_fields, the id field of the relationship table is included as well.&lt;/li&gt;
+				&lt;li&gt;Added some info about the post_model_init method to the documentation.&lt;/li&gt;
+				&lt;li&gt;The manual now makes it clear that there are several reasons for a save to fail and gives some examples of what to check.&lt;/li&gt;
+			&lt;/ul&gt;
+		&lt;/li&gt;
+	&lt;/ul&gt;
+   </description>
+   <pubDate>Wed, 12 Jan 2011 20:00:00 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2011-01-12-20-00-00</guid>
+  </item>
+  <item>
+    <title>DataMapper ORM lives on!</title>
+    <description>
+&lt;p&gt;Datamapper ORM is back on track.&lt;/p&gt;
+&lt;p&gt;After all the hard work Phil has put in DataMapper DMZ, he decided to move on, and hand over the development and support to someone else.&lt;/p&gt;
+
+&lt;p&gt;As of today, DataMapper DMZ is renamed to Datamapper ORM, to honour the request of Phil regarding his rights on the name "OverZealous". DataMapper ORM is now being maintained by CodeIgniter community member "WanWizard".&lt;/p&gt;
+&lt;p&gt;I have decided to take the development public, and have created a &lt;a href="http://bitbucket.org/wanwizard/datamapper"&gt;bitbucket reposity&lt;/a&gt; to host the code. Bitbucket will also host our issue tracker. If you have found a bug, or if you have a feature request, please create an issue ticket, so I can keep tabs on it.&lt;/p&gt;
+&lt;p&gt;- WanWizard&lt;/p&gt;
+
+    </description>
+    <pubDate>Fri, 22 Oct 2010 09:16:00 GMT</pubDate>
+    <guid isPermaLink="false">dmorm-2010-10-22-09-16-00</guid>
+  </item>
+  <item>
+   <title>Important News Regarding DataMapper OverZealous Edition</title>
+   <description>&lt;p&gt;Hello everyone,&lt;/p&gt;
+
+&lt;p&gt;As many of you might have noticed, I have not updated DMZ in quite some time (late March, in fact).&amp;nbsp; This has been mostly due to the fact that since then, I have been working full time at a new job, in a different state.&amp;nbsp; I really have not had a lot of time, and even if I did, I have been working off a small laptop.&lt;/p&gt;
+
+&lt;p&gt;&lt;b&gt;&lt;i&gt;Moving On…&lt;/i&gt;&lt;/b&gt;&lt;br&gt;
+In the last couple of weeks, I have started learning about &lt;a href=&quot;http://groovy.codehaus.org/&quot;&gt;Groovy&lt;/a&gt; and &lt;a href=&quot;http://www.grails.org/&quot;&gt;Grails&lt;/a&gt;, a dynamic scripting language built on top of the Java Virtual Machine, and a rapid web application development platform, respectively.&amp;nbsp; In reading about these tools, I have found excitement in developing that I have not had in some time.&lt;/p&gt;
+
+&lt;p&gt;This platform provides nearly all of the rapid-development potential of CodeIgniter, as well as the ability to write well-defined, strongly-typed code when needed.&amp;nbsp; It also has a large library of plugins, and many features that require a lot of hand-work to enable in CI.&amp;nbsp; Maybe most importantly, it has a very powerful ORM built-in, one that not only does everything that DMZ does, and more gracefully, but is significantly more flexible and can even build and update your database on-the-fly, based on the models.&amp;nbsp; There are so many features in Grails/GORM I always wanted to add to DMZ, but I never really found the time.&lt;/p&gt;
+
+&lt;p&gt;Many of my frustrations with CodeIgniter, such as the numerous bugs in the ActiveRecord library, poorly designed Session library, lack of built-in GET support, and various other issues, seem to be resolved in the Grails setup. This is probably because it is backed by frameworks that have been around for a while now, such as J2EE, Spring, and Hibernate.&lt;/p&gt;
+
+&lt;p&gt;For many of you, this may not be very interesting.&amp;nbsp; Because I run my own servers, I have the ability to install Java and a servlet engine as needed.&amp;nbsp; However, if you rely on a shared hosting plan, you will most likely not be able to use Java.&amp;nbsp; In fact, this was the very reason I started working with PHP and CodeIgniter in the first place.&amp;nbsp; &lt;i&gt;(On that note: &lt;a href=&quot;http://www.slicehost.com/&quot;&gt;SliceHost&lt;/a&gt; is a great, low-cost way to get your own servers running.)&lt;/i&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;b&gt;&lt;i&gt;DMZ Can Live On!&lt;/i&gt;&lt;/b&gt;&lt;br&gt;
+What does this mean for DMZ?&amp;nbsp; In short, I’m looking to hand the reins over to someone else.&amp;nbsp; I haven’t used or worked on the library since late May.&amp;nbsp; It’s already going stale, with numerous outstanding bugs that I have no plans to correct.&lt;/p&gt;
+
+&lt;p&gt;Because DMZ is 100% open source, you don’t have to contact me if you don’t want.&amp;nbsp; However, I have extra materials and tools that I can pass on to anyone who’d like to make DMZ their own.&lt;/p&gt;
+
+&lt;p&gt;Please be aware that this is a large library, with a lot of complex code underneath.&amp;nbsp; It requires a pretty strong understanding of PHP’s magic functions (__get, __call), database design and management, and memory usage.&amp;nbsp; It also requires a bit of dedication, since the relatively small community around DMZ is highly active.&lt;/p&gt;
+
+&lt;p&gt;I really hope someone comes forward, and is willing to let DMZ live on.&amp;nbsp; (When I stopped working on the HTMLForm library I asked for a volunteer, but no one offered, and it has effectively died out for that reason.)&lt;/p&gt;
+
+&lt;hr/&gt;
+
+&lt;p&gt;So, please, if you are interested, I’ll happily ZIP up all of the content I have for DMZ, and send it over.&amp;nbsp; I’ll eventually be replacing the current DMZ URL with links to anyone who would like to host the manual and downloads.&amp;nbsp; (Please note, the current downloads are hard-coded in the manual to my website.&amp;nbsp; If you do decide to host it, a search-and-replace will probably be in order.)&amp;nbsp; If no one comes forward, I’ll upload the latest version to the CodeIgniter wiki, so it can still be downloaded.&lt;/p&gt;
+
+&lt;p&gt;Thank You,&lt;/p&gt;
+- Phil DeJarnett</description>
+   <pubDate>Sun, 10 Oct 2010 22:59:57 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2010-10-10-22-59-57</guid>
+  </item>
+  <item>
+   <title>DMZ Version 1.7.1</title>
+   <link>http://datamapper.wanwizard.eu/download.html</link>
+   <description>&lt;p&gt;&lt;span style=&quot;color: brown;&quot;&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;&lt;b&gt;Announcing DMZ Version 1.7.1:&lt;/b&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Various bug fixes&lt;/li&gt;
+&lt;li&gt;New method for seeing if two objects are already related&lt;/li&gt;
+&lt;li&gt;All extensions have been updated to use or accept get_iterated
+&lt;li&gt;Please see &lt;a href=&quot;http://datamapper.wanwizard.eu/pages/changelog.html&quot;&gt;the change log&lt;/a&gt; for details.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://datamapper.wanwizard.eu/pages/download.html&quot;&gt;Download here&lt;/a&gt;&lt;/p&gt;</description>
+   <pubDate>Mon, 22 Mar 2010 03:14:09 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2010-03-22-03-14-09</guid>
+  </item>
+  <item>
+   <title>DMZ Version 1.7.0</title>
+   <link>http://datamapper.wanwizard.eu/download.html</link>
+   <description>&lt;p&gt;&lt;span style=&quot;color: brown;&quot;&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;&lt;b&gt;DMZ Has been updated to version 1.7.0!&lt;/b&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;This is a &lt;b&gt;&lt;span style=&quot;color: green;&quot;&gt;major&lt;/span&gt;&lt;/b&gt; update to DMZ!&lt;/span&gt;&lt;/p&gt;
+
+&lt;p&gt;Not only does it include these fantastic new features:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://datamapper.wanwizard.eu/pages/localize.html&quot;&gt;Automatic Localization&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Amazingly easy &lt;a href=&quot;http://datamapper.wanwizard.eu/pages/getalt.html#get_paged&quot;&gt;Paged Queries&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;New methods for &lt;a href=&quot;http://datamapper.wanwizard.eu/pages/getalt.html#get_iterated&quot;&gt;streaming query results&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;PHPDoc documentation has been added for almost every magic method, which can be used for code-hints in an IDE&lt;/li&gt;
+&lt;li&gt;A brand-new extension for &lt;a href=&quot;http://datamapper.wanwizard.eu/pages/extensions/rowindex.html&quot;&gt;finding the row of a given object or id&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;And a &lt;a href=&quot;http://datamapper.wanwizard.eu/pages/changelog.html&quot;&gt;whole lot more&lt;/a&gt; features.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;But this version includes a staggering number of small performance improvements than, when added up, can reduce page processing time by &lt;b&gt;as much as 50%&lt;/b&gt; (even on simple pages!), and reduce memory overhead by nearly as much, especially when combined the new &lt;b&gt;get_iterated&lt;/b&gt; method!&lt;/p&gt;
+
+&lt;p&gt;There also have been a variety of bug fixes, and tweaks throughout the code base.&lt;/p&gt;
+
+&lt;p&gt;Make sure to &lt;a href=&quot;http://datamapper.wanwizard.eu/pages/changelog.html&quot;&gt;check out the changelog&lt;/a&gt; — you won’t want to skip this update!&lt;/p&gt;
+
+&lt;a href=&quot;http://datamapper.wanwizard.eu/pages/download.html&quot;&gt;Download here&lt;/a&gt;</description>
+   <pubDate>Mon, 15 Mar 2010 03:14:24 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2010-03-15-03-14-24</guid>
+  </item>
+  <item>
+   <title>Significant bug in DMZ 1.6+</title>
+   <link>http://codeigniter.com/forums/viewreply/720129/</link>
+   <description>I've been doing some research on DB connections here.  I was shocked because I had installed PGPOOL-II to increase database connection speed, and I disabled pconnect.  But I kept having connection problems.  I figured it was something misconfigured and did some research.
+&lt;br>
+&lt;br>Well, there's a simple, but significant, flaw in the multiple DB connections that DMZ uses, combined with the way CodeIgniter handles Database objects: they &lt;i>never&lt;/i> get closed!
+&lt;br>
+&lt;br>For more information on possible short-term patches fixes, &lt;a href="http://codeigniter.com/forums/viewreply/720129/">please see this post&lt;/a>.</description>
+   <pubDate>Wed, 03 Mar 2010 04:26:20 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2010-03-03-04-26-20</guid>
+  </item>
+  <item>
+   <title>DMZ Version 1.7.0-RC2</title>
+   <link>http://datamapper.wanwizard.eu/download.html</link>
+   <description>DMZ 1.7.0 Release Candidate 2
+&lt;br>
+&lt;br>This update includes several bugfixes, as well as the renaming of &lt;b>get_large_query&lt;/b> to &lt;b>get_iterated&lt;/b>.  There are also two new methods, &lt;b>get_paged_iterated&lt;/b> and &lt;b>count_distinct&lt;/b>.  Both are documented in the updated manual.
+&lt;br>
+&lt;br>&lt;i>Original 1.7.0 Announcement:&lt;/i>
+&lt;br>
+&lt;br> • Significant performance improvements in both query generation and object creation.
+&lt;br> • New ways to get your data, including large query streaming and paginated results.
+&lt;br> • A new extension for looking up what row a given item is in a query.
+&lt;br> • A handful of bugfixes.
+&lt;br> • Extensive PHPDoc documentation for the source code, to assist code completion in IDEs.
+&lt;br>
+&lt;br>&lt;a href="http://datamapper.wanwizard.eu/download.html">Download here&lt;/a>
+&lt;br>
+&lt;br>&lt;a href="http://datamapper.wanwizard.eu/changelog.html">View the change log&lt;/a></description>
+   <pubDate>Thu, 25 Feb 2010 04:21:12 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2010-02-25-04-21-12</guid>
+  </item>
+  <item>
+   <title>DMZ Version 1.7.0-RC1</title>
+   <link>http://datamapper.wanwizard.eu/download.html</link>
+   <description>A new, major update to DMZ has just been released.  This version includes:
+&lt;br>
+&lt;br> • Significant performance improvements in both query generation and object creation.
+&lt;br> • New ways to get your data, including large query streaming and paginated results.
+&lt;br> • A new extension for looking up what row a given item is in a query.
+&lt;br> • A handful of bugfixes.
+&lt;br> • Extensive PHPDoc documentation for the source code, to assist code completion in IDEs.
+&lt;br>
+&lt;br>&lt;a href="http://datamapper.wanwizard.eu/download.html">Download here&lt;/a>
+&lt;br>
+&lt;br>&lt;a href="http://datamapper.wanwizard.eu/changelog.html">View the change log&lt;/a></description>
+   <pubDate>Tue, 23 Feb 2010 11:27:11 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2010-02-23-11-27-11</guid>
+  </item>
+  <item>
+   <title>Regarding the HTML Form extension</title>
+   <link>http://codeigniter.com/forums/viewreply/695995/</link>
+   <description>I understand that the HTML form extension is very useful to many people.  However, I do not have the time to maintain it or support it.
+&lt;br>
+&lt;br>I would like to find someone who is willing to take over maintenance and support for this extension.  It needs some work, and I just barely have enough time to keep up with the work on the core DMZ library.
+&lt;br>
+&lt;br>If you are interested in maintaining it, please let me know (via the forum link in this post).  Just to be clear, everything I have for this extension is already included in the full DMZ download (including the documentation), so if you are interested, feel free to look at the source directly.
+&lt;br>
+&lt;br>I would be willing to include someone else’s work with the full download, or pull the HTML extension out of the core download, and link to it somewhere else.  The latter is probably preferable, since I won’t necessarily upgrade DMZ on the same schedule as the HTML form extension.
+&lt;br>
+&lt;br>&lt;a href="http://codeigniter.com/forums/viewreply/695995/">CodeIgniter forums&lt;/a></description>
+   <pubDate>Thu, 14 Jan 2010 11:32:38 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2010-01-14-11-32-38</guid>
+  </item>
+  <item>
+   <title>DMZ Version 1.6.2</title>
+   <link>http://datamapper.wanwizard.eu/download.html</link>
+   <description>DMZ Has been updated to version 1.6.2!
+&lt;br>
+&lt;br>This version includes bug fixes and minor updates to the manual.  It also includes several new language files generously provided by the community.
+&lt;br>
+&lt;br>&lt;a href="http://datamapper.wanwizard.eu/download.html">Download here&lt;/a>.
+&lt;br>
+&lt;br>&lt;a href="http://datamapper.wanwizard.eu/changelog.html">View the change log&lt;/a></description>
+   <pubDate>Mon, 28 Dec 2009 20:09:30 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2009-12-28-20-09-30</guid>
+  </item>
+  <item>
+   <title>DMZ Usage Poll</title>
+   <link>http://codeigniter.com/forums/viewthread/138634/</link>
+   <description>I've posted a poll to help gauge DMZ's user base.
+&lt;br>
+&lt;br>If you don't mind, &lt;a href="http://codeigniter.com/forums/viewthread/138634">clicky on over here&lt;/a>, and pick an option!
+&lt;br>
+&lt;br>Thanks!</description>
+   <pubDate>Wed, 16 Dec 2009 06:31:32 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2009-12-16-06-31-32</guid>
+  </item>
+  <item>
+   <title>DMZ Version 1.6.1</title>
+   <link>http://datamapper.wanwizard.eu/download.html</link>
+   <description>DMZ Has been updated to version 1.6.1!
+&lt;br>
+&lt;br>&lt;a href="http://datamapper.wanwizard.eu/download.html">Download here&lt;/a>.
+&lt;br>
+&lt;br>&lt;a href="http://datamapper.wanwizard.eu/changelog.html">View the change log&lt;/a></description>
+   <pubDate>Mon, 30 Nov 2009 07:00:00 GMT</pubDate>
+   <guid isPermaLink="false">dmz-2009-12-11-06-03-16</guid>
+  </item>
+ </channel>
+</rss>
+
