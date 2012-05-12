@@ -117,9 +117,13 @@ Working with Join Fields
 </kbd><var>$alarm </var><kbd>= new </kbd><var>Alarm</var><kbd>();
 </kbd><var>$alarm</var><kbd>-&gt;</kbd><var><u>get_by_id</u></var><kbd>(</kbd><var>$alarmid</var><kbd>);
 
+</kbd><samp>// relate this alarm to the user
+</kbd><var>$u</var><kbd>-&gt;</kbd><var><u>save</u></var><kbd>(</kbd><var>$alarm</var><kbd>);
+
 </kbd><samp>// mark this alarm as fired
 </samp><var>$alarm</var><kbd>-&gt;</kbd><var><u>set_join_field</u></var><kbd>(</kbd><var><s>$u</s></var><kbd>, </kbd><dfn>'wasfired'</dfn><kbd>, </kbd><var><i>TRUE</i></var><kbd>);</kbd>
 </pre>
+<p class="note"><strong>set_join_field</strong> runs an UPDATE query on the relation table, so make sure the two objects are related before using this method!</p>
 
 </div>
 <!-- END CONTENT -->
