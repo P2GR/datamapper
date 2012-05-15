@@ -28,10 +28,11 @@ class DMZ_Json {
 	 * @param	DataMapper $object The DataMapper Object to convert
 	 * @param	array $fields Array of fields to include.  If empty, includes all database columns.
 	 * @param	boolean $pretty_print Format the JSON code for legibility.
+	 * @param	boolean $recurse Recurse into related objects if TRUE.
 	 * @param	boolean		$no_encode		Internal use only. if true, return the result without encoding
 	 * @return	string A JSON formatted String, or FALSE if an error occurs.
 	 */
-	public function to_json($object, $fields = '', $pretty_print = FALSE, $no_encode = FALSE)
+	public function to_json($object, $fields = '', $pretty_print = FALSE, $recurse = FALSE, $no_encode = FALSE)
 	{
 		if(empty($fields))
 		{
@@ -43,12 +44,19 @@ class DMZ_Json {
 			// handle related fields
 			if(array_key_exists($f, $object->has_one) || array_key_exists($f, $object->has_many))
 			{
-				// each related item is stored as an array of ids
-				// Note: this method will NOT get() the related object.
+				// if $recurse = FALSE, each related item is stored as an array of ids
+				// otherwise recurse into the related obects
 				$rels = array();
 				foreach($object->{$f} as $item)
 				{
-					$rels[] = $item->id;
+					if ($recurse)
+					{
+						$rels[] = $item->to_json('', FALSE, $recurse, TRUE);
+					}
+					else
+					{
+						$rels[] = $item->id;
+					}
 				}
 				$result[$f] = $rels;
 			}
@@ -85,14 +93,15 @@ class DMZ_Json {
 	 * @param	DataMapper $object The DataMapper Object to convert
 	 * @param	array $fields Array of fields to include.  If empty, includes all database columns.
 	 * @param	boolean $pretty_print Format the JSON code for legibility.
+	 * @param	boolean $recurse Recurse into related objects if TRUE.
 	 * @return	string A JSON formatted String, or FALSE if an error occurs.
 	 */
-	public function all_to_json($object, $fields = '', $pretty_print = FALSE)
+	public function all_to_json($object, $fields = '', $pretty_print = FALSE, $recurse = FALSE)
 	{
 		$result = array();
 		foreach($object as $o)
 		{
-			$result[] = $o->to_json($fields, FALSE, TRUE);
+			$result[] = $o->to_json($fields, FALSE, $recurse, TRUE);
 		}
 		$json = json_encode($result);
 		if($json === FALSE)
