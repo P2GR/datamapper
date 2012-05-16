@@ -56,11 +56,11 @@ JSON-Encoding and Decoding Methods
 <p class="note">To enable these methods, add <dfn>'json'</dfn> to DataMapper's config, under <strong>'extensions'</strong>.</p>
 <p>Converts objects to and from a <a href="http://en.wikipedia.org/wiki/Json">JSON-encoded</a> string.</p>
 
-<h2>to_json(<i>$fields</i>, <i>$pretty_print</i>, <i>$recurse</i>)</h2>
+<h2>to_json(<i>$fields</i>, <i>$pretty_print</i>, <i>$include</i>)</h2>
 <ul>
 	<li><dfn>$fields</dfn>: (Optional) If provided, only these fields will be included.  If empty or not provided, only the database columns will be included.</li>
 	<li><dfn>$pretty_print</dfn>: (Optional) If <dfn>TRUE</dfn>, the JSON string will be formatted to be easier to read.  Defaults to <dfn>FALSE</dfn>.</li>
-	<li><dfn>$recurse</dfn>: (Optional) If <dfn>TRUE</dfn>, loaded related objects will be included in the result.  Defaults to <dfn>FALSE</dfn>.</li>
+	<li><dfn>$include</dfn>: (Optional) an array of related object names (with deep relation support) that needs to be included in the result.  Defaults to <dfn>array()</dfn>.</li>
 	<li><b>Returns</b>: A JSON-encoded view of the <var>$object</var>, or <dfn>FALSE</dfn> if an error occurs.</li>
 </ul>
 <p>Converts the <var>$object</var> into a JSON-encoded string.</p>
@@ -74,13 +74,24 @@ echo </kbd><var>$u</var><kbd>-&gt;</kbd><var><s>to_json</s></var><kbd>(array(</k
 
 <samp>// Outputs something like
 // {"id": 1, "name":"Bob Johnson", "email":"bob.johnson@example.com"}</samp>
+
+<samp>// Include the related groups in the result</samp>
+<var>$u </var><kbd>= new </kbd><var>User</var><kbd>();
+</kbd><var>$u</var><kbd>-&gt;</kbd><var><u>get_by_id</u></var><kbd>(</kbd><var>$user_id</var><kbd>);
+</kbd><var>$u</var><kbd>-&gt;</kbd><var><u>group</u></var><kbd>-&gt;</kbd><var><u>get</u></var><kbd>();
+</kbd><var>$u</var><kbd>-&gt;</kbd><var><s>set_json_content_type</s></var><kbd>();
+echo </kbd><var>$u</var><kbd>-&gt;</kbd><var><s>to_json</s></var><kbd>(array(</kbd><dfn>'id'</dfn><kbd>, </kbd><dfn>'name'</dfn><kbd>, </kbd><dfn>'email'</dfn><kbd>), </kbd><var><dfn>FALSE</dfn></var><kbd>, array(</kbd><var><dfn>'group'</dfn></var><kbd>));</kbd>
+
+<samp>// Outputs something like
+// {"id": 1, "name":"Bob Johnson", "email":"bob.johnson@example.com", "group":"[{\"id\":1,\"name\":\"Administrators\"}]"}</samp>
+
 </pre>
 
-<h2>all_to_json(<i>$fields</i>, <i>$pretty_print</i>, <i>$recurse</i>)</h2>
+<h2>all_to_json(<i>$fields</i>, <i>$pretty_print</i>, <i>$include</i>)</h2>
 <ul>
 	<li><dfn>$fields</dfn>: (Optional) If provided, only these fields will be included.  If empty or not provided, only the database columns will be included.</li>
 	<li><dfn>$pretty_print</dfn>: (Optional) If <dfn>TRUE</dfn>, the JSON string will be formatted to be easier to read.  Defaults to <dfn>FALSE</dfn>.</li>
-	<li><dfn>$recurse</dfn>: (Optional) If <dfn>TRUE</dfn>, loaded related objects will be included in the result.  Defaults to <dfn>FALSE</dfn>.</li>
+	<li><dfn>$include</dfn>: (Optional) an array of related object names (with deep relation support) that needs to be included in the result.  Defaults to <dfn>array()</dfn>.</li>
 	<li><b>Returns</b>: A JSON-encoded view of <var>$object<kbd>-></kbd><i>all</i></var>, or <dfn>FALSE</dfn> if an error occurs.</li>
 </ul>
 <p>Converts <var>$object<kbd>-></kbd><i>all</i></var> into a JSON-encoded string.  The items will be placed into an array before conversion.</p>
