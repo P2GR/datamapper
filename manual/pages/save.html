@@ -143,9 +143,13 @@ if(</kbd>! <var>$success</var><kbd>)
     <samp>// did validation fail?</samp>
     <kbd>if (</kbd> <var>$user->valid</var> <kbd>)
     {</kbd>
-         <samp>// insert or update failure</samp>
+        <samp>// insert or update failure</samp>
     <kbd>} else {</kbd>
-         <samp>// validation failure</samp>
+         <samp>// validation failure, echo the errors</samp>
+        <kbd>foreach (</kbd> <var>$user->error->all</var> <kbd>as</kbd> <var>$e</var><kbd>)
+        {</kbd>
+            <kbd>echo</kbd> <var>$e</var><kbd> . '<dfn>&lt;br /&gt;</dfn>';
+        }</kbd>
     <kbd>}</kbd>
 <kbd>}</kbd>
 </pre>
