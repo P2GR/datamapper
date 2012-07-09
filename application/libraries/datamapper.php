@@ -3678,7 +3678,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		$type = $this->_get_prepend_type($type);
 
-	 	$this->db->dm_call_method('_where', $this->add_table_name($key)." ".($not?"NOT ":"")."BETWEEN ".$value1." AND ".$value2, NULL, $type, NULL);
+	 	$this->db->dm_call_method('_where', $this->add_table_name($key)." ".($not?"NOT ":"")."BETWEEN ".$this->db->escape($value1)." AND ".$this->db->escape($value2), NULL, $type, NULL);
 
 		// For method chaining
 		return $this;
