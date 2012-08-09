@@ -594,6 +594,23 @@ class DataMapper implements IteratorAggregate {
 				$this->_initiate_local_extensions($common_key);
 			}
 
+			// define any custom module path present so we can find the model
+			foreach(array('has_one', 'has_many') as $arr)
+			{
+				foreach ($this->{$arr} as $related_field => $rel_props)
+				{
+					// process the model custom paths if present
+					if( isset($rel_props['model_path']))
+					{
+						$rel_props['model_path'] = rtrim($rel_props['model_path'], '/') . '/';
+						if ( is_dir($rel_props['model_path'].'models') && ! in_array($rel_props['model_path'], self::$model_paths))
+						{
+							self::$model_paths[] = $rel_props['model_path'];
+						}
+					}
+				}
+			}
+
 			// Finally, localize the labels here (because they shouldn't be cached
 			// This also sets any missing labels.
 			$validation =& DataMapper::$common[$common_key]['validation'];
@@ -6158,14 +6175,6 @@ class DataMapper implements IteratorAggregate {
 		{
 			// by default, automagically determine the join table name
 			$definition['join_table'] = '';
-		}
-		if( isset($definition['model_path']))
-		{
-			$definition['model_path'] = rtrim($definition['model_path'], '/') . '/';
-			if ( is_dir($definition['model_path'].'models') && ! in_array($definition['model_path'], self::$model_paths))
-			{
-				self::$model_paths[] = $definition['model_path'];
-			}
 		}
 		if(isset($definition['reciprocal']))
 		{
