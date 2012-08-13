@@ -127,9 +127,6 @@ class DMZ_Array {
 	 */
 	function from_array($object, $data, $fields = '', $save = FALSE)
 	{
-		// clear the current object
-		$object->clear();
-
 		// keep track of newly related objects
 		$new_related_objects = array();
 
@@ -230,9 +227,6 @@ class DMZ_Array {
 	 */
 	function all_from_array($object, $data, $fields = '')
 	{
-		// clear the current object
-		$object->clear();
-
 		// get the objects class name, we need it to construct copies
 		$class = get_class($object);
 
