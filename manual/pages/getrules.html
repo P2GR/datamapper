@@ -106,6 +106,12 @@ Get Rules
 	<li>Get Rules should not set an error.</li>
 </ul>
 
+<h2>Columns containing NULL</h2>
+<p>
+	For Datamapper ORM, a <dfn>NULL</dfn> value signifies an empty column, so by default no get_rules will be executed.
+	If however you do want to run them, for example to provide a default value in case the column is <dfn>NULL</dfn>, you
+	can add the special rule '<dfn>allow_null</dfn>' to the list of get rules for the column.
+</p>
 </div>
 <!-- END CONTENT -->
 
