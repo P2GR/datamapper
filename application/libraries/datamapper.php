@@ -12,7 +12,7 @@
  * @author  	Phil DeJarnett (up to v1.7.1)
  * @author  	Simon Stenhouse (up to v1.6.0)
  * @link		http://datamapper.wanwizard.eu/
- * @version 	1.8.2
+ * @version 	1.8.3-dev
  */
 
 /**
@@ -649,6 +649,9 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function reinitialize_model()
 	{
+		// determine the classname
+		$this_class = strtolower(get_class($this));
+
 		// this is to ensure that singular is only called once per model
 		if(isset(DataMapper::$common[DMZ_CLASSNAMES_KEY][$this_class])) {
 			$common_key = DataMapper::$common[DMZ_CLASSNAMES_KEY][$this_class];
