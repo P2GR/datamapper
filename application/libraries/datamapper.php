@@ -1670,6 +1670,11 @@ class DataMapper implements IteratorAggregate {
 
 			$this->_refresh_stored_values();
 
+			if (!empty($this->_field_tracking['get_rules']))
+			{
+				$this->_run_get_rules();
+			}
+
 			// Check if a relationship is being saved
 			if ( ! empty($object))
 			{
@@ -1689,7 +1694,6 @@ class DataMapper implements IteratorAggregate {
 			}
 
 			$this->_auto_trans_complete($trans_complete_label);
-
 		}
 
 		$this->_force_save_as_new = FALSE;
@@ -5967,6 +5971,30 @@ class DataMapper implements IteratorAggregate {
 		if( ! empty($this->{$field})) {
 			$this->{$field} = trim($this->{$field});
 		}
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Serialize
+	 * Custom serialize rule that deals with non-arrays
+	 *
+	 * @ignore
+	 */
+	protected function _serialize($field) {
+		$this->{$field} = is_array($this->{$field}) ? serialize($this->{$field}) : array($this->{$field});
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Unserialize
+	 * Custom trim rule that deals with empty strings
+	 *
+	 * @ignore
+	 */
+	protected function _unserialize($field) {
+		$this->{$field} = empty($this->{$field}) ? array() : unserialize($this->{$field});
 	}
 
 	// --------------------------------------------------------------------
