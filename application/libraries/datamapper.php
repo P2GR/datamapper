@@ -5528,6 +5528,7 @@ class DataMapper implements IteratorAggregate {
 			if (is_object($arguments[0]))
 			{
 				$object = $arguments[0];
+				$class = get_class($object);
 				$related_field = $object->model;
 			}
 			else
@@ -5546,6 +5547,13 @@ class DataMapper implements IteratorAggregate {
 
 			// Determine relationship table name, and join the tables
 			$rel_table = $this->_get_relationship_table($object, $related_field);
+
+			// only add $related_field to the table name if the 'class' and 'related_field' aren't equal
+			// and the related object is in a different table
+			if ( ($class != $related_field) or ($this->table == $object->table) )
+			{
+				$rel_table = str_replace('.', '_', $related_field . '_' . $rel_table);
+			}
 
 			// Add query clause
 			$extra = NULL;
@@ -5989,12 +5997,19 @@ class DataMapper implements IteratorAggregate {
 
 	/**
 	 * Unserialize
-	 * Custom trim rule that deals with empty strings
+	 * Custom unserialize rule that deals with empty strings
 	 *
 	 * @ignore
 	 */
 	protected function _unserialize($field) {
-		$this->{$field} = empty($this->{$field}) ? array() : unserialize($this->{$field});
+		if (empty($this->{$field}))
+		{
+			$this->{$field} = array();
+		}
+		elseif(is_string($this->{$field}))
+		{
+			$this->{$field} = unserialize($this->{$field});
+		}
 	}
 
 	// --------------------------------------------------------------------
