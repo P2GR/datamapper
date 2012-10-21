@@ -429,7 +429,7 @@ class DataMapper implements IteratorAggregate {
 				$idiom = ($deft_lang == '') ? 'english' : $deft_lang;
 				if(file_exists(APPPATH.'language/'.$idiom.'/'.$lang_file.'_lang' . '.php'))
 				{
-					$this->lang->load($lang_file, $idiom);
+					$this->ci_lang->load($lang_file, $idiom);
 				}
 			}
 
@@ -1073,7 +1073,7 @@ class DataMapper implements IteratorAggregate {
 				isset($CI->form_validation) OR $CI->load->library('form_validation');
 
 				$this->form_validation =& $CI->form_validation;
-				$this->lang->load('form_validation');
+				$this->ci_lang->load('form_validation');
 			}
 
 			return $this->form_validation;
@@ -2291,7 +2291,7 @@ class DataMapper implements IteratorAggregate {
 					{
 						if(!is_string($line))
 						{
-							if (FALSE === ($line = $this->lang->dm_line($rule)))
+							if (FALSE === ($line = $this->ci_lang->dm_line($rule)))
 							{
 								// Get corresponding error from language file
 								$line = 'Unable to access an error message corresponding to your rule name: '.$rule.'.';
@@ -4290,7 +4290,7 @@ class DataMapper implements IteratorAggregate {
 				$rule = 'transaction';
 
 				// Get corresponding error from language file
-				if (FALSE === ($line = $this->lang->dm_line($rule)))
+				if (FALSE === ($line = $this->ci_lang->dm_line($rule)))
 				{
 					$line = 'Unable to access the ' . $rule .' error message.';
 				}
@@ -5119,7 +5119,7 @@ class DataMapper implements IteratorAggregate {
 			{
 				$msg = 'dm_save_rel_failed';
 			}
-			$msg = $this->lang->dm_line($msg);
+			$msg = $this->ci_lang->dm_line($msg);
 			$this->error_message($related_field, sprintf($msg, $related_field));
 		}
 
@@ -6044,7 +6044,7 @@ class DataMapper implements IteratorAggregate {
 			$r[] = $field;
 		}
 		$key = str_replace($s, $r, $key);
-		return $this->lang->dm_line($key);
+		return $this->ci_lang->dm_line($key);
 	}
 
 	// --------------------------------------------------------------------
@@ -6549,18 +6549,18 @@ class DataMapper implements IteratorAggregate {
 		if ($CI || $CI =& get_instance())
 		{
 			// make sure these exists to not trip __get()
-			$this->load = NULL;
+			$this->ci_load = NULL;
 			$this->ci_config = NULL;
-			$this->lang = NULL;
+			$this->ci_lang = NULL;
 
 			// access to the loader
-			$this->load =& $CI->load;
+			$this->ci_load =& $CI->load;
 
 			// to the config
 			$this->ci_config =& $CI->config;
 
 			// and the language class
-			$this->lang =& $CI->lang;
+			$this->ci_lang =& $CI->lang;
 		}
 	}
 
@@ -6577,7 +6577,7 @@ class DataMapper implements IteratorAggregate {
 	{
 
 		// Load the DataMapper language file
-		$this->lang->load('datamapper');
+		$this->ci_lang->load('datamapper');
 	}
 
 	// --------------------------------------------------------------------
@@ -6592,10 +6592,10 @@ class DataMapper implements IteratorAggregate {
 	protected function _load_helpers()
 	{
 		// Load inflector helper for singular and plural functions
-		$this->load->helper('inflector');
+		$this->ci_load->helper('inflector');
 
 		// Load security helper for prepping functions
-		$this->load->helper('security');
+		$this->ci_load->helper('security');
 	}
 }
 
