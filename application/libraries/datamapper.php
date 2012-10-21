@@ -427,7 +427,7 @@ class DataMapper implements IteratorAggregate {
 				$lang_file = str_replace(array('${model}', '${table}'), array($this->model, $this->table), $this->lang_file_format);
 				$deft_lang = $this->ci_config->item('language');
 				$idiom = ($deft_lang == '') ? 'english' : $deft_lang;
-				if(file_exists(APPPATH.'language/'.$idiom.'/'.$lang_file.'_lang'.EXT))
+				if(file_exists(APPPATH.'language/'.$idiom.'/'.$lang_file.'_lang' . '.php'))
 				{
 					$this->lang->load($lang_file, $idiom);
 				}
@@ -446,7 +446,7 @@ class DataMapper implements IteratorAggregate {
 				}
 				if(file_exists($cache_folder) && is_dir($cache_folder) && is_writeable($cache_folder))
 				{
-					$cache_file = $cache_folder . '/' . $common_key . EXT;
+					$cache_file = $cache_folder . '/' . $common_key . '.php';
 					if(file_exists($cache_file))
 					{
 						include($cache_file);
@@ -711,7 +711,7 @@ class DataMapper implements IteratorAggregate {
 		foreach (array_merge(array(APPPATH),$paths, self::$model_paths) as $path)
 		{
 			// Prepare file
-			$file = $path . 'models/' . $class . EXT;
+			$file = $path . 'models/' . $class . '.php';
 
 			// Check if file exists, require_once if it does
 			if (file_exists($file))
@@ -786,7 +786,7 @@ class DataMapper implements IteratorAggregate {
 						$recursive_path = $path . '/' . $dir;
 
 						// Prepare file
-						$file = $recursive_path . '/' . $class . EXT;
+						$file = $recursive_path . '/' . $class . '.php';
 
 						// Check if file exists, require_once if it does
 						if (file_exists($file))
@@ -850,18 +850,18 @@ class DataMapper implements IteratorAggregate {
 			}
 
 			// determine the file name and class name
-			$file = DataMapper::$config['extensions_path'] . '/' . $name . EXT;
+			$file = DataMapper::$config['extensions_path'] . '/' . $name . '.php';
 
 			if ( ! file_exists($file))
 			{
 				if(strpos($name, '/') === FALSE)
 				{
-					$file = APPPATH . DataMapper::$config['extensions_path'] . '/' . $name . EXT;
+					$file = APPPATH . DataMapper::$config['extensions_path'] . '/' . $name . '.php';
 					$ext = $name;
 				}
 				else
 				{
-					$file = APPPATH . $name . EXT;
+					$file = APPPATH . $name . '.php';
 					$ext = array_pop(explode('/', $name));
 				}
 
@@ -6145,7 +6145,7 @@ class DataMapper implements IteratorAggregate {
 			if(file_exists($cache_folder) && is_dir($cache_folder) && is_writeable($cache_folder))
 			{
 				$common_key = DataMapper::$common[DMZ_CLASSNAMES_KEY][strtolower(get_class($this))];
-				$cache_file = $cache_folder . '/' . $common_key . EXT;
+				$cache_file = $cache_folder . '/' . $common_key . '.php';
 				$cache = "<"."?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed'); \n";
 
 				$cache .= '$cache = ' . var_export(DataMapper::$common[$common_key], TRUE) . ';';
