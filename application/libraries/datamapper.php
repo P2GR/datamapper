@@ -5546,7 +5546,7 @@ class DataMapper implements IteratorAggregate {
 			$value = $arguments[2];
 
 			// Determine relationship table name, and join the tables
-			$rel_table = $this->_get_relationship_table($object, $related_field);
+			$rel_table = $related_field . '_' . $this->_get_relationship_table($object, $related_field);
 
 			// only add $related_field to the table name if the 'class' and 'related_field' aren't equal
 			// and the related object is in a different table
