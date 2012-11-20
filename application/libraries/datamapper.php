@@ -4650,7 +4650,8 @@ class DataMapper implements IteratorAggregate {
 			if(preg_replace('/[!=<> ]/ ', '', $field) == 'id')
 			{
 				// special case to prevent joining unecessary tables
-				$field = $this->_add_related_table($object, $related_field, TRUE);
+				$column = $this->_add_related_table($object, $related_field, TRUE);
+                $field = str_replace('id', $column, $field);
 			}
 			else
 			{
