@@ -4370,6 +4370,22 @@ class DataMapper implements IteratorAggregate {
 			}
 			else
 			{
+				foreach ($this->has_many as $relationship)
+				{
+					if (is_array($relationship) && isset($relationship['class']) && $relationship['class'] == $related_field)
+					{
+						return $relationship;
+					}
+				}
+
+				foreach ($this->has_one as $relationship)
+				{
+					if (is_array($relationship) && isset($relationship['class']) && $relationship['class'] == $related_field)
+					{
+						return $relationship;
+					}
+				}
+
 				if($try_singular)
 				{
 					$rf = singular($related_field);
