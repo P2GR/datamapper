@@ -5764,7 +5764,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _unique($field)
 	{
-		if ( ! empty($this->{$field}))
+		if (property_exists($this, $field) and ! is_null($this->{$field}))
 		{
 			$query = $this->db->get_where($this->table, array($field => $this->{$field}), 1, 0);
 
@@ -5797,19 +5797,22 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _unique_pair($field, $other_field = '')
 	{
-		if ( ! empty($this->{$field}) && ! empty($this->{$other_field}))
+		if (property_exists($this, $field) and ! is_null($this->{$field}))
 		{
-			$query = $this->db->get_where($this->table, array($field => $this->{$field}, $other_field => $this->{$other_field}), 1, 0);
-
-			if ($query->num_rows() > 0)
+			if (property_exists($this, $other_field) and ! is_null($this->{$other_field}))
 			{
-				$row = $query->row();
+				$query = $this->db->get_where($this->table, array($field => $this->{$field}, $other_field => $this->{$other_field}), 1, 0);
 
-				// If unique pair value does not belong to this object
-				if ($this->id != $row->id)
+				if ($query->num_rows() > 0)
 				{
-					// Then it is not a unique pair
-					return FALSE;
+					$row = $query->row();
+
+					// If unique pair value does not belong to this object
+					if ($this->id != $row->id)
+					{
+						// Then it is not a unique pair
+						return FALSE;
+					}
 				}
 			}
 		}
