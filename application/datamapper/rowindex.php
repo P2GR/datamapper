@@ -36,7 +36,7 @@ class DMZ_RowIndex {
 	 */
 	public function row_index($object, $id, $leave_select = array(), $distinct_on = FALSE) {
 		$this->first_only = TRUE;
-		$result = $this->get_rowindices($object, $id, $leave_select, $distinct_on);
+		$result = $this->row_indices($object, $id, $leave_select, $distinct_on);
 		$this->first_only = FALSE;
 		if(empty($result)) {
 			return FALSE;
@@ -204,7 +204,7 @@ class DMZ_RowIndex {
 		}
 		return $pos;
 	}
-	
+
 }
 
 /* End of file rowindex.php */
