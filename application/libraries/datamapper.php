@@ -4372,6 +4372,22 @@ class DataMapper implements IteratorAggregate {
 			}
 			else
 			{
+				foreach ($this->has_many as $relationship)
+				{
+					if (is_array($relationship) && isset($relationship['class']) && $relationship['class'] == $related_field)
+					{
+						return $relationship;
+					}
+				}
+
+				foreach ($this->has_one as $relationship)
+				{
+					if (is_array($relationship) && isset($relationship['class']) && $relationship['class'] == $related_field)
+					{
+						return $relationship;
+					}
+				}
+
 				if($try_singular)
 				{
 					$rf = singular($related_field);
@@ -4393,6 +4409,51 @@ class DataMapper implements IteratorAggregate {
 				}
 			}
 		}
+	}
+
+
+	public function _get_relationship_name($related_model, $try_singular = FALSE)
+	{
+		if (isset($this->has_many[$related_model]))
+		{
+			return $related_model;
+		}
+		else if (isset($this->has_one[$related_model]))
+		{
+			return $related_model;
+		}
+		else
+		{
+			foreach ($this->has_many as $relationship_name => $relationship)
+			{
+				if (is_array($relationship) && isset($relationship['class']) && $relationship['class'] == $related_model)
+				{
+					return $relationship_name;
+				}
+			}
+			
+			foreach ($this->has_one as $relationship_name => $relationship)
+			{
+				if (is_array($relationship) && isset($relationship['class']) && $relationship['class'] == $related_model)
+				{
+					return $relationship_name;
+				}
+			}
+		
+			if($try_singular)
+			{
+				$rf = singular($related_model);
+				$ret = $this->_get_related_properties($rf);
+				if (!is_null($ret))
+				{
+					$related_model = $rf;
+		        		return $rf;
+				}
+			}
+		}
+		show_error("Unable to relate {$this->model} with $related_model.");
+		// not related
+		return NULL;
 	}
 
 	// --------------------------------------------------------------------
@@ -4652,7 +4713,9 @@ class DataMapper implements IteratorAggregate {
 			if(preg_replace('/[!=<> ]/ ', '', $field) == 'id')
 			{
 				// special case to prevent joining unecessary tables
-				$field = $this->_add_related_table($object, $related_field, TRUE);
+				$column = $this->_add_related_table($object, $related_field, TRUE);
+				$field = str_replace('id', $column, $field);
+
 			}
 			else
 			{
@@ -5531,11 +5594,11 @@ class DataMapper implements IteratorAggregate {
 			{
 				$object = $arguments[0];
 				$class = get_class($object);
-				$related_field = $object->model;
+				$related_field = $this->_get_relationship_name($object->model);
 			}
 			else
 			{
-				$related_field = $arguments[0];
+				$related_field = $this->_get_relationship_name($arguments[0]);
 				// the TRUE allows conversion to singular
 				$related_properties = $this->_get_related_properties($related_field, TRUE);
 				$class = $related_properties['class'];
