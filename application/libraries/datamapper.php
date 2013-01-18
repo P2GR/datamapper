@@ -1624,11 +1624,15 @@ class DataMapper implements IteratorAggregate {
 					}
 
 					// Only go ahead with save if there is still data
-					if ( ! empty($data))
+					if (empty($data))
+					{
+						$result[] = TRUE;
+					}
+					else
 					{
 						// Update existing record
 						$this->db->where('id', $this->id);
-						$this->db->update($this->table, $data);
+						$result[] = $this->db->update($this->table, $data);
 
 						$trans_complete_label[] = 'update';
 					}
@@ -1636,7 +1640,6 @@ class DataMapper implements IteratorAggregate {
 					// Reset validated
 					$this->_validated = FALSE;
 
-					$result[] = TRUE;
 				}
 				else
 				{
@@ -1651,20 +1654,19 @@ class DataMapper implements IteratorAggregate {
 					}
 
 					// Create new record
-					$this->db->insert($this->table, $data);
-
-					if( ! $this->_force_save_as_new)
+					if ($result[] = $this->db->insert($this->table, $data))
 					{
-						// Assign new ID
-						$this->id = $this->db->insert_id();
+						if ( ! $this->_force_save_as_new)
+						{
+							// Assign new ID
+							$this->id = $this->db->insert_id();
+						}
 					}
 
 					$trans_complete_label[] = 'insert';
 
 					// Reset validated
 					$this->_validated = FALSE;
-
-					$result[] = TRUE;
 				}
 			}
 
