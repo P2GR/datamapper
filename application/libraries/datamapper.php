@@ -4431,7 +4431,7 @@ class DataMapper implements IteratorAggregate {
 					return $relationship_name;
 				}
 			}
-			
+
 			foreach ($this->has_one as $relationship_name => $relationship)
 			{
 				if (is_array($relationship) && isset($relationship['class']) && $relationship['class'] == $related_model)
@@ -4439,7 +4439,7 @@ class DataMapper implements IteratorAggregate {
 					return $relationship_name;
 				}
 			}
-		
+
 			if($try_singular)
 			{
 				$rf = singular($related_model);
@@ -5068,8 +5068,14 @@ class DataMapper implements IteratorAggregate {
 		// the TRUE allows conversion to singular
 		$related_properties = $this->_get_related_properties($related_field, TRUE);
 
-		if ( ! empty($related_properties) && $this->exists() && $object->exists())
+		if ( ! empty($related_properties) && $this->exists())
 		{
+			// if $object is new, save it first
+			if ( ! $object->exists())
+			{
+				$object->save();
+			}
+
 			$this_model = $related_properties['join_self_as'];
 			$other_model = $related_properties['join_other_as'];
 			$other_field = $related_properties['other_field'];
