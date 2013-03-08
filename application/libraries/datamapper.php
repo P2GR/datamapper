@@ -5070,12 +5070,6 @@ class DataMapper implements IteratorAggregate {
 
 		if ( ! empty($related_properties) && $this->exists())
 		{
-			// if $object is new, save it first
-			if ( ! $object->exists())
-			{
-				$object->save();
-			}
-
 			$this_model = $related_properties['join_self_as'];
 			$other_model = $related_properties['join_other_as'];
 			$other_field = $related_properties['other_field'];
@@ -5087,6 +5081,12 @@ class DataMapper implements IteratorAggregate {
 			 		// catch for self relationships.
 					in_array($other_model . '_id', $this->fields))
 			{
+				// if $object is new, save it first, otherwise we don't have a foreign key
+				if ( ! $object->exists())
+				{
+					$object->save();
+				}
+
 				$this->{$other_model . '_id'} = $object->id;
 				$ret =  $this->save();
 				// remove any one-to-one relationships with the other object
@@ -5103,6 +5103,12 @@ class DataMapper implements IteratorAggregate {
 			}
 			else
 			{
+				// if $object is new, save it first, otherwise we don't have a foreign key
+				if ( ! $object->exists())
+				{
+					$object->save();
+				}
+
 				$data = array($this_model . '_id' => $this->id, $other_model . '_id' => $object->id);
 
 				// Check if relation already exists
