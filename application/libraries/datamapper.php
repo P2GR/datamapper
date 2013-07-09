@@ -2611,7 +2611,10 @@ class DataMapper implements IteratorAggregate {
 		// Get by objects properties
 		$query = $this->db->query($sql, $binds);
 
-		$this->_process_query($query);
+		if (is_object($query))
+		{
+			$this->_process_query($query);
+		}
 
 		// For method chaining
 		return $this;
