@@ -3193,7 +3193,7 @@ class DataMapper implements IteratorAggregate {
 			} else {
 				$updated = array();
 				foreach ($select as $sel) {
-					$updated = $this->add_table_name($sel);
+					$updated[] = $this->add_table_name($sel);
 				}
 				$select = $updated;
 			}
