@@ -2524,13 +2524,13 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		// Manually overridden to allow for COUNT(DISTINCT COLUMN)
-		$select = $this->db->_count_string;
+		$select = $this->db->dm_get('_count_string');
 		if(!empty($column))
 		{
 			// COUNT DISTINCT
-			$select = 'SELECT COUNT(DISTINCT ' . $this->db->dm_call_method('_protect_identifiers', $column) . ') AS ';
+			$select = 'SELECT COUNT(DISTINCT ' . $this->db->protect_identifiers($column) . ') AS ';
 		}
-		$sql = $this->db->dm_call_method('_compile_select', $select . $this->db->dm_call_method('_protect_identifiers', 'numrows'));
+		$sql = $this->db->dm_call_method('_compile_select', $select . $this->db->protect_identifiers('numrows'));
 
 		$query = $this->db->query($sql);
 		$this->db->dm_call_method('_reset_select');
@@ -3091,10 +3091,10 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		// Table Name pattern should be
-		$tablename = $this->db->dm_call_method('escape_identifiers', $this->table);
+		$tablename = $this->db->escape_identifiers($this->table);
 		$table_pattern = '(?:' . preg_quote($this->table) . '|' . preg_quote($tablename) . '|\(' . preg_quote($tablename) . '\))';
 
-		$fieldname = $this->db->dm_call_method('escape_identifiers', '__field__');
+		$fieldname = $this->db->escape_identifiers('__field__');
 		$field_pattern = '([-\w]+|' . str_replace('__field__', '[-\w]+', preg_quote($fieldname)) . ')';
 
 		// replace all table.field references
@@ -3102,18 +3102,18 @@ class DataMapper implements IteratorAggregate {
 		// the NOT _ at the beginning is to prevent replacing of advanced relationship table references.
 		$pattern = '/([^_])' . $table_pattern . '\.' . $field_pattern . '/i';
 		// replacement ends up being `table_subquery`.`$1`
-		$replacement = '$1' . $this->db->dm_call_method('escape_identifiers', $this->table . '_subquery') . '.$2';
+		$replacement = '$1' . $this->db->escape_identifiers($this->table . '_subquery') . '.$2';
 		$sql = preg_replace($pattern, $replacement, $sql);
 
 		// now replace all "table table" aliases
 		// important: the space at the end is required
 		$pattern = "/$table_pattern $table_pattern /i";
-		$replacement = $tablename . ' ' . $this->db->dm_call_method('escape_identifiers', $this->table . '_subquery') . ' ';
+		$replacement = $tablename . ' ' . $this->db->escape_identifiers($this->table . '_subquery') . ' ';
 		$sql = preg_replace($pattern, $replacement, $sql);
 
 		// now replace "FROM table" for self relationships
 		$pattern = "/FROM $table_pattern([,\\s])/i";
-		$replacement = "FROM $tablename " . $this->db->dm_call_method('escape_identifiers', $this->table . '_subquery') . '$1';
+		$replacement = "FROM $tablename " . $this->db->escape_identifiers($this->table . '_subquery') . '$1';
 		$sql = preg_replace($pattern, $replacement, $sql);
 		$sql = str_replace("\n", "\n\t", $sql);
 
@@ -5008,7 +5008,7 @@ class DataMapper implements IteratorAggregate {
 		$object->select_func('COUNT', '*', 'count');
 		$this_rel = $related_properties['other_field'];
 		$tablename = $object->_add_related_table($this, $this_rel);
-		$object->where($tablename . '.`id` = ', $this->db->dm_call_method('escape_identifiers', '${parent}.id'), FALSE);
+		$object->where($tablename . '.`id` = ', $this->db->escape_identifiers('${parent}.id'), FALSE);
 		$this->select_subquery($object, $alias);
 		return $this;
 	}
