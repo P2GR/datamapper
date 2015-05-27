@@ -1033,12 +1033,6 @@ class DataMapper implements IteratorAggregate {
 					{
 						show_error('DataMapper Error: CodeIgniter database library not loaded.');
 					}
-					// ensure the shared DB is disconnected, even if the app exits uncleanly
-					if(!isset($CI->db->_has_shutdown_hook))
-					{
-						register_shutdown_function(array($CI->db, 'close'));
-						$CI->db->_has_shutdown_hook = TRUE;
-					}
 					// clone, so we don't create additional connections to the DB
 					$this->db = clone($CI->db);
 					$this->db->dm_call_method('_reset_select');
@@ -1055,12 +1049,6 @@ class DataMapper implements IteratorAggregate {
 					$this->db->queries =& $CI->db->queries;
 					$this->db->query_times =& $CI->db->query_times;
 				}
-			}
-			// ensure the created DB is disconnected, even if the app exits uncleanly
-			if(!isset($this->db->_has_shutdown_hook))
-			{
-				register_shutdown_function(array($this->db, 'close'));
-				$this->db->_has_shutdown_hook = TRUE;
 			}
 			return $this->db;
 		}
