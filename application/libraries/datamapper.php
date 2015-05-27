@@ -3993,7 +3993,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _having($key, $value = '', $type = 'AND ', $escape = TRUE)
 	{
-		$this->db->dm_call_method('having', $this->add_table_name($key), $value, $type, $escape);
+		$this->db->dm_call_method('_wh', 'qb_having', $this->add_table_name($key), $value, $type, $escape);
 
 		// For method chaining
 		return $this;
