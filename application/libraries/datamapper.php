@@ -3941,7 +3941,7 @@ class DataMapper implements IteratorAggregate {
 	 * @param	bool $escape If FALSE, don't escape the value.
 	 * @return	DataMapper Returns self for method chaining.
 	 */
-	public function having($key, $value = '', $escape = TRUE)
+	public function having($key, $value = NULL, $escape = TRUE)
 	{
 		return $this->_having($key, $value, 'AND ', $escape);
 	}
@@ -3959,7 +3959,7 @@ class DataMapper implements IteratorAggregate {
 	 * @param	bool $escape If FALSE, don't escape the value.
 	 * @return	DataMapper Returns self for method chaining.
 	 */
-	public function or_having($key, $value = '', $escape = TRUE)
+	public function or_having($key, $value = NULL, $escape = TRUE)
 	{
 		return $this->_having($key, $value, 'OR ', $escape);
 	}
@@ -3979,7 +3979,7 @@ class DataMapper implements IteratorAggregate {
 	 * @param	bool $escape If FALSE, don't escape the value.
 	 * @return	DataMapper Returns self for method chaining.
 	 */
-	protected function _having($key, $value = '', $type = 'AND ', $escape = TRUE)
+	protected function _having($key, $value = NULL, $type = 'AND ', $escape = TRUE)
 	{
 		$this->db->dm_call_method('_wh', 'qb_having', $this->add_table_name($key), $value, $type, $escape);
 
