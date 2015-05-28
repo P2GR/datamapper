@@ -698,7 +698,7 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		// Prepare class
-		$class = strtolower($class);
+		$class = ucfirst(strtolower($class));
 
 		// Prepare path
 		$paths = array();
