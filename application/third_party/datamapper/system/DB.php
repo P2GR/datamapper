@@ -156,10 +156,10 @@ function &DB($params = '', $active_record_override = NULL)
 
 	$DB = new $driver($params);
 
-	if ($DB->autoinit == TRUE)
-	{
+//	if ($DB->autoinit == TRUE)
+//	{
 		$DB->initialize();
-	}
+//	}
 
 	if (isset($params['stricton']) && $params['stricton'] == TRUE)
 	{

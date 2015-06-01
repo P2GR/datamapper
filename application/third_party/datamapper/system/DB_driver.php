@@ -23,7 +23,7 @@ if ( ! class_exists($driver, FALSE) )
 class $driver extends $org_driver
 {
 	// public interface to internal driver methods
-	public function dm_call_method(\$function, \$p1 = null, \$p2 = null, \$p3 = null, \$p4 = null)
+	public function dm_call_method(\$function, \$p1 = null, \$p2 = null, \$p3 = null, \$p4 = null, \$p5 = null)
 	{
 		switch (func_num_args())
 		{
@@ -40,6 +40,9 @@ class $driver extends $org_driver
 				break;
 			case 5:
 				return \$this->{\$function}(\$p1, \$p2, \$p3, \$p4);
+				break;
+			case 6:
+				return \$this->{\$function}(\$p1, \$p2, \$p3, \$p4, \$p5);
 				break;
 		}
 	}
