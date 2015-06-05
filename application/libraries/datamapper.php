@@ -862,7 +862,8 @@ class DataMapper implements IteratorAggregate {
 				else
 				{
 					$file = APPPATH . $name . '.php';
-					$ext = array_pop(explode('/', $name));
+					$ext = explode('/', $name);
+					$ext = array_pop($ext);
 				}
 
 				if(!file_exists($file))
