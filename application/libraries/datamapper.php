@@ -231,6 +231,7 @@ class DataMapper implements IteratorAggregate {
 		'db_params' => '',
 		'extensions' => array(),
 		'extensions_path' => 'datamapper',
+		'cascade_delete' => TRUE,
 	);
 
 	/**
@@ -268,12 +269,6 @@ class DataMapper implements IteratorAggregate {
 	 * @var bool
 	 */
 	public $valid = FALSE;
-	/**
-	 * delete relations on delete of an object. Defaults to TRUE.
-	 * set to FALSE if you RDBMS takes care of this using constraints
-	 * @var bool
-	 */
-	public $cascade_delete = TRUE;
 	/**
 	 * Contains the database fields for this object.
 	 * ** Automatically configured **
@@ -862,7 +857,8 @@ class DataMapper implements IteratorAggregate {
 				else
 				{
 					$file = APPPATH . $name . '.php';
-					$ext = array_pop(explode('/', $name));
+					$ext = explode('/', $name);
+					$ext = array_pop($ext);
 				}
 
 				if(!file_exists($file))
