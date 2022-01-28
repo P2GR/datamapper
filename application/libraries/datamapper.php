@@ -2798,6 +2798,10 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function add_table_name($field)
 	{
+		if (is_null($field)) {
+			return '';
+		}
+
 		// only add table if the field doesn't contain a dot (.) or open parentheses
 		if (preg_match('/[\.\(]/', $field) == 0)
 		{
