@@ -1,7 +1,14 @@
+what changed?
+=============
+
+- Added PHP 8.1 support
+
+
+
 datamapper
 ==========
 
-CodeIgniter Datamapper
+CodeIgniter Datamapper 
 DataMapper is an Object Relational Mapper written in PHP for CodeIgniter. It is designed to map your Database tables into easy to work with objects, fully aware of the relationships between each other.
 
 General Features
