@@ -6761,14 +6761,12 @@ class DM_DatasetIterator implements Iterator, Countable
 	 * Gets the item at the current index $pos
 	 * @return DataMapper
 	 */
-	#[\ReturnTypeWillChange]
-	function current() #:mixed as of PHP 8.0
+	function current(): mixed
 	{
 		return $this->get($this->pos);
 	}
 
-	#[\ReturnTypeWillChange]
-	function key() #:mixed as of PHP 8.0
+	function key(): mixed
 	{
 		return $this->pos;
 	}
