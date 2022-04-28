@@ -1254,7 +1254,7 @@ class DataMapper implements IteratorAggregate {
 	 *
 	 * @return	Iterator An iterator for the all array
 	 */
-	public function getIterator() {
+	public function getIterator(): Traversable {
 		if(isset($this->_dm_dataset_iterator)) {
 			return $this->_dm_dataset_iterator;
 		} else {
@@ -2798,6 +2798,10 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function add_table_name($field)
 	{
+		if (is_null($field)) {
+			return '';
+		}
+
 		// only add table if the field doesn't contain a dot (.) or open parentheses
 		if (preg_match('/[\.\(]/', $field) == 0)
 		{
@@ -6757,12 +6761,14 @@ class DM_DatasetIterator implements Iterator, Countable
 	 * Gets the item at the current index $pos
 	 * @return DataMapper
 	 */
-	function current()
+	#[\ReturnTypeWillChange]
+	function current() #:mixed as of PHP 8.0
 	{
 		return $this->get($this->pos);
 	}
 
-	function key()
+	#[\ReturnTypeWillChange]
+	function key() #:mixed as of PHP 8.0
 	{
 		return $this->pos;
 	}
@@ -6780,17 +6786,17 @@ class DM_DatasetIterator implements Iterator, Countable
 		return $this->object;
 	}
 
-	function next()
+	function next(): void
 	{
 		$this->pos++;
 	}
 
-	function rewind()
+	function rewind(): void
 	{
 		$this->pos = 0;
 	}
 
-	function valid()
+	function valid(): bool
 	{
 		return ($this->pos < $this->count);
 	}
@@ -6799,7 +6805,7 @@ class DM_DatasetIterator implements Iterator, Countable
 	 * Returns the number of results
 	 * @return int
 	 */
-	function count()
+	function count(): int
 	{
 		return $this->count;
 	}
