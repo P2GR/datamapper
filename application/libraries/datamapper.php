@@ -191,6 +191,7 @@ define('DMZ_VERSION', '1.8.3-dev');
  * Nestedsets Extension:
  *
  */
+#[\AllowDynamicProperties]
 class DataMapper implements IteratorAggregate {
 
 	/**
