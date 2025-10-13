@@ -61,7 +61,7 @@ class DMZ_CSV {
 		if($include_header)
 		{
 			// Print out header line
-			$success = fputcsv($fp, $fields);
+			$success = fputcsv($fp, $fields, ',', '"', '');
 		}
 		
 		if($success)
@@ -75,7 +75,7 @@ class DMZ_CSV {
 					$result[] = $o->{$f};
 				}
 				// output CSV-formatted line
-				$success = fputcsv($fp, $result);
+				$success = fputcsv($fp, $result, ',', '"', '');
 				if(!$success)
 				{
 					// stop on first failure.
@@ -141,7 +141,7 @@ class DMZ_CSV {
 		}
 		$columns = NULL;
 		
-		while(($data = fgetcsv($fp)) !== FALSE)
+		while(($data = fgetcsv($fp, ',', '"', '')) !== FALSE)
 		{
 			// get column names
 			if(is_null($columns))
