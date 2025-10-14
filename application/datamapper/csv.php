@@ -141,7 +141,7 @@ class DMZ_CSV {
 		}
 		$columns = NULL;
 		
-		while(($data = fgetcsv($fp, ',', '"', '')) !== FALSE)
+		while(($data = fgetcsv($fp, 0, ',', '"', '')) !== FALSE)
 		{
 			// get column names
 			if(is_null($columns))
