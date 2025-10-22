@@ -5962,7 +5962,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _boolean($field)
 	{
-		$this->{$field} = (boolean)$this->{$field};
+		$this->{$field} = (bool)$this->{$field};
 	}
 
 	// --------------------------------------------------------------------
