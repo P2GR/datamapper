@@ -23,9 +23,18 @@ if ( ! class_exists($driver, FALSE) )
 class $driver extends $org_driver
 {
 	// public interface to internal driver methods
+	// Compatible with both native CI3 and pocketarc fork
 	public function dm_call_method(\$function, ...\$args)
 	{
-		return \$this->{\$function}(...\$args);
+		// Check if method exists (for compatibility)
+		if (method_exists(\$this, \$function))
+		{
+			return \$this->{\$function}(...\$args);
+		}
+		
+		// Fallback for methods that might not exist in newer CI versions
+		// This handles edge cases in different CI3 versions
+		throw new BadMethodCallException("Method '\$function' does not exist in database driver");
 	}
 
 	// public interface to internal driver properties

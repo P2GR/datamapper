@@ -2,3 +2,41 @@
 .buildpath
 .project
 .settings/
+
+# VitePress
+docs/.vitepress/cache
+docs/.vitepress/dist
+node_modules
+.DS_Store
+
+# Python (for conversion script)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary
+*.tmp
+*.temp
+*.md
+*.py
+.code-workspace

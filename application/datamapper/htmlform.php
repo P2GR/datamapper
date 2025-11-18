@@ -1,11 +1,31 @@
 <?php
 
+if (!function_exists('dmz_log_message')) {
+	function dmz_log_message($level, $message, array $context = array())
+	{
+		if (!function_exists('log_message')) {
+			return;
+		}
+
+		if (!is_string($message)) {
+			$message = print_r($message, TRUE);
+		}
+
+		if (!empty($context)) {
+			$context_json = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if ($context_json !== FALSE) {
+				$message .= ' | context=' . $context_json;
+			}
+		}
+
+		call_user_func('log_message', $level, '[DataMapper] ' . $message);
+	}
+}
 
 /**
  * HTMLForm Extension for DataMapper classes.
  *
- * A powerful extension that allows one to quickly
- * generate standardized forms off a DMZ object.
+ * Provides helpers to quickly generate standardized forms from a DMZ object.
  *
  * @license 	MIT License
  * @package		DMZ-Included-Extensions
@@ -21,6 +41,11 @@
  * DMZ_HTMLForm Class
  *
  * @package		DMZ-Included-Extensions
+ *
+ * @property CI_Controller $CI
+ * @property CI_Loader     $load
+ * @property CI_Input      $input
+ * @property CI_URI        $uri
  */
 class DMZ_HTMLForm {
 
@@ -265,7 +290,7 @@ class DMZ_HTMLForm {
 		}
 		else
 		{
-			log_message('error', 'FormMaker: Unable to find a renderer for '.$type);
+			dmz_log_message('error', "FormMaker: Unable to find a renderer for '{$type}'");
 			return '<span style="color: Maroon; background-color: White; font-weight: bold">FormMaker: UNABLE TO FIND A RENDERER FOR '.$type.'</span>';
 		}
 

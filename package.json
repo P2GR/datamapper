@@ -1,0 +1,29 @@
+{
+  "name": "datamapper",
+  "version": "1.0.0",
+  "description": "[![PHP Version](https://img.shields.io/badge/PHP-5.4--8.5%2B-blue)](https://php.net) [![CodeIgniter](https://img.shields.io/badge/CodeIgniter-3.x-orange)](https://codeigniter.com) [![License](https://img.shields.io/badge/License-MIT-green)](license.txt) [![GitHub](https://img.shields.io/badge/GitHub-P2GR%2Fdatamapper-blue)](https://github.com/P2GR/datamapper)",
+  "main": "index.js",
+  "directories": {
+    "example": "examples",
+    "test": "tests"
+  },
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/P2GR/datamapper.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/P2GR/datamapper/issues"
+  },
+  "homepage": "https://github.com/P2GR/datamapper#readme",
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  }
+}

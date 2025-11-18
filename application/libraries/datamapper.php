@@ -12,7 +12,7 @@
  * @author  	Phil DeJarnett (up to v1.7.1)
  * @author  	Simon Stenhouse (up to v1.6.0)
  * @link		http://datamapper.wanwizard.eu/
- * @version 	1.8.3-dev
+ * @version 	2.0.0-beta1
  */
 
 /**
@@ -23,7 +23,53 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '1.8.3-dev');
+define('DMZ_VERSION', '2.0.0-beta1');
+
+// Define APPPATH when running outside of CodeIgniter bootstrap (e.g., CLI tooling)
+if (!defined('APPPATH')) {
+	$appPath = realpath(dirname(__FILE__) . '/../');
+	if ($appPath !== FALSE) {
+		define('APPPATH', rtrim($appPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR);
+	}
+}
+
+// Load DataMapper Exceptions if not already loaded
+if (!class_exists('DataMapper_Exception')) {
+    $exceptions_path = str_replace('libraries', 'datamapper', dirname(__FILE__)) . DIRECTORY_SEPARATOR . 'exceptions.php';
+    if (file_exists($exceptions_path)) {
+        require_once($exceptions_path);
+    }
+}
+
+if (!function_exists('dmz_log_message')) {
+	/**
+	 * Proxy logging helper that delegates to CodeIgniter's log_message when available.
+	 *
+	 * @param string $level   One of 'error', 'warning', 'info', 'debug'
+	 * @param mixed  $message Message string or arbitrary data
+	 * @param array  $context Optional context array to append as JSON
+	 * @return void
+	 */
+	function dmz_log_message($level, $message, array $context = array())
+	{
+		if (!function_exists('log_message')) {
+			return;
+		}
+
+		if (!is_string($message)) {
+			$message = print_r($message, TRUE);
+		}
+
+		if (!empty($context)) {
+			$context_json = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if ($context_json !== FALSE) {
+				$message .= ' | context=' . $context_json;
+			}
+		}
+
+		call_user_func('log_message', $level, '[DataMapper] ' . $message);
+	}
+}
 
 /**
  * Data Mapper Class
@@ -191,7 +237,20 @@ define('DMZ_VERSION', '1.8.3-dev');
  * Nestedsets Extension:
  *
  */
+
+#[\AllowDynamicProperties]
 class DataMapper implements IteratorAggregate {
+
+	public $ci_load;
+	public $ci_config;
+	public $ci_lang;
+	public $extensions;
+	public $auto_populate_has_many;
+	public $auto_populate_has_one;
+	public $id;
+	public $_dm_dataset_iterator;
+
+
 
 	/**
 	 * Stores the shared configuration
@@ -232,7 +291,89 @@ class DataMapper implements IteratorAggregate {
 		'extensions' => array(),
 		'extensions_path' => 'datamapper',
 		'cascade_delete' => TRUE,
+		'timestamps' => FALSE,
+		'created_at_column' => 'created_at',
+		'updated_at_column' => 'updated_at',
+		'soft_delete' => FALSE,
+		'deleted_at_column' => 'deleted_at',
 	);
+	
+	/**
+	 * Cache for accessor/mutator method existence checks (for attribute casting)
+	 * @var array
+	 */
+	private static $_accessor_cache = array();
+	private static $_mutator_cache = array();
+	
+	/**
+	 * Define attribute casting rules
+	 * 
+	 * Override in your model to enable automatic type casting:
+	 * 
+	 * protected $casts = array(
+	 *     'id' => 'int',
+	 *     'age' => 'int',
+	 *     'salary' => 'float',
+	 *     'is_active' => 'bool',
+	 *     'settings' => 'object',     // JSON to stdClass object
+	 *     'preferences' => 'array',   // JSON to associative array
+	 *     'created_at' => 'datetime'
+	 * );
+	 * 
+	 * Supported types:
+	 * - 'int' or 'integer'
+	 * - 'float' or 'double' or 'real'
+	 * - 'bool' or 'boolean'
+	 * - 'string'
+	 * - 'array' (JSON decode to array, encode on save)
+	 * - 'json' (alias for array)
+	 * - 'object' (JSON decode to stdClass, encode on save - enables $user->settings->key)
+	 * - 'datetime' (DateTime object)
+	 * - 'date' (DateTime object, date only)
+	 * - 'timestamp' (Unix timestamp to DateTime)
+	 * 
+	 * @var array
+	 */
+	protected $casts = array();
+
+	/**
+	 * DataMapper 2.0 - Timestamps (Eloquent-style)
+	 * 
+	 * Enable automatic created_at and updated_at timestamp management:
+	 * 
+	 * public $timestamps = TRUE;  // Enable timestamps for this model
+	 * 
+	 * Customize column names if needed:
+	 * public $created_at_column = 'date_created';
+	 * public $updated_at_column = 'date_modified';
+	 * 
+	 * @var bool|null  NULL = use config default, TRUE = enabled, FALSE = disabled
+	 */
+	public $timestamps = NULL;
+	public $created_at_column = NULL;
+	public $updated_at_column = NULL;
+
+	/**
+	 * DataMapper 2.0 - Soft Deletes (Eloquent-style)
+	 * 
+	 * Enable soft deletion (mark as deleted instead of removing):
+	 * 
+	 * public $soft_delete = TRUE;  // Enable soft deletes for this model
+	 * 
+	 * Customize column name if needed:
+	 * public $deleted_at_column = 'removed_at';
+	 * 
+	 * @var bool|null  NULL = use config default, TRUE = enabled, FALSE = disabled
+	 */
+	public $soft_delete = NULL;
+	public $deleted_at_column = NULL;
+
+	/**
+	 * Internal flags for soft delete query scopes
+	 * @var bool
+	 */
+	protected $_include_trashed = FALSE;
+	protected $_only_trashed = FALSE;
 
 	/**
 	 * Contains any errors that occur during validation, saving, or other
@@ -396,7 +537,7 @@ class DataMapper implements IteratorAggregate {
 					DataMapper::$config[$config_key] = $config_value;
 				}
 			}
-
+			
 			DataMapper::_load_extensions(DataMapper::$global_extensions, DataMapper::$config['extensions']);
 			unset(DataMapper::$config['extensions']);
 
@@ -863,7 +1004,7 @@ class DataMapper implements IteratorAggregate {
 
 				if(!file_exists($file))
 				{
-					show_error('DataMapper Error: loading extension ' . $name . ': File not found.');
+					throw new DataMapper_Extension_Exception('DataMapper Error: loading extension ' . $name . ': File not found.');
 				}
 			}
 			else
@@ -890,7 +1031,7 @@ class DataMapper implements IteratorAggregate {
 			}
 			if(!class_exists($ext))
 			{
-				show_error("DataMapper Error: Unable to find a class for extension $name.");
+				throw new DataMapper_Extension_Exception("DataMapper Error: Unable to find a class for extension $name.");
 			}
 			// create class
 			if(is_null($options))
@@ -1006,6 +1147,15 @@ class DataMapper implements IteratorAggregate {
 	{
 		static $CI = NULL;
 
+		// === ATTRIBUTE CASTING SUPPORT (NEW in DataMapper 2.0) ===
+		// Check for accessor method first (e.g., getFullNameAttribute())
+		if ($this->_has_get_accessor($name)) {
+			return $this->_get_attribute_value($name);
+		}
+		
+		// Store the original name for casting later
+		$original_name = $name;
+		
 		// get the CI instance
 		is_null($CI) AND $CI =& get_instance();
 
@@ -1017,7 +1167,7 @@ class DataMapper implements IteratorAggregate {
 			{
 				if ( ! isset($CI->db) || ! is_object($CI->db) || ! isset($CI->db->dbdriver) )
 				{
-					show_error('DataMapper Error: CodeIgniter database library not loaded.');
+					throw new DataMapper_Database_Exception('DataMapper Error: CodeIgniter database library not loaded.');
 				}
 				$this->db =& $CI->db;
 			}
@@ -1027,7 +1177,7 @@ class DataMapper implements IteratorAggregate {
 				{
 					if ( ! isset($CI->db) || ! is_object($CI->db) || ! isset($CI->db->dbdriver) )
 					{
-						show_error('DataMapper Error: CodeIgniter database library not loaded.');
+						throw new DataMapper_Database_Exception('DataMapper Error: CodeIgniter database library not loaded.');
 					}
 					// clone, so we don't create additional connections to the DB
 					$this->db = clone($CI->db);
@@ -1069,6 +1219,12 @@ class DataMapper implements IteratorAggregate {
 		// If named property is a "has many" or "has one" related item
 		if ($has_many || $has_one)
 		{
+			// *** EAGER LOADING FIX (DataMapper 2.0) ***
+			// Check if relationship was already eager-loaded (property exists and is an object)
+			if (property_exists($this, $name) && is_object($this->{$name})) {
+				return $this->{$name};
+			}
+			
 			$related_properties = $has_many ? $this->has_many[$name] : $this->has_one[$name];
 			// Instantiate it before accessing
 			$class = $related_properties['class'];
@@ -1096,8 +1252,44 @@ class DataMapper implements IteratorAggregate {
 				return $test;
 			}
 		}
+		
+		// === APPLY ATTRIBUTE CASTING (NEW in DataMapper 2.0) ===
+		// If we get here, check if property exists and apply casting if defined
+		if (isset($this->casts[$original_name]) && in_array($original_name, $this->fields, TRUE) && property_exists($this, $original_name)) {
+			return $this->_cast_attribute($original_name, $this->{$original_name});
+		}
 
 		return NULL;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Set attribute value with mutator and casting support (DataMapper 2.0)
+	 * 
+	 * Priority:
+	 * 1. Check for setXAttribute() mutator method
+	 * 2. Apply reverse casting if defined in $casts
+	 * 3. Set raw value (backward compatible)
+	 * 
+	 * @param string $key Attribute name
+	 * @param mixed $value Value to set
+	 */
+	public function __set($key, $value)
+	{
+		// Check for mutator method first (highest priority)
+		if ($this->_has_set_mutator($key)) {
+			$this->_set_attribute_value($key, $value);
+			return;
+		}
+		
+		// Apply reverse casting if defined for known fields
+		if (isset($this->casts[$key]) && in_array($key, $this->fields, TRUE)) {
+			$value = $this->_reverse_cast_attribute($key, $value);
+		}
+		
+		// Set the property directly (standard DataMapper behavior)
+		$this->{$key} = $value;
 	}
 
 	// --------------------------------------------------------------------
@@ -1161,21 +1353,32 @@ class DataMapper implements IteratorAggregate {
 		}
 		else
 		{
-			foreach ($watched_methods as $watched_method)
+			// Convert camelCase to snake_case FIRST
+			$snake_case_method = $this->_camel_to_snake($method);
+			$method_to_check = ($snake_case_method !== $method) ? $snake_case_method : $method;
+			
+			// Check if the snake_case version exists as a DIRECT method
+			// If so, skip watched methods and call it directly later
+			$is_direct_method = method_exists($this, $method_to_check);
+			
+			if (!$is_direct_method)
 			{
-				// See if called method is a watched method
-				if (strpos($method, $watched_method) !== FALSE)
+				foreach ($watched_methods as $watched_method)
 				{
-					$pieces = explode($watched_method, $method);
-					if ( ! empty($pieces[0]) && ! empty($pieces[1]))
+					// See if called method is a watched method (check BOTH original and snake_case)
+					if (strpos($method_to_check, $watched_method) !== FALSE)
 					{
-						// Watched method is in the middle
-						return $this->{'_' . trim($watched_method, '_')}($pieces[0], array_merge(array($pieces[1]), $arguments));
-					}
-					else
-					{
-						// Watched method is a prefix or suffix
-						return $this->{'_' . trim($watched_method, '_')}(str_replace($watched_method, '', $method), $arguments);
+						$pieces = explode($watched_method, $method_to_check);
+						if ( ! empty($pieces[0]) && ! empty($pieces[1]))
+						{
+							// Watched method is in the middle
+							return $this->{'_' . trim($watched_method, '_')}($pieces[0], array_merge(array($pieces[1]), $arguments));
+						}
+						else
+						{
+							// Watched method is a prefix or suffix
+							return $this->{'_' . trim($watched_method, '_')}(str_replace($watched_method, '', $method_to_check), $arguments);
+						}
 					}
 				}
 			}
@@ -1186,9 +1389,66 @@ class DataMapper implements IteratorAggregate {
 			array_unshift($arguments, $this);
 			return call_user_func_array(array($ext, $method), $arguments);
 		}
+		
+		$snake_case_method = $this->_camel_to_snake($method);
+		dmz_log_message('debug', "DataMapper __call: Converting {$method} to {$snake_case_method}");
+		if (method_exists($this, $snake_case_method))
+		{
+			dmz_log_message('debug', "DataMapper __call: {$snake_case_method} exists, calling it");
+			$result = call_user_func_array(array($this, $snake_case_method), $arguments);
+			
+			$result_type = is_object($result) ? get_class($result) : gettype($result);
+			dmz_log_message('debug', "DataMapper __call: {$method} -> {$snake_case_method} returned {$result_type}");
+			
+			if ($result === $this || $result instanceof DataMapper) {
+				return $result;
+			}
+			
+			return $result;
+		}
 
 		// show an error, for debugging's sake.
 		throw new Exception("Unable to call the method \"$method\" on the class " . get_class($this));
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Check if a method exists on DMZ_Collection.
+	 *
+	 * @param	string $method Method name to check
+	 * @return	bool TRUE if the method exists on DMZ_Collection
+	 */
+	protected function _is_collection_method($method)
+	{
+		// Auto-load DMZ_Collection if not already loaded
+		if (!class_exists('DMZ_Collection', FALSE)) {
+			@include_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+		
+		// Only check if class exists after trying to load it
+		if (!class_exists('DMZ_Collection', FALSE)) {
+			return FALSE;
+		}
+		
+		return method_exists('DMZ_Collection', $method);
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Convert camelCase to snake_case (DataMapper 2.0 - Fluent Query Builder)
+	 *
+	 * @param	string $method CamelCase method name
+	 * @return	string snake_case method name
+	 */
+	protected function _camel_to_snake($method)
+	{
+		// Convert camelCase to snake_case
+		// whereIn -> where_in
+		// orWhere -> or_where
+		// groupStart -> group_start
+		return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $method));
 	}
 
 	// --------------------------------------------------------------------
@@ -1294,7 +1554,18 @@ class DataMapper implements IteratorAggregate {
 		{
 			// invalid get request, return this for chaining.
 			return $this;
-		} // Else fall through to a normal get
+		}
+
+		$cached = $this->_get_from_cache();
+		if ($cached !== NULL) {
+			$this->_hydrate_cached_results($cached);
+			
+			// Reset cache flags
+			$this->_cache_enabled = FALSE;
+			$this->_cache_key = NULL;
+			
+			return $this;
+		}
 
 		$query = FALSE;
 
@@ -1324,6 +1595,8 @@ class DataMapper implements IteratorAggregate {
 			// Clear this object to make way for new data
 			$this->clear();
 
+			$this->_apply_soft_delete_scope();
+
 			// Set up default order by (if available)
 			$this->_handle_default_order_by();
 
@@ -1335,10 +1608,44 @@ class DataMapper implements IteratorAggregate {
 		if($query)
 		{
 			$this->_process_query($query);
+			
+			if ($this->_cache_enabled) {
+				$this->_store_in_cache($this->all);
+				
+				// Reset cache flags
+				$this->_cache_enabled = false;
+				$this->_cache_key = null;
+			}
 		}
 
 		// For method chaining
 		return $this;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Convert current results to Collection
+	 * 
+	 * Converts the $all array to a DMZ_Collection object.
+	 * Useful when you've already called get() and want Collection methods.
+	 * 
+	 * Example:
+	 *   $posts = new Post();
+	 *   $posts->get();
+	 *   $collection = $posts->to_collection();
+	 *   $titles = $collection->pluck('title');
+	 * 
+	 * @return	DMZ_Collection Collection of current results
+	 */
+	public function to_collection()
+	{
+		// Auto-load DMZ_Collection if not already loaded
+		if (!class_exists('DMZ_Collection', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+		
+		return new DMZ_Collection($this->all);
 	}
 
 	// --------------------------------------------------------------------
@@ -1557,6 +1864,8 @@ class DataMapper implements IteratorAggregate {
 		// If validation passed
 		if ($this->valid)
 		{
+			// DataMapper 2.0 - Automatic Timestamps (Eloquent-style)
+			$this->_handle_timestamps();
 
 			// Begin auto transaction
 			$this->_auto_trans_begin();
@@ -1683,6 +1992,9 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		$this->_force_save_as_new = FALSE;
+
+		// Invalidate cache after save
+		$this->_invalidate_cache();
 
 		// If no failure was recorded, return TRUE
 		return ( ! empty($result) && ! in_array(FALSE, $result));
@@ -1814,7 +2126,7 @@ class DataMapper implements IteratorAggregate {
 		}
 		if(empty($field))
 		{
-			show_error("Nothing was provided to update.");
+			throw new DataMapper_Validation_Exception("Nothing was provided to update.");
 		}
 
 		// Check if object has an 'updated' field
@@ -1902,6 +2214,38 @@ class DataMapper implements IteratorAggregate {
 		{
 			if ( ! empty($this->id))
 			{
+				// DataMapper 2.0 - Soft Delete (Eloquent-style)
+				// Check if soft delete is enabled for this model
+				$soft_delete_enabled = $this->soft_delete !== NULL ? $this->soft_delete : DataMapper::$config['soft_delete'];
+				
+				if ($soft_delete_enabled)
+				{
+					// Get column name
+					$deleted_col = $this->deleted_at_column !== NULL ? $this->deleted_at_column : DataMapper::$config['deleted_at_column'];
+					
+					// Check if column exists
+					if (in_array($deleted_col, $this->fields))
+					{
+						// Perform soft delete
+						$this->{$deleted_col} = $this->_fresh_timestamp();
+						
+						// Update updated_at if timestamps enabled
+						$timestamps_enabled = $this->timestamps !== NULL ? $this->timestamps : DataMapper::$config['timestamps'];
+						if ($timestamps_enabled)
+						{
+							$updated_col = $this->updated_at_column !== NULL ? $this->updated_at_column : DataMapper::$config['updated_at_column'];
+							if (in_array($updated_col, $this->fields))
+							{
+								$this->{$updated_col} = $this->_fresh_timestamp();
+							}
+						}
+						
+						return $this->save();
+					}
+				}
+				
+				// Original hard delete logic continues below...
+				
 				// Begin auto transaction
 				$this->_auto_trans_begin();
 
@@ -1956,6 +2300,9 @@ class DataMapper implements IteratorAggregate {
 
 				// Complete auto transaction
 				$this->_auto_trans_complete('delete');
+
+				// Invalidate cache after delete
+				$this->_invalidate_cache();
 
 				// Clear this object
 				$this->clear();
@@ -2766,7 +3113,7 @@ class DataMapper implements IteratorAggregate {
 			{
 				// provide feedback on errors
 				$this_model = get_class($this);
-				show_error("DataMapper Error: '".$this->parent['model']."' is not a valid parent relationship for $this_model.  Are your relationships configured correctly?");
+				throw new DataMapper_Relationship_Exception("DataMapper Error: '".$this->parent['model']."' is not a valid parent relationship for $this_model.  Are your relationships configured correctly?");
 			}
 		}
 
@@ -3445,13 +3792,30 @@ class DataMapper implements IteratorAggregate {
 	 *
 	 * Called by get_where()
 	 *
+	 * DataMapper 2.0: Now supports operator as 3rd parameter for fluent syntax:
+	 * - Legacy:  ->where('id >', 10)
+	 * - Fluent:  ->where('id', 10, '>')
+	 *
 	 * @param	mixed $key A field or array of fields to check.
 	 * @param	mixed $value For a single field, the value to compare to.
-	 * @param	bool $escape If FALSE, the field is not escaped.
+	 * @param	mixed $escape_or_operator If string operator (!=, >, <, >=, <=, LIKE, etc.), use as comparison operator. If boolean, use as escape flag.
 	 * @return	DataMapper Returns self for method chaining.
 	 */
-	public function where($key, $value = NULL, $escape = TRUE)
+	public function where($key, $value = NULL, $escape_or_operator = TRUE)
 	{
+		// DataMapper 2.0: Detect if 3rd parameter is an operator (string) or escape flag (boolean)
+		if (is_string($escape_or_operator) && $escape_or_operator !== '' && !is_bool($escape_or_operator)) {
+			// Fluent syntax: ->where('id', 10, '>')
+			// Only append operator if it's not '=' (default)
+			if ($escape_or_operator !== '=') {
+				$key = $key . ' ' . $escape_or_operator;
+			}
+			$escape = TRUE; // Default to escaping when using operator parameter
+		} else {
+			// Legacy syntax: ->where('id >', 10) or ->where('id', 10, FALSE)
+			$escape = $escape_or_operator;
+		}
+		
 		return $this->_where($key, $value, 'AND ', $escape);
 	}
 
@@ -3463,13 +3827,30 @@ class DataMapper implements IteratorAggregate {
 	 * Sets the WHERE portion of the query.
 	 * Separates multiple calls with OR.
 	 *
+	 * Supports operator as 3rd parameter for fluent syntax:
+	 * - Legacy:  ->or_where('id >', 10)
+	 * - Fluent:  ->or_where('id', 10, '>')
+	 *
 	 * @param	mixed $key A field or array of fields to check.
 	 * @param	mixed $value For a single field, the value to compare to.
-	 * @param	bool $escape If FALSE, the field is not escaped.
+	 * @param	mixed $escape_or_operator If string operator (!=, >, <, >=, <=, LIKE, etc.), use as comparison operator. If boolean, use as escape flag.
 	 * @return	DataMapper Returns self for method chaining.
 	 */
-	public function or_where($key, $value = NULL, $escape = TRUE)
+	public function or_where($key, $value = NULL, $escape_or_operator = TRUE)
 	{
+		// DataMapper 2.0: Detect if 3rd parameter is an operator (string) or escape flag (boolean)
+		if (is_string($escape_or_operator) && $escape_or_operator !== '' && !is_bool($escape_or_operator)) {
+			// Fluent syntax: ->or_where('id', 10, '>')
+			// Only append operator if it's not '=' (default)
+			if ($escape_or_operator !== '=') {
+				$key = $key . ' ' . $escape_or_operator;
+			}
+			$escape = TRUE; // Default to escaping when using operator parameter
+		} else {
+			// Legacy syntax: ->or_where('id >', 10) or ->or_where('id', 10, FALSE)
+			$escape = $escape_or_operator;
+		}
+		
 		return $this->_where($key, $value, 'OR ', $escape);
 	}
 
@@ -3578,6 +3959,403 @@ class DataMapper implements IteratorAggregate {
 	// --------------------------------------------------------------------
 
 	/**
+	 * Where JSON Contains
+	 *
+	 * Filters records where the given JSON column contains the provided value.
+	 * Supports snake_case usage on DataMapper and camelCase via __call magic.
+	 *
+	 * @param	string $field JSON column (supports -> path syntax)
+	 * @param	mixed $value Value to search for within the JSON document
+	 * @param	string|array|null $path Optional extra path segments appended to field
+	 * @return	DataMapper
+	 * @throws	InvalidArgumentException When path syntax is invalid
+	 */
+	public function where_json_contains($field, $value, $path = NULL)
+	{
+		return $this->_where_json_contains($field, $value, $path, FALSE, 'AND ');
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Or Where JSON Contains
+	 *
+	 * @see where_json_contains
+	 */
+	public function or_where_json_contains($field, $value, $path = NULL)
+	{
+		return $this->_where_json_contains($field, $value, $path, FALSE, 'OR ');
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Where JSON Does Not Contain
+	 *
+	 * Negated variant of {@see where_json_contains}.
+	 *
+	 * @param	string $field
+	 * @param	mixed $value
+	 * @param	string|array|null $path
+	 * @return	DataMapper
+	 */
+	public function where_json_doesnt_contain($field, $value, $path = NULL)
+	{
+		return $this->_where_json_contains($field, $value, $path, TRUE, 'AND ');
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Or Where JSON Does Not Contain
+	 *
+	 * @see where_json_doesnt_contain
+	 */
+	public function or_where_json_doesnt_contain($field, $value, $path = NULL)
+	{
+		return $this->_where_json_contains($field, $value, $path, TRUE, 'OR ');
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Core handler for JSON contains clauses.
+	 *
+	 * @param	string $field
+	 * @param	mixed $value
+	 * @param	string|array|null $path
+	 * @param	bool $negate When TRUE, wraps the condition in NOT
+	 * @param	string $type AND / OR connector
+	 * @return	DataMapper
+	 * @throws	Exception When the current driver lacks JSON function support
+	 */
+	protected function _where_json_contains($field, $value, $path, $negate, $type)
+	{
+		list($base_field, $segments) = $this->_parse_json_reference($field, $path);
+
+		$type = $this->_get_prepend_type($type);
+		$column = $this->add_table_name($base_field);
+		$expression = $this->_compile_json_contains_expression($column, $segments, $value, $negate);
+
+		$this->db->dm_call_method('_wh', 'qb_where', $expression, NULL, $type, NULL);
+
+		return $this;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Compile a JSON contains expression for the active database driver.
+	 *
+	 * @param	string $column Qualified column name
+	 * @param	array $segments Parsed JSON path segments
+	 * @param	mixed $value Value to locate within the JSON column
+	 * @param	bool $negate TRUE to invert the condition
+	 * @return	string
+	 * @throws	Exception When the driver is unsupported
+	 */
+	protected function _compile_json_contains_expression($column, array $segments, $value, $negate)
+	{
+		$driver = $this->_get_database_driver_family();
+
+		switch ($driver)
+		{
+			case 'mysql':
+				$path = $this->_build_mysql_json_path($segments);
+				$candidate = $this->_json_encode_value($value);
+				$expression = 'JSON_CONTAINS(' . $column . ', ' . $this->db->escape($candidate);
+				if ($path !== '$')
+				{
+					$expression .= ', ' . $this->db->escape($path);
+				}
+				$expression .= ')';
+				if ($negate)
+				{
+					$expression = 'NOT (' . $expression . ')';
+				}
+				return $expression;
+
+			case 'pgsql':
+				$document = $this->_build_postgres_json_document($segments, $value);
+				$operator = $negate ? '!@>' : '@>';
+				return '(' . $column . ')::jsonb ' . $operator . ' ' . $this->db->escape($document) . '::jsonb';
+		}
+
+		dmz_log_message('error', 'JSON helpers are not supported for driver: ' . ($this->db->dbdriver ?? 'unknown'));
+		throw new Exception('JSON where helpers are not supported for database driver: ' . ($this->db->dbdriver ?? 'unknown'));
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Parse a JSON column reference and optional path into segments.
+	 *
+	 * @param	string $field Field with optional inline path (e.g. meta->theme)
+	 * @param	string|array|null $path Extra path segments appended to $field
+	 * @return	array Tuple array($baseField, $segments)
+	 * @throws	InvalidArgumentException When syntax is invalid
+	 */
+	protected function _parse_json_reference($field, $path = NULL)
+	{
+		if (is_null($field) || $field === '')
+		{
+			throw new \InvalidArgumentException('JSON where helpers require a column name.');
+		}
+
+		$field = trim($field);
+		$field_parts = explode('->', $field);
+		$base_field = array_shift($field_parts);
+
+		$segments = array();
+		foreach ($field_parts as $token)
+		{
+			$segments = array_merge($segments, $this->_parse_json_path_token($token));
+		}
+
+		$extra_tokens = $this->_normalize_json_path_input($path);
+		foreach ($extra_tokens as $token)
+		{
+			$segments = array_merge($segments, $this->_parse_json_path_token($token));
+		}
+
+		return array($base_field, $segments);
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Convert a JSON path token (e.g. foo[], settings) into structured segments.
+	 *
+	 * Supported syntax:
+	 *   - alpha-numeric keys with underscores (foo, settings)
+	 *   - array wildcards using [] or [*] (foo[], [] )
+	 *
+	 * Numeric array indexes are intentionally not supported yet to avoid
+	 * portability issues across drivers.
+	 *
+	 * @param	string $token
+	 * @return	array
+	 * @throws	InvalidArgumentException For unsupported syntax
+	 */
+	protected function _parse_json_path_token($token)
+	{
+		$token = trim($token);
+		if ($token === '')
+		{
+			throw new \InvalidArgumentException('Empty JSON path segment detected.');
+		}
+
+		$segments = array();
+		$length = strlen($token);
+		$offset = 0;
+
+		if ($token[0] !== '[')
+		{
+			if (!preg_match('/^[A-Za-z0-9_]+/', $token, $match))
+			{
+				throw new \InvalidArgumentException('Invalid JSON path segment: ' . $token);
+			}
+			$segments[] = array('type' => 'key', 'key' => $match[0]);
+			$offset = strlen($match[0]);
+		}
+
+		while ($offset < $length)
+		{
+			$remainder = substr($token, $offset);
+			if (strpos($remainder, '[]') === 0)
+			{
+				$segments[] = array('type' => 'array', 'key' => NULL);
+				$offset += 2;
+				continue;
+			}
+			if (strpos($remainder, '[*]') === 0)
+			{
+				$segments[] = array('type' => 'array', 'key' => NULL);
+				$offset += 3;
+				continue;
+			}
+			if (preg_match('/^\[(\d+)\]/', $remainder))
+			{
+				throw new \InvalidArgumentException('Numeric JSON indexes are not supported yet: ' . $token);
+			}
+			throw new \InvalidArgumentException('Unsupported JSON path qualifier in segment: ' . $token);
+		}
+
+		return $segments;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Build a MySQL-compatible JSON path expression from parsed segments.
+	 *
+	 * @param	array $segments
+	 * @return	string
+	 */
+	protected function _build_mysql_json_path(array $segments)
+	{
+		$path = '$';
+		foreach ($segments as $segment)
+		{
+			switch ($segment['type'])
+			{
+				case 'key':
+					$path .= '.' . $this->_escape_mysql_json_key($segment['key']);
+					break;
+				case 'array':
+					$path .= '[*]';
+					break;
+				default:
+					throw new \InvalidArgumentException('Unsupported JSON path segment encountered while building path.');
+			}
+		}
+		return $path;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Escape a JSON path identifier for MySQL.
+	 *
+	 * @param	string $key
+	 * @return	string
+	 */
+	protected function _escape_mysql_json_key($key)
+	{
+		if (preg_match('/^[A-Za-z0-9_]+$/', $key))
+		{
+			return $key;
+		}
+
+		$escaped = str_replace('"', '\"', str_replace('"', '\"', $key));
+		return '"' . $escaped . '"';
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Build a JSON document used for PostgreSQL containment checks.
+	 *
+	 * @param	array $segments
+	 * @param	mixed $value
+	 * @return	string JSON-encoded document
+	 */
+	protected function _build_postgres_json_document(array $segments, $value)
+	{
+		$payload = $this->_wrap_value_into_segments($segments, $value);
+		return $this->_json_encode_value($payload);
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Wrap a scalar value into nested arrays/objects according to segments.
+	 *
+	 * @param	array $segments
+	 * @param	mixed $value
+	 * @return	mixed
+	 */
+	protected function _wrap_value_into_segments(array $segments, $value)
+	{
+		$result = $value;
+		for ($i = count($segments) - 1; $i >= 0; $i--)
+		{
+			$segment = $segments[$i];
+			switch ($segment['type'])
+			{
+				case 'array':
+					$result = array($result);
+					break;
+				case 'key':
+					$result = array($segment['key'] => $result);
+					break;
+				default:
+					throw new \InvalidArgumentException('Unsupported JSON path segment while wrapping value.');
+			}
+		}
+		return $result;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * JSON encode a PHP value with helpful error messaging.
+	 *
+	 * @param	mixed $value
+	 * @return	string
+	 * @throws	InvalidArgumentException When encoding fails
+	 */
+	protected function _json_encode_value($value)
+	{
+		$json = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		if ($json === FALSE)
+		{
+			$error = function_exists('json_last_error_msg') ? json_last_error_msg() : 'Unknown JSON encoding error';
+			throw new \InvalidArgumentException('Unable to encode value to JSON: ' . $error);
+		}
+		return $json;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Normalize optional JSON path input into an array of tokens.
+	 *
+	 * @param	string|array|null $path
+	 * @return	array
+	 */
+	protected function _normalize_json_path_input($path)
+	{
+		if ($path === NULL)
+		{
+			return array();
+		}
+		if (is_array($path))
+		{
+			return array_values(array_filter($path, 'strlen'));
+		}
+		$normalized = trim($path);
+		if ($normalized === '')
+		{
+			return array();
+		}
+		return array_values(array_filter(explode('->', trim($normalized, "->")), 'strlen'));
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Determine the normalized database driver family.
+	 *
+	 * @return	string
+	 */
+	protected function _get_database_driver_family()
+	{
+		$driver = isset($this->db->dbdriver) ? strtolower($this->db->dbdriver) : '';
+
+		if ($driver === 'pdo' && property_exists($this->db, 'subdriver') && !empty($this->db->subdriver))
+		{
+			$driver = strtolower($this->db->subdriver);
+		}
+
+		if (in_array($driver, array('mysql', 'mysqli', 'mariadb')))
+		{
+			return 'mysql';
+		}
+
+		if (in_array($driver, array('pgsql', 'postgre', 'postgres', 'postgresql')))
+		{
+			return 'pgsql';
+		}
+
+		return $driver;
+	}
+
+	// --------------------------------------------------------------------
+
+	// --------------------------------------------------------------------
+
+	/**
 	 * Where In
 	 *
 	 * Sets the WHERE field IN ('item', 'item') SQL query joined with
@@ -3670,7 +4448,31 @@ class DataMapper implements IteratorAggregate {
 			}
 			$values = $arr;
 		}
-	 	$this->db->dm_call_method('_where_in', $this->add_table_name($key), $values, $not, $type);
+		
+		// Use the public where_in method instead of protected _where_in
+		// to maintain compatibility with newer CodeIgniter versions
+		if ($not)
+		{
+			if ($type === 'OR ')
+			{
+				$this->db->or_where_not_in($this->add_table_name($key), $values);
+			}
+			else
+			{
+				$this->db->where_not_in($this->add_table_name($key), $values);
+			}
+		}
+		else
+		{
+			if ($type === 'OR ')
+			{
+				$this->db->or_where_in($this->add_table_name($key), $values);
+			}
+			else
+			{
+				$this->db->where_in($this->add_table_name($key), $values);
+			}
+		}
 
 		// For method chaining
 		return $this;
@@ -3925,6 +4727,8 @@ class DataMapper implements IteratorAggregate {
 		$this->db->group_by($this->add_table_name($by));
 
 		// For method chaining
+		$return_type = is_object($this) ? get_class($this) : gettype($this);
+		dmz_log_message('debug', "group_by() returning: {$return_type}");
 		return $this;
 	}
 
@@ -3936,13 +4740,30 @@ class DataMapper implements IteratorAggregate {
 	 * Sets the HAVING portion of the query.
 	 * Separates multiple calls with AND.
 	 *
+	 * DataMapper 2.0: Now supports operator as 3rd parameter for fluent syntax:
+	 * - Legacy:  ->having('count >', 5)
+	 * - Fluent:  ->having('count', 5, '>')
+	 *
 	 * @param	string $key Field to compare.
 	 * @param	string $value value to compare to.
-	 * @param	bool $escape If FALSE, don't escape the value.
+	 * @param	mixed $escape_or_operator If string operator (!=, >, <, >=, <=, etc.), use as comparison operator. If boolean, use as escape flag.
 	 * @return	DataMapper Returns self for method chaining.
 	 */
-	public function having($key, $value = NULL, $escape = TRUE)
+	public function having($key, $value = NULL, $escape_or_operator = TRUE)
 	{
+		// DataMapper 2.0: Detect if 3rd parameter is an operator (string) or escape flag (boolean)
+		if (is_string($escape_or_operator) && $escape_or_operator !== '' && !is_bool($escape_or_operator)) {
+			// Fluent syntax: ->having('count', 5, '>')
+			// Only append operator if it's not '=' (default)
+			if ($escape_or_operator !== '=') {
+				$key = $key . ' ' . $escape_or_operator;
+			}
+			$escape = TRUE; // Default to escaping when using operator parameter
+		} else {
+			// Legacy syntax: ->having('count >', 5) or ->having('count', 5, FALSE)
+			$escape = $escape_or_operator;
+		}
+		
 		return $this->_having($key, $value, 'AND ', $escape);
 	}
 
@@ -3954,13 +4775,30 @@ class DataMapper implements IteratorAggregate {
 	 * Sets the OR HAVING portion of the query.
 	 * Separates multiple calls with OR.
 	 *
+	 * DataMapper 2.0: Now supports operator as 3rd parameter for fluent syntax:
+	 * - Legacy:  ->or_having('count >', 5)
+	 * - Fluent:  ->or_having('count', 5, '>')
+	 *
 	 * @param	string $key Field to compare.
 	 * @param	string $value value to compare to.
-	 * @param	bool $escape If FALSE, don't escape the value.
+	 * @param	mixed $escape_or_operator If string operator (!=, >, <, >=, <=, etc.), use as comparison operator. If boolean, use as escape flag.
 	 * @return	DataMapper Returns self for method chaining.
 	 */
-	public function or_having($key, $value = NULL, $escape = TRUE)
+	public function or_having($key, $value = NULL, $escape_or_operator = TRUE)
 	{
+		// DataMapper 2.0: Detect if 3rd parameter is an operator (string) or escape flag (boolean)
+		if (is_string($escape_or_operator) && $escape_or_operator !== '' && !is_bool($escape_or_operator)) {
+			// Fluent syntax: ->or_having('count', 5, '>')
+			// Only append operator if it's not '=' (default)
+			if ($escape_or_operator !== '=') {
+				$key = $key . ' ' . $escape_or_operator;
+			}
+			$escape = TRUE; // Default to escaping when using operator parameter
+		} else {
+			// Legacy syntax: ->or_having('count >', 5) or ->or_having('count', 5, FALSE)
+			$escape = $escape_or_operator;
+		}
+		
 		return $this->_having($key, $value, 'OR ', $escape);
 	}
 
@@ -4385,7 +5223,7 @@ class DataMapper implements IteratorAggregate {
 					$ret = $this->_get_related_properties($rf);
 					if( is_null($ret))
 					{
-						show_error("Unable to relate {$this->model} with $related_field.");
+						throw new DataMapper_Relationship_Exception("Unable to relate {$this->model} with $related_field.");
 					}
 					else
 					{
@@ -4442,7 +5280,7 @@ class DataMapper implements IteratorAggregate {
 				}
 			}
 		}
-		show_error("Unable to relate {$this->model} with $related_model.");
+		throw new DataMapper_Relationship_Exception("Unable to relate {$this->model} with $related_model.");
 		// not related
 		return NULL;
 	}
@@ -4925,7 +5763,7 @@ class DataMapper implements IteratorAggregate {
 		}
 		if(empty($selection))
 		{
-			log_message('debug', "DataMapper Warning (include_related): No fields were selected for {$this->model} on $related_field.");
+			dmz_log_message('error', "No fields were selected for {$this->model} on include_related '{$related_field}'");
 		}
 		else
 		{
@@ -4963,15 +5801,21 @@ class DataMapper implements IteratorAggregate {
 	 *
 	 * @param	mixed $related_field Field to count
 	 * @param	string $alias  Alternative alias.
+	 * @param	callable|null $constraint Optional constraint callback applied to the related query
 	 * @return	DataMapper Returns self for method chaining.
 	 */
-	public function include_related_count($related_field, $alias = NULL)
+	public function include_related_count($related_field, $alias = NULL, $constraint = NULL)
 	{
 		if (is_object($related_field))
 		{
 			$object = $related_field;
 			$related_field = $object->model;
 			$related_properties = $this->_get_related_properties($related_field);
+
+			if (is_callable($constraint))
+			{
+				$object = $this->_apply_related_count_constraint($object, $constraint);
+			}
 		}
 		else
 		{
@@ -4979,6 +5823,11 @@ class DataMapper implements IteratorAggregate {
 			$related_properties = $this->_get_related_properties($related_field, TRUE);
 			$class = $related_properties['class'];
 			$object = new $class();
+
+			if (is_callable($constraint))
+			{
+				$object = $this->_apply_related_count_constraint($object, $constraint);
+			}
 		}
 
 		if(is_null($alias))
@@ -4999,6 +5848,41 @@ class DataMapper implements IteratorAggregate {
 		$object->where($tablename . '.`id` = ', $this->db->escape_identifiers('${parent}.id'), FALSE);
 		$this->select_subquery($object, $alias);
 		return $this;
+	}
+
+	protected function _apply_related_count_constraint($object, $constraint)
+	{
+		if (!is_callable($constraint))
+		{
+			return $object;
+		}
+
+		$builder_available = class_exists('DMZ_QueryBuilder', FALSE);
+		$builder = NULL;
+		$result = NULL;
+
+		if ($builder_available)
+		{
+			$builder = new DMZ_QueryBuilder($object);
+			$result = call_user_func($constraint, $builder);
+			if ($result instanceof DMZ_QueryBuilder)
+			{
+				return $result->get_model();
+			}
+			if ($result instanceof DataMapper)
+			{
+				return $result;
+			}
+			return $builder->get_model();
+		}
+
+		$result = call_user_func($constraint, $object);
+		if ($result instanceof DataMapper)
+		{
+			return $result;
+		}
+
+		return $object;
 	}
 
 	// --------------------------------------------------------------------
@@ -6206,36 +7090,42 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function production_cache()
 	{
-		// if requested, store the item to the production cache
-		if( ! empty(DataMapper::$config['production_cache']))
+		if (empty(DataMapper::$config['production_cache']))
 		{
-			// check if it's a fully qualified path first
-			if (!is_dir($cache_folder = DataMapper::$config['production_cache']))
-			{
-				// if not, it's relative to the application path
-				$cache_folder = APPPATH . DataMapper::$config['production_cache'];
-			}
-			if(file_exists($cache_folder) && is_dir($cache_folder) && is_writeable($cache_folder))
-			{
-				$common_key = DataMapper::$common[DMZ_CLASSNAMES_KEY][strtolower(get_class($this))];
-				$cache_file = $cache_folder . '/' . $common_key . '.php';
-				$cache = "<"."?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed'); \n";
-
-				$cache .= '$cache = ' . var_export(DataMapper::$common[$common_key], TRUE) . ';';
-
-				if ( ! $fp = @fopen($cache_file, 'w'))
-				{
-					show_error('Error creating production cache file: ' . $cache_file);
-				}
-
-				flock($fp, LOCK_EX);
-				fwrite($fp, $cache);
-				flock($fp, LOCK_UN);
-				fclose($fp);
-
-				@chmod($cache_file, FILE_WRITE_MODE);
-			}
+			return;
 		}
+
+		// check if it's a fully qualified path first
+		$cache_folder = DataMapper::$config['production_cache'];
+		if (!is_dir($cache_folder))
+		{
+			// if not, it's relative to the application path
+			$cache_folder = APPPATH . DataMapper::$config['production_cache'];
+		}
+
+		if (!file_exists($cache_folder) || !is_dir($cache_folder) || !is_writeable($cache_folder))
+		{
+			dmz_log_message('error', 'DataMapper production cache directory is not writable: ' . $cache_folder . ' (skipping cache write)');
+			return;
+		}
+
+		$common_key = DataMapper::$common[DMZ_CLASSNAMES_KEY][strtolower(get_class($this))];
+		$cache_file = $cache_folder . '/' . $common_key . '.php';
+		$cache = "<"."?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed'); \n";
+
+		$cache .= '$cache = ' . var_export(DataMapper::$common[$common_key], TRUE) . ';';
+
+		if ( ! $fp = @fopen($cache_file, 'w'))
+		{
+			throw new DataMapper_File_Exception('Error creating production cache file: ' . $cache_file);
+		}
+
+		flock($fp, LOCK_EX);
+		fwrite($fp, $cache);
+		flock($fp, LOCK_UN);
+		fclose($fp);
+
+		@chmod($cache_file, FILE_WRITE_MODE);
 	}
 
 	// --------------------------------------------------------------------
@@ -6470,6 +7360,16 @@ class DataMapper implements IteratorAggregate {
 			}
 		}
 
+		// === APPLY ATTRIBUTE CASTING (DataMapper 2.0) ===
+		// Apply casts to all properties defined in $casts array
+		if (!empty($item->casts)) {
+			foreach ($item->casts as $field => $cast_type) {
+				if (isset($item->{$field})) {
+					$item->{$field} = $item->_cast_attribute($field, $item->{$field});
+				}
+			}
+		}
+
 		if (!empty($this->_field_tracking['get_rules']))
 		{
 			$item->_run_get_rules();
@@ -6495,6 +7395,23 @@ class DataMapper implements IteratorAggregate {
 				$c->all[0] = $c->get_clone();
 			}
 		}
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Populate (Eloquent-inspired alias for _to_object)
+	 * 
+	 * Simplified method to populate a model instance from a database row.
+	 * This is used primarily by the eager loading system in QueryBuilder.
+	 * 
+	 * @param stdClass $row Database row object
+	 * @return void
+	 */
+	public function _populate($row)
+	{
+		// Use the existing _to_object method which handles all the complex logic
+		$this->_to_object($this, $row);
 	}
 
 	// --------------------------------------------------------------------
@@ -6604,7 +7521,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function _assign_libraries()
 	{
-		log_message('debug', "Warning: A DMZ model ({$this->model}) was either loaded via autoload, or manually.  DMZ automatically loads models, so this is unnecessary.");
+		dmz_log_message('error', "A DMZ model ({$this->model}) was either loaded via autoload, or manually.  DMZ automatically loads models, so this is unnecessary.");
 	}
 
 	// --------------------------------------------------------------------
@@ -6670,6 +7587,1521 @@ class DataMapper implements IteratorAggregate {
 		// Load security helper for prepping functions
 		$this->ci_load->helper('security');
 	}
+	
+	// ============================================================================
+	// FLUENT QUERY BUILDER METHODS (DataMapper 2.0)
+	// ============================================================================
+	
+	/**
+	 * Eager load relationships using QueryBuilder
+	 * 
+	* Automatically loads related data in batch queries to prevent N+1 problems.
+	* Supports fluent chaining.
+	 * 
+	 * @param string ...$relations Relationship names to eager load
+	 * @return DMZ_QueryBuilder For fluent chaining
+	 */
+	public function with(...$relations)
+	{
+		// Auto-load QueryBuilder if not already loaded
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+		
+		return (new DMZ_QueryBuilder($this))->with(...$relations);
+	}
+	
+	/**
+	 * Find a record by its primary key
+	 * 
+	 * @param mixed $id Primary key value
+	 * @return DataMapper|null
+	 */
+	public function find($id)
+	{
+		// Auto-load QueryBuilder if not already loaded
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+		
+		return (new DMZ_QueryBuilder($this))->find($id);
+	}
+	
+	/**
+	 * Get the first result
+	 * 
+	 * @return DataMapper|null
+	 */
+	public function first()
+	{
+		// Auto-load QueryBuilder if not already loaded
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+		
+		return (new DMZ_QueryBuilder($this))->first();
+	}
+	
+	/**
+	 * Get results as a collection.
+	 * 
+	 * Modern Laravel-style method that returns a DMZ_Collection instead of $this.
+	 * Can optionally fetch data first if parameters are provided.
+	 * 
+	 * Examples:
+	 *   // Get and convert to collection in one step
+	 *   $titles = (new Post())->where('status', 'published')->collect()->pluck('title');
+	 *   
+	 *   // Limit results
+	 *   $collection = (new Post())->collect(10);
+	 *   
+	 *   // Convert already-fetched results
+	 *   $post->get();
+	 *   $collection = $post->collect();
+	 * 
+	 * @param	integer|NULL $limit Optional limit for results (will call get() if provided)
+	 * @param	integer|NULL $offset Optional offset for results
+	 * @return DMZ_Collection
+	 */
+	public function collect($limit = NULL, $offset = NULL)
+	{
+		// Auto-load Collection if not already loaded
+		if (!class_exists('DMZ_Collection', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+		
+		// If limit is provided, fetch data first
+		if ($limit !== NULL) {
+			$this->get($limit, $offset);
+		}
+		
+		return new DMZ_Collection($this->all ?? array());
+	}
+
+	/**
+	 * Convenience wrapper for QueryBuilder pluck()
+	 *
+	 * @param string $field Field name to extract
+	 * @return array
+	 */
+	public function pluck($field)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->pluck($field);
+	}
+
+	/**
+	 * Convenience wrapper for QueryBuilder pluck_collection()
+	 *
+	 * @param string $field Field name to extract
+	 * @return DMZ_Collection
+	 */
+	public function pluck_collection($field)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->pluck_collection($field);
+	}
+
+	/**
+	 * Convenience wrapper for QueryBuilder pluck_values()
+	 *
+	 * @param string $field Field name to extract
+	 * @return array
+	 */
+	public function pluck_values($field)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->pluck_values($field);
+	}
+
+	/**
+	 * Convenience wrapper for QueryBuilder value()
+	 *
+	 * @param string $field Field name to read
+	 * @param mixed $default Default when no value present
+	 * @return mixed
+	 */
+	public function value($field, $default = NULL)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->value($field, $default);
+	}
+	
+	/**
+	 * Camel case alias for order_by()
+	 * 
+	 * @param string $field Field to order by
+	 * @param string $direction ASC or DESC
+	 * @return DMZ_QueryBuilder For fluent chaining
+	 */
+	public function orderBy($field, $direction = 'ASC')
+	{
+		// Auto-load QueryBuilder if not already loaded
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+		
+		// Call order_by method first
+		$this->order_by($field, $direction);
+		
+		// Return QueryBuilder for fluent chaining
+		return new DMZ_QueryBuilder($this);
+	}
+	
+	// ============================================================================
+	// STREAMING & CHUNKING METHODS
+	// ============================================================================
+	
+	/**
+	 * Process results in chunks.
+	 * 
+	 * Fetches and processes large result sets in manageable chunks
+	 * to avoid memory issues. More efficient than get() for large datasets.
+	 * 
+	 * Example:
+	 *   (new User())->chunk(100, function($users) {
+	 *       foreach ($users as $user) {
+	 *           $user->process();
+	 *           $user->save();
+	 *       }
+	 *   });
+	 * 
+	 * @param int $size Chunk size (number of records per chunk)
+	 * @param callable $callback Function to process each chunk
+	 *                          Receives DMZ_Collection, return false to stop
+	 * @return bool TRUE if all chunks processed, FALSE if stopped early
+	 */
+	public function chunk($size, $callback)
+	{
+		if (!is_callable($callback)) {
+			throw new Exception('Chunk callback must be callable');
+		}
+		
+		$offset = 0;
+		
+		while (true) {
+			// Clone query to preserve original state without sharing cache/db handles
+			$chunk_query = $this->get_clone(TRUE);
+			$chunk_query->_cache_enabled = FALSE;
+			$chunk_query->_cache_key = NULL;
+			
+			// Fetch chunk
+			$chunk_query->limit($size, $offset)->get();
+			
+			// Stop if no more results
+			if (empty($chunk_query->all)) {
+				break;
+			}
+			
+			// Auto-load Collection if not already loaded
+			if (!class_exists('DMZ_Collection', FALSE)) {
+				require_once(APPPATH . 'datamapper/querybuilder.php');
+			}
+			
+			// Convert to collection
+			$collection = new DMZ_Collection($chunk_query->all);
+			
+			// Process chunk - callback receives collection
+			$result = $callback($collection);
+			
+			// Stop if callback returns false
+			if ($result === false) {
+				return false;
+			}
+			
+			// Stop if we got less than size (last chunk)
+			if (count($chunk_query->all) < $size) {
+				break;
+			}
+			
+			// Move to next chunk
+			$offset += $size;
+			
+			// Clear memory
+			$chunk_query = null;
+			unset($collection);
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * Chunk by ID for better performance.
+	 * 
+	 * More reliable and faster than offset-based chunking for large tables.
+	 * Uses WHERE id > $lastId instead of OFFSET.
+	 * 
+	 * Example:
+	 *   (new User())->chunkById(100, function($users) {
+	 *       // Process chunk
+	 *   }, 'id');
+	 * 
+	 * @param int $size Chunk size
+	 * @param callable $callback Processing callback
+	 * @param string $column Column to chunk by (default: 'id')
+	 * @param string|null $alias Column alias if needed
+	 * @return bool TRUE if all chunks processed, FALSE if stopped early
+	 */
+	public function chunkById($size, $callback, $column = NULL, $alias = null)
+	{
+		if (!is_callable($callback)) {
+			throw new Exception('ChunkById callback must be callable');
+		}
+		
+		$lastId = null;
+		$column = $column ?? $this->primary_key;
+		$column_name = $alias ?? $column;
+		
+		while (true) {
+			// Clone query to preserve original state without sharing cache/db handles
+			$chunk_query = $this->get_clone(TRUE);
+			$chunk_query->_cache_enabled = FALSE;
+			$chunk_query->_cache_key = NULL;
+			
+			// Add WHERE id > lastId
+			if ($lastId !== null) {
+				$chunk_query->where("{$column_name} >", $lastId);
+			}
+			
+			// Order by ID and limit
+			$chunk_query->order_by($column_name, 'ASC')->limit($size)->get();
+			
+			// Stop if no results
+			if (empty($chunk_query->all)) {
+				break;
+			}
+			
+			// Auto-load Collection if not already loaded
+			if (!class_exists('DMZ_Collection', FALSE)) {
+				require_once(APPPATH . 'datamapper/querybuilder.php');
+			}
+			
+			// Convert to collection
+			$collection = new DMZ_Collection($chunk_query->all);
+			
+			// Process chunk
+			$result = $callback($collection);
+			
+			// Stop if callback returns false
+			if ($result === false) {
+				return false;
+			}
+			
+			// Update last ID
+			$lastItem = $collection->last();
+			if (is_object($lastItem)) {
+				$lastId = isset($lastItem->{$column_name}) ? $lastItem->{$column_name} : null;
+			} elseif (is_array($lastItem)) {
+				$lastId = isset($lastItem[$column_name]) ? $lastItem[$column_name] : null;
+			}
+			
+			// Stop if we got less than size (last chunk)
+			if ($collection->count() < $size) {
+				break;
+			}
+			
+			// Clear memory
+			$chunk_query = null;
+			unset($collection);
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * Iterate results with a cursor.
+	 * 
+	 * Returns a Generator that yields one record at a time.
+	 * Extremely memory-efficient for large datasets.
+	 * 
+	 * Example:
+	 *   foreach ((new User())->cursor() as $user) {
+	 *       $user->process();
+	 *   }
+	 * 
+	 * @return Generator
+	 */
+	public function cursor()
+	{
+		$offset = 0;
+		$batch_size = 1000; // Internal batch size for cursor
+		
+		while (true) {
+			// Clone query for this batch without reusing cache metadata
+			$batch_query = $this->get_clone(TRUE);
+			$batch_query->_cache_enabled = FALSE;
+			$batch_query->_cache_key = NULL;
+			
+			// Fetch batch
+			$batch_query->limit($batch_size, $offset)->get();
+			
+			// Stop if no results
+			if (empty($batch_query->all)) {
+				break;
+			}
+			
+			// Yield each result
+			foreach ($batch_query->all as $item) {
+				yield $item;
+			}
+			
+			// Stop if we got less than batch_size (last batch)
+			if (count($batch_query->all) < $batch_size) {
+				break;
+			}
+			
+			// Move to next batch
+			$offset += $batch_size;
+			
+			// Clear memory
+			$batch_query = null;
+		}
+	}
+	
+	/**
+	 * Get a lazy collection of results.
+	 * 
+	 * Returns a LazyCollection that fetches data in chunks as needed.
+	 * Supports chainable operations while remaining memory-efficient.
+	 * 
+	 * Example:
+	 *   $emails = (new User())
+	 *       ->where('active', 1)
+	 *       ->lazy(500)
+	 *       ->map(function($user) { return $user->email; })
+	 *       ->take(1000);
+	 * 
+	 * @param int $chunkSize Chunk size for internal fetching (default: 1000)
+	 * @return DMZ_LazyCollection
+	 */
+	public function lazy($chunkSize = 1000)
+	{
+		// Auto-load LazyCollection if not already loaded
+		if (!class_exists('DMZ_LazyCollection', FALSE)) {
+			require_once(APPPATH . 'datamapper/lazycollection.php');
+		}
+		
+		return new DMZ_LazyCollection($this, $chunkSize);
+	}
+	
+	// ============================================================================
+	// CACHING METHODS
+	// ============================================================================
+	
+	/**
+	 * @var DMZ_CacheInterface Cache driver instance
+	 */
+	protected static $_cache_driver = null;
+
+	/**
+	 * @var string|null Signature hash of the active cache driver configuration
+	 */
+	protected static $_cache_driver_signature = null;
+
+	/**
+	 * @var float Timestamp (microtime) until which driver bootstrap should be throttled
+	 */
+	protected static $_cache_driver_failure_until = 0.0;
+
+	/**
+	 * @var string|null Last cache driver initialization error message
+	 */
+	protected static $_cache_driver_last_error = null;
+
+	/**
+	 * Number of seconds to wait before retrying a failed cache driver bootstrap
+	 */
+	protected const CACHE_DRIVER_RETRY_WINDOW = 30;
+	
+	/**
+	 * @var bool Whether caching is enabled for this query
+	 */
+	protected $_cache_enabled = false;
+	
+	/**
+	 * @var int Cache TTL in seconds
+	 */
+	protected $_cache_ttl = 3600;
+	
+	/**
+	 * @var string|null Custom cache key
+	 */
+	protected $_cache_key = null;
+	
+	/**
+	 * Enable query caching for the next query.
+	 * 
+	 * Caches the results of the next get() call for improved performance.
+	 * Automatically invalidated on save(), delete(), or related changes.
+	 * 
+	 * Example:
+	 *   $u = new User();
+	 *   $users = $u->where('active', 1)->cache(3600)->get();
+	 * 
+	 * @param int $ttl Time to live in seconds (default: 3600 = 1 hour)
+	 * @param string|null $key Custom cache key (auto-generated if null)
+	 * @return DataMapper For fluent chaining
+	 */
+	public function cache($ttl = 3600, $key = null)
+	{
+		$this->_cache_enabled = true;
+		$this->_cache_ttl = $ttl;
+		$this->_cache_key = $key;
+
+		if (!$this->_get_cache_driver()) {
+			dmz_log_message('debug', 'DataMapper cache() requested but no cache driver is configured; disabling cache for this query.');
+			$this->_cache_enabled = false;
+		}
+
+		return $this;
+	}
+	
+	/**
+	 * Disable caching for the next query.
+	 * 
+	 * Forces a fresh query even if cached version exists.
+	 * 
+	 * Example:
+	 *   $u = new User();
+	 *   $users = $u->where('active', 1)->no_cache()->get();
+	 * 
+	 * @return DataMapper For fluent chaining
+	 */
+	public function no_cache()
+	{
+		$this->_cache_enabled = false;
+		return $this;
+	}
+	
+	/**
+	 * Cache related data with the main query.
+	 * 
+	 * Caches both the main model and its relations together.
+	 * 
+	 * Example:
+	 *   $u = new User();
+	 *   $u->include_related('order')
+	 *     ->cache_relations(3600)
+	 *     ->get();
+	 * 
+	 * @param int $ttl Time to live in seconds
+	 * @return DataMapper For fluent chaining
+	 */
+	public function cache_relations($ttl = 3600)
+	{
+		// Cache the main query
+		$this->cache($ttl);
+		// Note: Relations are cached as part of the result set
+		return $this;
+	}
+	
+	/**
+	 * Clear cached queries for this model.
+	 * 
+	 * Clears all cached queries for this model type.
+	 * 
+	 * Example:
+	 *   (new User())->clear_cache();
+	 * 
+	 * @param string|null $pattern Optional pattern to match (e.g., 'user:active:*')
+	 * @return int Number of cache entries cleared
+	 */
+	public function clear_cache($pattern = null)
+	{
+		$driver = $this->_get_cache_driver();
+		if (!$driver) {
+			return 0;
+		}
+		
+		if ($pattern === null) {
+			// Clear all cache for this model
+			$pattern = 'query:' . strtolower($this->model) . ':*';
+		}
+		
+		return $driver->deletePattern($pattern);
+	}
+	
+	/**
+	 * Get the cache driver instance.
+	 * 
+	 * @return DMZ_CacheInterface|null
+	 */
+	protected function _get_cache_driver()
+	{
+		$driver = isset(DataMapper::$config['cache_driver']) ? DataMapper::$config['cache_driver'] : null;
+		$config = isset(DataMapper::$config['cache_config']) ? DataMapper::$config['cache_config'] : array();
+
+		if (empty($driver)) {
+			self::$_cache_driver = null;
+			self::$_cache_driver_signature = null;
+			dmz_log_message('debug', 'DataMapper cache driver is not configured.', array(
+				'model' => isset($this->model) ? $this->model : null
+			));
+			return null;
+		}
+		
+		$signature = md5($driver . ':' . serialize($config));
+
+		// Return cached driver if the config signature matches
+		if (self::$_cache_driver instanceof DMZ_CacheInterface && self::$_cache_driver_signature === $signature) {
+			return self::$_cache_driver;
+		}
+		
+		$now = microtime(TRUE);
+		if (self::$_cache_driver_signature === $signature && self::$_cache_driver_failure_until > $now) {
+			// Previous attempt failed recently; skip reinitialization to avoid log spam
+			return null;
+		}
+		
+		// Reset signature before attempting to load, so failures can be tracked
+		self::$_cache_driver = null;
+		self::$_cache_driver_signature = $signature;
+
+		try {
+			switch ($driver) {
+				case 'file':
+					require_once(APPPATH . 'datamapper/cache/filecache.php');
+					self::$_cache_driver = new DMZ_FileCache($config);
+					break;
+					
+				case 'redis':
+					require_once(APPPATH . 'datamapper/cache/rediscache.php');
+					self::$_cache_driver = new DMZ_RedisCache($config);
+					break;
+					
+				case 'memcached':
+					require_once(APPPATH . 'datamapper/cache/memcachedcache.php');
+					self::$_cache_driver = new DMZ_MemcachedCache($config);
+					break;
+					
+				default:
+					dmz_log_message('error', 'Unknown cache driver specified.', array('driver' => $driver));
+					self::$_cache_driver_failure_until = $now + self::CACHE_DRIVER_RETRY_WINDOW;
+					self::$_cache_driver_last_error = 'Unknown driver';
+					return null;
+			}
+		} catch (Exception $e) {
+			self::$_cache_driver = null;
+			self::$_cache_driver_failure_until = $now + self::CACHE_DRIVER_RETRY_WINDOW;
+			self::$_cache_driver_last_error = $e->getMessage();
+			dmz_log_message('error', 'Cache driver initialization failed: ' . $e->getMessage(), array('driver' => $driver));
+			return null;
+		}
+
+		self::$_cache_driver_failure_until = 0.0;
+		self::$_cache_driver_last_error = null;
+		
+		return self::$_cache_driver;
+	}
+	
+	/**
+	 * Generate a cache key for the current query.
+	 * 
+	 * @return string Cache key
+	 */
+	protected function _generate_cache_key()
+	{
+		// Use custom key if provided
+		if ($this->_cache_key !== null) {
+			return $this->_cache_key;
+		}
+
+		$qb_where   = $this->db->dm_get('qb_where');
+		$qb_select  = $this->db->dm_get('qb_select');
+		$qb_join    = $this->db->dm_get('qb_join');
+		$qb_orderby = $this->db->dm_get('qb_orderby');
+		$qb_groupby = $this->db->dm_get('qb_groupby');
+		$qb_limit   = $this->db->dm_get('qb_limit');
+		$qb_offset  = $this->db->dm_get('qb_offset');
+
+		$parts = array(
+			'query',
+			strtolower($this->model),
+			md5(serialize(array(
+				'where'   => empty($qb_where)   ? array() : $qb_where,
+				'select'  => empty($qb_select)  ? array() : $qb_select,
+				'join'    => empty($qb_join)    ? array() : $qb_join,
+				'orderby' => empty($qb_orderby) ? array() : $qb_orderby,
+				'groupby' => empty($qb_groupby) ? array() : $qb_groupby,
+				'limit'   => $qb_limit,
+				'offset'  => $qb_offset
+			)))
+		);
+
+		return implode(':', $parts);
+	}
+	
+	/**
+	 * Get cached query results.
+	 * 
+	 * @return array|null Cached results or null if not found
+	 */
+	protected function _get_from_cache()
+	{
+		if (!$this->_cache_enabled) {
+			return NULL;
+		}
+
+		$key = $this->_generate_cache_key();
+		$driverName = isset(DataMapper::$config['cache_driver']) ? DataMapper::$config['cache_driver'] : null;
+		$driver = $this->_get_cache_driver();
+		if (!$driver) {
+			dmz_log_message('debug', 'DataMapper cache disabled: cache driver unavailable.', array(
+				'model' => $this->model,
+				'key' => $key,
+				'driver' => $driverName
+			));
+			return NULL;
+		}
+
+		$payload = $driver->get($key);
+
+		if (is_array($payload)) {
+			dmz_log_message('debug', 'DataMapper cache hit.', array(
+				'model' => $this->model,
+				'key' => $key,
+				'driver' => $driverName,
+				'count' => count($payload)
+			));
+			return $payload;
+		}
+
+		dmz_log_message('debug', 'DataMapper cache miss.', array(
+			'model' => $this->model,
+			'key' => $key,
+			'driver' => $driverName
+		));
+
+		return NULL;
+	}
+	
+	/**
+	 * Store query results in cache.
+	 * 
+	 * @param array $results Results to cache
+	 * @return void
+	 */
+	protected function _store_in_cache($results)
+	{
+		if (!$this->_cache_enabled) {
+			return;
+		}
+
+		$key = $this->_generate_cache_key();
+		$driverName = isset(DataMapper::$config['cache_driver']) ? DataMapper::$config['cache_driver'] : null;
+		$driver = $this->_get_cache_driver();
+		if (!$driver) {
+			dmz_log_message('debug', 'DataMapper cache store skipped: cache driver unavailable.', array(
+				'model' => $this->model,
+				'key' => $key,
+				'driver' => $driverName
+			));
+			return;
+		}
+
+		$payload = $this->_serialize_cache_payload($results);
+		$stored = $driver->set($key, $payload, $this->_cache_ttl);
+
+		$count = is_array($results) ? count($results) : 0;
+		$context = array(
+			'model' => $this->model,
+			'key' => $key,
+			'driver' => $driverName,
+			'ttl' => $this->_cache_ttl,
+			'count' => $count
+		);
+
+		if ($stored) {
+			dmz_log_message('debug', 'DataMapper cache store.', $context);
+		} else {
+			dmz_log_message('error', 'DataMapper cache store failed.', $context);
+		}
+	}
+	
+	/**
+	 * Invalidate cache entries after save or delete.
+	 * 
+	 * Automatically called after save() and delete() operations.
+	 * 
+	 * @return void
+	 */
+	protected function _invalidate_cache()
+	{
+		$driver = $this->_get_cache_driver();
+		if (!$driver) {
+			dmz_log_message('debug', 'DataMapper cache invalidation skipped: cache driver unavailable');
+			return;
+		}
+
+		// Clear all cache for this model
+		$pattern = 'query:' . strtolower($this->model) . ':*';
+		$driver->deletePattern($pattern);
+	}
+
+	/**
+	 * Serialize query results for cache storage.
+	 *
+	 * @param array $results
+	 * @return array
+	 */
+	protected function _serialize_cache_payload($results)
+	{
+		$payload = array();
+
+		foreach ((array) $results as $model) {
+			if (!($model instanceof DataMapper)) {
+				continue;
+			}
+
+			$data = array();
+			foreach ($model->fields as $field) {
+				$data[$field] = isset($model->{$field}) ? $model->{$field} : NULL;
+			}
+
+			$relations = $this->_serialize_cached_relations($model);
+
+			$payload[] = array(
+				'class' => get_class($model),
+				'data' => $data,
+				'relations' => $relations
+			);
+		}
+
+		return $payload;
+	}
+
+	/**
+	 * Serialize eager-loaded relations for caching.
+	 *
+	 * @param DataMapper $model
+	 * @return array
+	 */
+	protected function _serialize_cached_relations($model)
+	{
+		$relations = array();
+
+		foreach ($model->has_many as $relation => $config) {
+			if (isset($model->{$relation}) && $model->{$relation} instanceof DMZ_Collection) {
+				$relations[$relation] = array(
+					'type' => 'collection',
+					'items' => $this->_serialize_cache_payload($model->{$relation}->to_array())
+				);
+			}
+		}
+
+		foreach ($model->has_one as $relation => $config) {
+			if (isset($model->{$relation}) && $model->{$relation} instanceof DataMapper) {
+				$relations[$relation] = array(
+					'type' => 'single',
+					'item' => $this->_serialize_cache_payload(array($model->{$relation}))
+				);
+			}
+		}
+
+		return $relations;
+	}
+
+	/**
+	 * Hydrate cached payload back into DataMapper models.
+	 *
+	 * @param array $payload
+	 * @return array
+	 */
+	protected function _hydrate_cache_payload(array $payload)
+	{
+		$results = array();
+
+		foreach ($payload as $item) {
+			if (empty($item['class']) || empty($item['data']) || !class_exists($item['class'])) {
+				continue;
+			}
+
+			$class = $item['class'];
+			$model = new $class();
+			$model->_populate((object) $item['data']);
+			$model->_refresh_stored_values();
+
+			if (!empty($item['relations'])) {
+				$this->_hydrate_cached_relations($model, $item['relations']);
+			}
+
+			$results[] = $model;
+		}
+
+		return $results;
+	}
+
+	/**
+	 * Restore cached relations onto hydrated models.
+	 *
+	 * @param DataMapper $model
+	 * @param array $relations
+	 * @return void
+	 */
+	protected function _hydrate_cached_relations(DataMapper $model, array $relations)
+	{
+		if (!class_exists('DMZ_Collection', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		foreach ($relations as $relation => $meta) {
+			if (empty($meta['type'])) {
+				continue;
+			}
+
+			if ($meta['type'] === 'collection') {
+				$items = isset($meta['items']) && is_array($meta['items']) ? $this->_hydrate_cache_payload($meta['items']) : array();
+				$model->{$relation} = new DMZ_Collection($items);
+			} elseif ($meta['type'] === 'single') {
+				$itemPayload = isset($meta['item']) && is_array($meta['item']) ? $meta['item'] : array();
+				$items = $this->_hydrate_cache_payload($itemPayload);
+				$model->{$relation} = !empty($items) ? $items[0] : NULL;
+			}
+		}
+	}
+
+	/**
+	 * Apply hydrated cache payload to this instance and rebuild ->all.
+	 *
+	 * @param array $payload
+	 * @return void
+	 */
+	protected function _hydrate_cached_results(array $payload)
+	{
+		$models = $this->_hydrate_cache_payload($payload);
+
+		$this->clear();
+		$this->all = array();
+
+		if (empty($models)) {
+			return;
+		}
+
+		$first = array_shift($models);
+		$this->_apply_cached_model($first);
+
+		$index = ($this->all_array_uses_ids && isset($this->id)) ? $this->id : 0;
+		$this->all[$index] = $this->get_clone();
+
+		foreach ($models as $model) {
+			$key = ($this->all_array_uses_ids && isset($model->id)) ? $model->id : count($this->all);
+			$this->all[$key] = $model;
+		}
+	}
+
+	/**
+	 * Copy cached model attributes onto this instance.
+	 *
+	 * @param DataMapper $source
+	 * @return void
+	 */
+	protected function _apply_cached_model(DataMapper $source)
+	{
+		foreach ($this->fields as $field) {
+			$this->{$field} = isset($source->{$field}) ? $source->{$field} : NULL;
+		}
+
+		foreach ($this->has_many as $relation => $_config) {
+			if (isset($source->{$relation})) {
+				$this->{$relation} = $source->{$relation};
+			} else {
+				unset($this->{$relation});
+			}
+		}
+
+		foreach ($this->has_one as $relation => $_config) {
+			if (isset($source->{$relation})) {
+				$this->{$relation} = $source->{$relation};
+			} else {
+				unset($this->{$relation});
+			}
+		}
+
+		$this->_refresh_stored_values();
+		if (!empty($this->_field_tracking['get_rules'])) {
+			$this->_run_get_rules();
+		}
+	}
+	
+	// ============================================================================
+	// ATTRIBUTE CASTING METHODS (DataMapper 2.0)
+	// ============================================================================
+	
+	/**
+	 * Check if a get accessor exists for an attribute
+	 * 
+	 * @param string $key Attribute name
+	 * @return bool
+	 */
+	protected function _has_get_accessor($key)
+	{
+		$class = get_class($this);
+		$cacheKey = $class . '::' . $key;
+		
+		if (!isset(self::$_accessor_cache[$cacheKey])) {
+			$method = 'get' . $this->_studly_case($key) . 'Attribute';
+			self::$_accessor_cache[$cacheKey] = method_exists($this, $method);
+		}
+		
+		return self::$_accessor_cache[$cacheKey];
+	}
+	
+	/**
+	 * Check if a set mutator exists for an attribute
+	 * 
+	 * @param string $key Attribute name
+	 * @return bool
+	 */
+	protected function _has_set_mutator($key)
+	{
+		$class = get_class($this);
+		$cacheKey = $class . '::' . $key;
+		
+		if (!isset(self::$_mutator_cache[$cacheKey])) {
+			$method = 'set' . $this->_studly_case($key) . 'Attribute';
+			self::$_mutator_cache[$cacheKey] = method_exists($this, $method);
+		}
+		
+		return self::$_mutator_cache[$cacheKey];
+	}
+	
+	/**
+	 * Get an attribute value using its accessor
+	 * 
+	 * @param string $key Attribute name
+	 * @return mixed
+	 */
+	protected function _get_attribute_value($key)
+	{
+		$method = 'get' . $this->_studly_case($key) . 'Attribute';
+		return $this->{$method}();
+	}
+	
+	/**
+	 * Set an attribute value using its mutator
+	 * 
+	 * @param string $key Attribute name
+	 * @param mixed $value Value to set
+	 */
+	protected function _set_attribute_value($key, $value)
+	{
+		$method = 'set' . $this->_studly_case($key) . 'Attribute';
+		$this->{$method}($value);
+	}
+	
+	/**
+	 * Cast an attribute to its defined type
+	 * 
+	 * @param string $key Attribute name
+	 * @param mixed $value Raw value
+	 * @return mixed Casted value
+	 */
+	protected function _cast_attribute($key, $value)
+	{
+		if ($value === NULL) {
+			return NULL;
+		}
+		
+		$castType = isset($this->casts[$key]) ? $this->casts[$key] : NULL;
+		
+		if (!$castType || !in_array($key, $this->fields, TRUE)) {
+			return $value;
+		}
+		
+		switch ($castType) {
+			case 'int':
+			case 'integer':
+				return (int) $value;
+			
+			case 'float':
+			case 'double':
+			case 'real':
+				return (float) $value;
+			
+			case 'bool':
+			case 'boolean':
+				return (bool) $value;
+			
+			case 'string':
+				return (string) $value;
+			
+			case 'array':
+			case 'json':
+				return $this->_from_json($value);
+			
+			case 'object':
+				// Decode JSON string to stdClass object for elegant property access
+				// e.g., $user->settings->2fa->enabled instead of json_decode($user->settings)
+				if (is_string($value)) {
+					$decoded = json_decode($value, false);  // false = return object not array
+					return ($decoded !== NULL) ? $decoded : new stdClass();
+				}
+				// If already an object, return as-is
+				if (is_object($value)) {
+					return $value;
+				}
+				// If array, convert to object
+				if (is_array($value)) {
+					return (object) $value;
+				}
+				return new stdClass();
+			
+			case 'datetime':
+			case 'timestamp':
+				return $this->_as_datetime($value);
+			
+			case 'date':
+				return $this->_as_date($value);
+			
+			default:
+				return $value;
+		}
+	}
+	
+	/**
+	 * Reverse cast an attribute for storage
+	 * 
+	 * @param string $key Attribute name
+	 * @param mixed $value Value to reverse cast
+	 * @return mixed
+	 */
+	protected function _reverse_cast_attribute($key, $value)
+	{
+		if ($value === NULL) {
+			return NULL;
+		}
+		
+		$castType = isset($this->casts[$key]) ? $this->casts[$key] : NULL;
+		
+		if (!$castType || !in_array($key, $this->fields, TRUE)) {
+			return $value;
+		}
+		
+		switch ($castType) {
+			case 'array':
+			case 'json':
+				return $this->_as_json($value);
+			
+			case 'object':
+				// Convert object back to JSON string for database storage
+				if (is_object($value)) {
+					return json_encode($value);
+				}
+				if (is_array($value)) {
+					return json_encode($value);
+				}
+				// If already a string, assume it's JSON and return as-is
+				if (is_string($value)) {
+					return $value;
+				}
+				return json_encode(new stdClass());
+			
+			case 'datetime':
+			case 'date':
+			case 'timestamp':
+				return $this->_from_datetime($value);
+			
+			default:
+				return $value;
+		}
+	}
+	
+	/**
+	 * Convert a JSON string to an array
+	 * 
+	 * @param mixed $value
+	 * @return array
+	 */
+	protected function _from_json($value)
+	{
+		if (is_array($value)) {
+			return $value;
+		}
+		
+		if (is_string($value)) {
+			$decoded = json_decode($value, TRUE);
+			return is_array($decoded) ? $decoded : array();
+		}
+		
+		return array();
+	}
+	
+	/**
+	 * Convert a value to JSON string
+	 * 
+	 * @param mixed $value
+	 * @return string
+	 */
+	protected function _as_json($value)
+	{
+		if (is_string($value)) {
+			return $value;
+		}
+		
+		return json_encode($value);
+	}
+	
+	/**
+	 * Convert a value to DateTime object
+	 * 
+	 * @param mixed $value
+	 * @return DateTime|NULL
+	 */
+	protected function _as_datetime($value)
+	{
+		if ($value instanceof DateTime) {
+			return $value;
+		}
+		
+		if (is_numeric($value)) {
+			// Unix timestamp
+			$dt = new DateTime();
+			$dt->setTimestamp((int) $value);
+			return $dt;
+		}
+		
+		if (is_string($value)) {
+			try {
+				return new DateTime($value);
+			} catch (Exception $e) {
+				return NULL;
+			}
+		}
+		
+		return NULL;
+	}
+	
+	/**
+	 * Convert a value to date-only DateTime object
+	 * 
+	 * @param mixed $value
+	 * @return DateTime|NULL
+	 */
+	protected function _as_date($value)
+	{
+		$dt = $this->_as_datetime($value);
+		if ($dt) {
+			$dt->setTime(0, 0, 0);
+		}
+		return $dt;
+	}
+	
+	/**
+	 * Convert a DateTime object to string for storage
+	 * 
+	 * @param mixed $value
+	 * @return string|NULL
+	 */
+	protected function _from_datetime($value)
+	{
+		if ($value instanceof DateTime) {
+			return $value->format('Y-m-d H:i:s');
+		}
+		
+		if (is_string($value)) {
+			return $value;
+		}
+		
+		return NULL;
+	}
+	
+	/**
+	 * Convert snake_case to StudlyCase
+	 * 
+	 * @param string $value
+	 * @return string
+	 */
+	protected function _studly_case($value)
+	{
+		$value = str_replace('_', ' ', $value);
+		$value = ucwords($value);
+		return str_replace(' ', '', $value);
+	}
+	
+	// ------------------------------------------------------------------------
+	// Timestamps & Soft Deletes
+	// ------------------------------------------------------------------------
+	
+	/**
+	 * Handle automatic timestamps (created_at/updated_at)
+	 * Called automatically in save() method
+	 * 
+	 * @return void
+	 */
+	protected function _handle_timestamps()
+	{
+		// Check if timestamps are enabled (NULL = use config default)
+		$timestamps_enabled = $this->timestamps !== NULL ? $this->timestamps : DataMapper::$config['timestamps'];
+		
+		if (!$timestamps_enabled)
+		{
+			return;
+		}
+		
+		// Get column names (NULL = use config defaults)
+		$created_col = $this->created_at_column !== NULL ? $this->created_at_column : DataMapper::$config['created_at_column'];
+		$updated_col = $this->updated_at_column !== NULL ? $this->updated_at_column : DataMapper::$config['updated_at_column'];
+		
+		// Generate fresh timestamp
+		$timestamp = $this->_fresh_timestamp();
+		
+		// Check if columns exist in model fields
+		$has_created = in_array($created_col, $this->fields);
+		$has_updated = in_array($updated_col, $this->fields);
+		
+		// Set created_at on new records
+		if ($has_created && empty($this->id) && empty($this->{$created_col}))
+		{
+			$this->{$created_col} = $timestamp;
+		}
+		
+		// Always update updated_at
+		if ($has_updated)
+		{
+			$this->{$updated_col} = $timestamp;
+		}
+	}
+	
+	/**
+	 * Generate a fresh timestamp in the configured format
+	 * 
+	 * @return string|int Timestamp in configured format
+	 */
+	protected function _fresh_timestamp()
+	{
+		// Use the timestamp_format from config
+		$format = DataMapper::$config['timestamp_format'];
+		
+		if (DataMapper::$config['unix_timestamp'])
+		{
+			return time();
+		}
+		
+		return date($format);
+	}
+	
+	/**
+	 * Update the updated_at timestamp without saving other changes
+	 * Eloquent-style touch() method
+	 * 
+	 * @return bool Success or failure
+	 */
+	public function touch()
+	{
+		$timestamps_enabled = $this->timestamps !== NULL ? $this->timestamps : DataMapper::$config['timestamps'];
+		
+		if (!$timestamps_enabled || empty($this->id))
+		{
+			return FALSE;
+		}
+		
+		$updated_col = $this->updated_at_column !== NULL ? $this->updated_at_column : DataMapper::$config['updated_at_column'];
+		
+		if (!in_array($updated_col, $this->fields))
+		{
+			return FALSE;
+		}
+		
+		$this->{$updated_col} = $this->_fresh_timestamp();
+		return $this->save();
+	}
+	
+	/**
+	 * Apply soft delete scope to automatically exclude deleted records
+	 * Called automatically in get() method
+	 * 
+	 * @return void
+	 */
+	protected function _apply_soft_delete_scope()
+	{
+		// DataMapper 2.0 Enhancement: Auto-detect soft delete support
+		// If model has deleted_at column, automatically apply soft delete scope
+		// This makes fluent query builder work like Laravel Eloquent by default
+		
+		// Get column name (NULL = use config default)
+		$deleted_col = $this->deleted_at_column !== NULL ? $this->deleted_at_column : DataMapper::$config['deleted_at_column'];
+		
+		// Check if column exists - if it does, enable soft delete automatically
+		if (!in_array($deleted_col, $this->fields))
+		{
+			return;
+		}
+		
+		// Check if soft delete is explicitly disabled for this model
+		$soft_delete_enabled = $this->soft_delete !== NULL ? $this->soft_delete : DataMapper::$config['soft_delete'];
+		
+		if ($soft_delete_enabled === FALSE && $this->soft_delete !== NULL)
+		{
+			return;
+		}
+		
+		// Check if user already manually added a deleted_at condition
+		$existing_where = $this->db->dm_get('qb_where');
+		if (!empty($existing_where))
+		{
+			foreach ($existing_where as $where_clause)
+			{
+				// WHERE clause can be array or string - handle both
+				$where_string = is_array($where_clause) ? implode(' ', $where_clause) : (string)$where_clause;
+				
+				// Check if deleted_at is already in any WHERE condition
+				if (stripos($where_string, $deleted_col) !== FALSE)
+				{
+					return;  // User manually set deleted_at condition, don't override
+				}
+			}
+		}
+		
+		// Apply scope based on flags
+		if ($this->_only_trashed)
+		{
+			// Get only deleted records
+			$this->where($deleted_col . ' IS NOT NULL', NULL, FALSE);
+		}
+		else if (!$this->_include_trashed)
+		{
+			// Exclude deleted records (default behavior)
+			// This is the fluent query builder default: withoutTrashed()
+			$this->where($deleted_col, NULL);
+		}
+		// else: _include_trashed = TRUE, no filter applied (withTrashed() was called)
+	}
+	
+	/**
+	 * Permanently delete the record from database
+	 * Eloquent-style forceDelete()
+	 * 
+	 * @return bool Success or failure
+	 */
+	public function force_delete()
+	{
+		// Temporarily disable soft delete and call parent delete
+		$original_soft_delete = $this->soft_delete;
+		$this->soft_delete = FALSE;
+		
+		$result = $this->delete();
+		
+		// Restore original setting
+		$this->soft_delete = $original_soft_delete;
+		
+		return $result;
+	}
+	
+	/**
+	 * Restore a soft-deleted record
+	 * Eloquent-style restore()
+	 * 
+	 * @return bool Success or failure
+	 */
+	public function restore()
+	{
+		$soft_delete_enabled = $this->soft_delete !== NULL ? $this->soft_delete : DataMapper::$config['soft_delete'];
+		
+		if (!$soft_delete_enabled || empty($this->id))
+		{
+			return FALSE;
+		}
+		
+		$deleted_col = $this->deleted_at_column !== NULL ? $this->deleted_at_column : DataMapper::$config['deleted_at_column'];
+		
+		if (!in_array($deleted_col, $this->fields))
+		{
+			return FALSE;
+		}
+		
+		// Clear deleted_at
+		$this->{$deleted_col} = NULL;
+		
+		// Update updated_at if timestamps enabled
+		$timestamps_enabled = $this->timestamps !== NULL ? $this->timestamps : DataMapper::$config['timestamps'];
+		if ($timestamps_enabled)
+		{
+			$updated_col = $this->updated_at_column !== NULL ? $this->updated_at_column : DataMapper::$config['updated_at_column'];
+			if (in_array($updated_col, $this->fields))
+			{
+				$this->{$updated_col} = $this->_fresh_timestamp();
+			}
+		}
+		
+		return $this->save();
+	}
+	
+	/**
+	 * Check if the current record is soft-deleted
+	 * Eloquent-style trashed()
+	 * 
+	 * @return bool TRUE if soft-deleted, FALSE otherwise
+	 */
+	public function trashed()
+	{
+		$soft_delete_enabled = $this->soft_delete !== NULL ? $this->soft_delete : DataMapper::$config['soft_delete'];
+		
+		if (!$soft_delete_enabled)
+		{
+			return FALSE;
+		}
+		
+		$deleted_col = $this->deleted_at_column !== NULL ? $this->deleted_at_column : DataMapper::$config['deleted_at_column'];
+		
+		if (!in_array($deleted_col, $this->fields))
+		{
+			return FALSE;
+		}
+		
+		return !empty($this->{$deleted_col});
+	}
+	
+	/**
+	 * Include soft-deleted records in query results
+	 * Eloquent-style withTrashed()
+	 * 
+	 * @return DataMapper Returns self for method chaining
+	 */
+	public function with_trashed()
+	{
+		$this->_include_trashed = TRUE;
+		$this->_only_trashed = FALSE;
+		return $this;
+	}
+	
+	/**
+	 * Get only soft-deleted records
+	 * Eloquent-style onlyTrashed()
+	 * 
+	 * @return DataMapper Returns self for method chaining
+	 */
+	public function only_trashed()
+	{
+		$this->_only_trashed = TRUE;
+		$this->_include_trashed = FALSE;
+		return $this;
+	}
+	
+	/**
+	 * Exclude soft-deleted records (default behavior)
+	 * Eloquent-style withoutTrashed()
+	 * 
+	 * @return DataMapper Returns self for method chaining
+	 */
+	public function without_trashed()
+	{
+		$this->_include_trashed = FALSE;
+		$this->_only_trashed = FALSE;
+		return $this;
+	}
+
 }
 
 /**
