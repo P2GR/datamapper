@@ -684,5 +684,5 @@ print_r($user->error);
 
 - [Full Documentation](/) - Complete guide
 - [API Reference](/reference/functions) - All methods
-- [Examples](/examples/) - Real-world examples
+- [Usage Guides](/guide/datamapper-2/index) - Real-world walkthroughs
 - [FAQ](/help/faq) - Common questions

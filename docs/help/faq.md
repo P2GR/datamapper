@@ -410,7 +410,7 @@ We welcome contributions! See [Contributing](/help/contributing).
 
 - [Troubleshooting Guide](/help/troubleshooting)
 - [GitHub Discussions](https://github.com/P2GR/datamapper/discussions)
-- [Examples](/examples/)
+- [Usage Guides](/guide/datamapper-2/index)
 
 ::: tip Can't Find Your Answer?
 Ask on [GitHub Discussions](https://github.com/P2GR/datamapper/discussions) - our community is happy to help!

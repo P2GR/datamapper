@@ -340,4 +340,4 @@ CREATE INDEX idx_users_deleted_at ON users(deleted_at);
 ## See Also
 
 - [Troubleshooting FAQ](../../help/troubleshooting)
-- [Blog Example](../../examples/blog)
+- [Soft delete usage patterns](../datamapper-2/index#soft-deletes)

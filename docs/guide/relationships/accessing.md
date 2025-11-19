@@ -217,4 +217,4 @@ foreach ($u->group->get()->user->get() as $user)
 
 ```
 
-[[Usage Examples](/examples/) as they go into further depth on Accessing Relationships.
+[[Usage guides](../datamapper-2/index) as they go into further depth on Accessing Relationships.

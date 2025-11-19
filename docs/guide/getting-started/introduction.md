@@ -216,6 +216,6 @@ Dive into advanced features like eager loading and caching.
 DataMapper 2.0 makes database operations simple, fast, and enjoyable.
 
 [Get Started](/guide/getting-started/installation){ .vp-button .brand style="margin: 0 0.5rem;" }
-[View Examples](/examples/){ .vp-button .alt style="margin: 0 0.5rem;" }
+[View Usage Guides](/guide/datamapper-2/index){ .vp-button .alt style="margin: 0 0.5rem;" }
 
 </div>
