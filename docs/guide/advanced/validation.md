@@ -204,7 +204,7 @@ function _encrypt($field) // optional second parameter is not used
 
 ### Where to Store Custom Validation Rules
 
-[[extension class](extensions). The naming and usage rules are different depending on where you store them. You should always put rules that are used in multiple places in an extension class.
+[[extension class](../extensions/). The naming and usage rules are different depending on where you store them. You should always put rules that are used in multiple places in an extension class.
 
 ### Rules
 
@@ -335,7 +335,7 @@ $validation = array(
 
 Now if **word** is not exactly 10 characters in length, it will fail validation.
 
-Here's the same rule, but stored in an [Extension Class](extensions):
+Here's the same rule, but stored in an [Extension Class](../extensions/):
 
 ```php
 class Custom_Rules {

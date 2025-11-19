@@ -1,6 +1,6 @@
 # Setting up Table Prefixes
 
-[[Installation Instructions](installation) asks you to make sure you set the dbprefix in your database settings to an empty string. The reason for this is because DataMapper has its own way of managing prefixing, giving some added flexibility as well.
+[[Installation Instructions](../getting-started/installation) asks you to make sure you set the dbprefix in your database settings to an empty string. The reason for this is because DataMapper has its own way of managing prefixing, giving some added flexibility as well.
 
 [[Relationship Types](/guide/relationships/types) section.
 

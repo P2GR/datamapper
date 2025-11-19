@@ -398,4 +398,4 @@ class Products extends BaseController {
 ## See Also
 
 - [Best Practices](../../help/faq#Internationalization)
-- [Multi-Language Sites](../../examples/multilanguage)
+- [Localization Strategies](../relationships/advanced#localization)
