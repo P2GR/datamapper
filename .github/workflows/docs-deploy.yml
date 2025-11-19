@@ -1,0 +1,87 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches:
+      - datamapper2
+      - main
+    paths:
+      - 'docs/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/docs-deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: docs-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build VitePress site
+        run: npm run docs:build
+
+      - name: Check deployment prerequisites
+        id: check
+        run: |
+          DOCS_HOST="${{ secrets.DOCS_HOST }}"
+          DOCS_USER="${{ secrets.DOCS_USER }}"
+          DOCS_SSH_KEY="${{ secrets.DOCS_SSH_KEY }}"
+          DOCS_PORT="${{ secrets.DOCS_PORT }}"
+          DOCS_PATH="${{ secrets.DOCS_PATH }}"
+
+          missing=false
+          for name in DOCS_HOST DOCS_USER DOCS_SSH_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::warning::Secret $name is not configured; skipping remote deploy."
+              missing=true
+            fi
+          done
+
+          if [ "$missing" = "false" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "resolved_path=${DOCS_PATH:-/var/www/datamapper/docs}" >> "$GITHUB_OUTPUT"
+          echo "resolved_port=${DOCS_PORT:-22}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy documentation bundle
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          set -e
+          DOCS_HOST="${{ secrets.DOCS_HOST }}"
+          DOCS_USER="${{ secrets.DOCS_USER }}"
+          DOCS_SSH_KEY="${{ secrets.DOCS_SSH_KEY }}"
+          DOCS_PORT="${{ steps.check.outputs.resolved_port }}"
+          DOCS_PATH="${{ steps.check.outputs.resolved_path }}"
+
+          mkdir -p "$HOME/.ssh"
+          echo "$DOCS_SSH_KEY" > "$HOME/.ssh/id_rsa"
+          chmod 600 "$HOME/.ssh/id_rsa"
+
+          if ! ssh-keygen -F "$DOCS_HOST" >/dev/null 2>&1; then
+            ssh-keyscan -p "$DOCS_PORT" -H "$DOCS_HOST" >> "$HOME/.ssh/known_hosts"
+          fi
+
+          rsync -az --delete -e "ssh -p $DOCS_PORT -i $HOME/.ssh/id_rsa -o StrictHostKeyChecking=yes" \
+            docs/.vitepress/dist/ "$DOCS_USER@$DOCS_HOST:$DOCS_PATH/"
+
+      - name: Deployment skipped
+        if: steps.check.outputs.ready != 'true'
+        run: echo "Documentation build complete, but deploy secrets are missing so upload was skipped."

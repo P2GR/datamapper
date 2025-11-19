@@ -3,7 +3,7 @@
 [![PHP Version](https://img.shields.io/badge/PHP-5.4--8.5%2B-blue)](https://php.net)
 [![CodeIgniter](https://img.shields.io/badge/CodeIgniter-3.x-orange)](https://codeigniter.com)
 [![License](https://img.shields.io/badge/License-MIT-green)](license.txt)
-[![CI](https://github.com/P2GR/datamapper/actions/workflows/ci.yml/badge.svg)](https://github.com/P2GR/datamapper/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/P2GR/datamapper2/ci.yml?branch=datamapper2&label=CI&logo=github)](https://github.com/P2GR/datamapper2/actions/workflows/ci.yml)
 [![GitHub](https://img.shields.io/badge/GitHub-P2GR%2Fdatamapper-blue)](https://github.com/P2GR/datamapper)
 
 A powerful Object-Relational Mapper (ORM) for CodeIgniter 3 with modern features and 100% backward compatibility.
