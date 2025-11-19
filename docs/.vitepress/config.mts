@@ -1,12 +1,14 @@
 import { defineConfig } from 'vitepress'
 
+const base = process.env.DOCS_BASE ?? '/';
+
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: 'DataMapper ORM 2.0',
   description: 'Modern Active Record ORM for CodeIgniter 3.x with fluent query builder, eager loading, and advanced features',
   
   // Base URL if deploying to GitHub Pages
-  base: '/datamapper/',
+  base,
   
   // Clean URLs (remove .html extension)
   cleanUrls: true,
@@ -25,7 +27,7 @@ export default defineConfig({
   
   // Head tags
   head: [
-    ['link', { rel: 'icon', href: '/datamapper/favicon.ico' }],
+    ['link', { rel: 'icon', href: `${base}favicon.ico` }],
     ['meta', { name: 'theme-color', content: '#3eaf7c' }],
     ['meta', { name: 'og:type', content: 'website' }],
     ['meta', { name: 'og:locale', content: 'en' }],
@@ -46,6 +48,7 @@ export default defineConfig({
       { 
         text: 'DataMapper 2.0',
         items: [
+          { text: "What's New", link: '/guide/datamapper-2/' },
           { text: 'Fluent Query Builder', link: '/guide/datamapper-2/fluent' },
           { text: 'Eager Loading', link: '/guide/datamapper-2/eager-loading' },
           { text: 'Collections', link: '/guide/datamapper-2/collections' },
@@ -55,7 +58,6 @@ export default defineConfig({
         ]
       },
       { text: 'API Reference', link: '/reference/quick-reference' },
-      { text: 'Examples', link: '/examples/' },
       { 
         text: 'v2.0.0',
         items: [
@@ -164,18 +166,6 @@ export default defineConfig({
             { text: 'Utility Functions', link: '/reference/utility' },
             { text: 'Reserved Names', link: '/reference/reserved-names' },
             { text: 'Glossary', link: '/reference/glossary' },
-          ]
-        }
-      ],
-      
-      '/examples/': [
-        {
-          text: 'Examples',
-          items: [
-            { text: 'Code Examples', link: '/examples/' },
-            { text: 'Blog System', link: '/examples/blog' },
-            { text: 'E-commerce', link: '/examples/ecommerce' },
-            { text: 'User Management', link: '/examples/users' },
           ]
         }
       ],

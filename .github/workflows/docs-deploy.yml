@@ -1,3 +1,4 @@
+# actionlint: allow-secrets DOCS_HOST,DOCS_USER,DOCS_SSH_KEY,DOCS_PORT,DOCS_PATH
 name: Deploy Documentation
 
 on:
@@ -35,52 +36,28 @@ jobs:
 
       - name: Build VitePress site
         run: npm run docs:build
+        env:
+          DOCS_BASE: /
 
       - name: Check deployment prerequisites
         id: check
-        run: |
-          DOCS_HOST="${{ secrets.DOCS_HOST }}"
-          DOCS_USER="${{ secrets.DOCS_USER }}"
-          DOCS_SSH_KEY="${{ secrets.DOCS_SSH_KEY }}"
-          DOCS_PORT="${{ secrets.DOCS_PORT }}"
-          DOCS_PATH="${{ secrets.DOCS_PATH }}"
-
-          missing=false
-          for name in DOCS_HOST DOCS_USER DOCS_SSH_KEY; do
-            if [ -z "${!name}" ]; then
-              echo "::warning::Secret $name is not configured; skipping remote deploy."
-              missing=true
-            fi
-          done
-
-          if [ "$missing" = "false" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          fi
-          echo "resolved_path=${DOCS_PATH:-/var/www/datamapper/docs}" >> "$GITHUB_OUTPUT"
-          echo "resolved_port=${DOCS_PORT:-22}" >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/check-docs-deploy
+        with:
+          host: ${{ secrets.DOCS_HOST }} # actionlint: allow
+          user: ${{ secrets.DOCS_USER }} # actionlint: allow
+          ssh_key: ${{ secrets.DOCS_SSH_KEY }} # actionlint: allow
+          port: ${{ secrets.DOCS_PORT }} # actionlint: allow
+          path: ${{ secrets.DOCS_PATH }} # actionlint: allow
 
       - name: Deploy documentation bundle
         if: steps.check.outputs.ready == 'true'
-        run: |
-          set -e
-          DOCS_HOST="${{ secrets.DOCS_HOST }}"
-          DOCS_USER="${{ secrets.DOCS_USER }}"
-          DOCS_SSH_KEY="${{ secrets.DOCS_SSH_KEY }}"
-          DOCS_PORT="${{ steps.check.outputs.resolved_port }}"
-          DOCS_PATH="${{ steps.check.outputs.resolved_path }}"
-
-          mkdir -p "$HOME/.ssh"
-          echo "$DOCS_SSH_KEY" > "$HOME/.ssh/id_rsa"
-          chmod 600 "$HOME/.ssh/id_rsa"
-
-          if ! ssh-keygen -F "$DOCS_HOST" >/dev/null 2>&1; then
-            ssh-keyscan -p "$DOCS_PORT" -H "$DOCS_HOST" >> "$HOME/.ssh/known_hosts"
-          fi
-
-          rsync -az --delete -e "ssh -p $DOCS_PORT -i $HOME/.ssh/id_rsa -o StrictHostKeyChecking=yes" \
-            docs/.vitepress/dist/ "$DOCS_USER@$DOCS_HOST:$DOCS_PATH/"
+        uses: ./.github/actions/deploy-docs
+        with:
+          host: ${{ steps.check.outputs.host }}
+          user: ${{ steps.check.outputs.user }}
+          port: ${{ steps.check.outputs.port }}
+          path: ${{ steps.check.outputs.path }}
+          ssh_key: ${{ secrets.DOCS_SSH_KEY }} # actionlint: allow
 
       - name: Deployment skipped
         if: steps.check.outputs.ready != 'true'

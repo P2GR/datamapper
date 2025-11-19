@@ -1,0 +1,76 @@
+name: Check Docs Deploy
+description: Validate docs deployment inputs and set defaults
+inputs:
+  host:
+    description: Target host for deployment
+    required: false
+  user:
+    description: SSH username
+    required: false
+  ssh_key:
+    description: SSH private key for deployment
+    required: false
+  port:
+    description: SSH port
+    required: false
+  path:
+    description: Remote path for documentation files
+    required: false
+outputs:
+  ready:
+    description: Indicates whether deployment can proceed
+    value: ${{ steps.evaluate.outputs.ready }}
+  host:
+    description: Resolved SSH host
+    value: ${{ steps.evaluate.outputs.host }}
+  user:
+    description: Resolved SSH username
+    value: ${{ steps.evaluate.outputs.user }}
+  port:
+    description: Resolved SSH port
+    value: ${{ steps.evaluate.outputs.port }}
+  path:
+    description: Resolved remote path
+    value: ${{ steps.evaluate.outputs.path }}
+runs:
+  using: composite
+  steps:
+    - id: evaluate
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        host="${{ inputs.host }}"
+        user="${{ inputs.user }}"
+        ssh_key="${{ inputs.ssh_key }}"
+        port="${{ inputs.port }}"
+        path="${{ inputs.path }}"
+
+        ready=true
+        for var in host user ssh_key; do
+          value="${!var}"
+          if [ -z "$value" ]; then
+            case "$var" in
+              host) label="DOCS_HOST" ;;
+              user) label="DOCS_USER" ;;
+              ssh_key) label="DOCS_SSH_KEY" ;;
+              *) label="$var" ;;
+            esac
+            echo "::warning::Missing required deploy secret: $label"
+            ready=false
+          fi
+        done
+
+        if [ -z "$port" ]; then
+          port=22
+        fi
+
+        if [ -z "$path" ]; then
+          path="/var/www/datamapper/docs"
+        fi
+
+        echo "ready=$ready" >> "$GITHUB_OUTPUT"
+        echo "host=$host" >> "$GITHUB_OUTPUT"
+        echo "user=$user" >> "$GITHUB_OUTPUT"
+        echo "port=$port" >> "$GITHUB_OUTPUT"
+        echo "path=$path" >> "$GITHUB_OUTPUT"
