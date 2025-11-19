@@ -13,7 +13,7 @@ DataMapper 2.0 is a major upgrade bringing modern PHP features while maintaining
 
 ### Added
 
-#### Fluent Query Builder
+#### Query Builder
 - Modern chainable query syntax for elegant database queries
 - Support for both camelCase and snake_case method names
 - Method chaining for all query operations (where, orderBy, limit, etc.)
@@ -118,6 +118,9 @@ DataMapper 2.0 is a major upgrade bringing modern PHP features while maintaining
 - Enhanced inline documentation
 - Better separation of concerns
 
+#### Removed
+- Removed legacy CodeIgniter demo app under `/examples` in favor of documentation-native samples
+
 ### Fixed
 
 - Fixed method signature compatibility issues between PHP versions
@@ -127,21 +130,9 @@ DataMapper 2.0 is a major upgrade bringing modern PHP features while maintaining
 - Fixed join table auto-detection with caching
 - Improved soft delete scope application
 
-### Removed
-
-- Removed entire `DMZ_Fluent` class (redundant - methods already in `DataMapper` base class)
-- Removed commented debug code blocks
-- Removed unsafe direct CodeIgniter function calls
-- Cleaned up deprecated FIXME comments
 
 ### Documentation
 
-#### New Documentation
-- **NEW**: Complete logging & error handling guide (`docs/guide/datamapper-2/logging.md`)
-- **NEW**: Logging quick reference card (`LOGGING_QUICK_REFERENCE.md`)
-- **NEW**: Beta release status document (`BETA_RELEASE_FIXES.md`)
-- **NEW**: Logging implementation summary (`LOGGING_IMPLEMENTATION_COMPLETE.md`)
-- **NEW**: Logging configuration guide (`LOGGING_CONFIGURATION_GUIDE.md`)
 
 #### Updated Documentation
 - Updated configuration guide with logging section
@@ -151,7 +142,7 @@ DataMapper 2.0 is a major upgrade bringing modern PHP features while maintaining
 - Added migration guides
 
 #### Existing Documentation
-- Fluent query builder guide
+- Query builder guide
 - Eager loading documentation
 - Collections API reference
 - Soft deletes guide
