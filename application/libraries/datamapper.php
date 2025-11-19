@@ -320,10 +320,10 @@ class DataMapper implements IteratorAggregate {
 	 *     'created_at' => 'datetime'
 	 * );
 	 * 
-	 * Supported types:
-	 * - 'int' or 'integer'
-	 * - 'float' or 'double' or 'real'
-	 * - 'bool' or 'boolean'
+	* Supported types (prefer short names; long-form aliases remain for BC):
+	* - 'int' (alias: 'integer')
+	* - 'float' (aliases: 'double', 'real')
+	* - 'bool' (alias: 'boolean')
 	 * - 'string'
 	 * - 'array' (JSON decode to array, encode on save)
 	 * - 'json' (alias for array)
@@ -374,6 +374,21 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected $_include_trashed = FALSE;
 	protected $_only_trashed = FALSE;
+
+	/**
+	 * Internal soft delete scope flags for fluent query builder coordination.
+	 *
+	 * @var bool
+	 */
+	public $_dm_with_softdeleted = FALSE;
+	public $_dm_only_softdeleted = FALSE;
+
+	/**
+	 * @deprecated Back-compat shim for fluent helpers renamed to with_softdeleted()/only_softdeleted().
+	 * @var bool
+	 */
+	public $_dm_with_deleted = FALSE;
+	public $_dm_only_deleted = FALSE;
 
 	/**
 	 * Contains any errors that occur during validation, saving, or other
@@ -1437,7 +1452,7 @@ class DataMapper implements IteratorAggregate {
 	// --------------------------------------------------------------------
 
 	/**
-	 * Convert camelCase to snake_case (DataMapper 2.0 - Fluent Query Builder)
+	 * Convert camelCase to snake_case
 	 *
 	 * @param	string $method CamelCase method name
 	 * @return	string snake_case method name
@@ -2216,15 +2231,15 @@ class DataMapper implements IteratorAggregate {
 			{
 				// DataMapper 2.0 - Soft Delete (Eloquent-style)
 				// Check if soft delete is enabled for this model
-				$soft_delete_enabled = $this->soft_delete !== NULL ? $this->soft_delete : DataMapper::$config['soft_delete'];
+				$soft_delete_enabled = $this->_soft_delete_is_enabled();
 				
 				if ($soft_delete_enabled)
 				{
 					// Get column name
-					$deleted_col = $this->deleted_at_column !== NULL ? $this->deleted_at_column : DataMapper::$config['deleted_at_column'];
+					$deleted_col = $this->_get_deleted_at_column();
 					
 					// Check if column exists
-					if (in_array($deleted_col, $this->fields))
+					if ($deleted_col !== NULL && in_array($deleted_col, $this->fields))
 					{
 						// Perform soft delete
 						$this->{$deleted_col} = $this->_fresh_timestamp();
@@ -5564,6 +5579,10 @@ class DataMapper implements IteratorAggregate {
 				}
 			}
 
+			if ($query === 'order_by' && $value === NULL) {
+				$value = '';
+			}
+				
 			// Add query clause
 			if(is_null($extra))
 			{
@@ -6845,7 +6864,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _boolean($field)
 	{
-		$this->{$field} = (boolean)$this->{$field};
+		$this->{$field} = (bool) $this->{$field};
 	}
 
 	// --------------------------------------------------------------------
@@ -8891,6 +8910,58 @@ class DataMapper implements IteratorAggregate {
 		
 		return date($format);
 	}
+
+	/**
+	 * Determine if soft deletes are enabled for this model.
+	 *
+	 * @return bool
+	 */
+	protected function _soft_delete_is_enabled()
+	{
+		list($enabled) = $this->_soft_delete_settings();
+		return $enabled;
+	}
+
+	/**
+	 * Get the configured deleted_at column name for the current model.
+	 *
+	 * @return string|null
+	 */
+	protected function _get_deleted_at_column()
+	{
+		if ($this->deleted_at_column !== NULL && $this->deleted_at_column !== '')
+		{
+			return $this->deleted_at_column;
+		}
+
+		if (property_exists($this, 'deletedAtColumn') && !empty($this->deletedAtColumn))
+		{
+			return $this->deletedAtColumn;
+		}
+
+		return isset(DataMapper::$config['deleted_at_column']) ? DataMapper::$config['deleted_at_column'] : NULL;
+	}
+
+	/**
+	 * Resolve soft delete preferences and whether they were explicitly set on the model.
+	 *
+	 * @return array{0: bool, 1: bool}
+	 */
+	protected function _soft_delete_settings()
+	{
+		if ($this->soft_delete !== NULL)
+		{
+			return array((bool) $this->soft_delete, TRUE);
+		}
+
+		if (property_exists($this, 'softDelete') && $this->softDelete !== NULL)
+		{
+			return array((bool) $this->softDelete, TRUE);
+		}
+
+		$default = isset(DataMapper::$config['soft_delete']) ? (bool) DataMapper::$config['soft_delete'] : FALSE;
+		return array($default, FALSE);
+	}
 	
 	/**
 	 * Update the updated_at timestamp without saving other changes
@@ -8931,18 +9002,18 @@ class DataMapper implements IteratorAggregate {
 		// This makes fluent query builder work like Laravel Eloquent by default
 		
 		// Get column name (NULL = use config default)
-		$deleted_col = $this->deleted_at_column !== NULL ? $this->deleted_at_column : DataMapper::$config['deleted_at_column'];
+		$deleted_col = $this->_get_deleted_at_column();
 		
 		// Check if column exists - if it does, enable soft delete automatically
-		if (!in_array($deleted_col, $this->fields))
+		if ($deleted_col === NULL || !in_array($deleted_col, $this->fields))
 		{
 			return;
 		}
 		
 		// Check if soft delete is explicitly disabled for this model
-		$soft_delete_enabled = $this->soft_delete !== NULL ? $this->soft_delete : DataMapper::$config['soft_delete'];
+		list($soft_delete_enabled, $explicit) = $this->_soft_delete_settings();
 		
-		if ($soft_delete_enabled === FALSE && $this->soft_delete !== NULL)
+		if ($explicit && $soft_delete_enabled === FALSE)
 		{
 			return;
 		}
@@ -8973,10 +9044,10 @@ class DataMapper implements IteratorAggregate {
 		else if (!$this->_include_trashed)
 		{
 			// Exclude deleted records (default behavior)
-			// This is the fluent query builder default: withoutTrashed()
+			// This is the fluent query builder default: without_softdeleted()
 			$this->where($deleted_col, NULL);
 		}
-		// else: _include_trashed = TRUE, no filter applied (withTrashed() was called)
+		// else: _include_trashed = TRUE, no filter applied (with_softdeleted() was called)
 	}
 	
 	/**
@@ -9007,16 +9078,16 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function restore()
 	{
-		$soft_delete_enabled = $this->soft_delete !== NULL ? $this->soft_delete : DataMapper::$config['soft_delete'];
-		
+		$soft_delete_enabled = $this->_soft_delete_is_enabled();
+	
 		if (!$soft_delete_enabled || empty($this->id))
 		{
 			return FALSE;
 		}
 		
-		$deleted_col = $this->deleted_at_column !== NULL ? $this->deleted_at_column : DataMapper::$config['deleted_at_column'];
-		
-		if (!in_array($deleted_col, $this->fields))
+		$deleted_col = $this->_get_deleted_at_column();
+	
+		if ($deleted_col === NULL || !in_array($deleted_col, $this->fields))
 		{
 			return FALSE;
 		}
@@ -9046,16 +9117,16 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function trashed()
 	{
-		$soft_delete_enabled = $this->soft_delete !== NULL ? $this->soft_delete : DataMapper::$config['soft_delete'];
-		
+		$soft_delete_enabled = $this->_soft_delete_is_enabled();
+	
 		if (!$soft_delete_enabled)
 		{
 			return FALSE;
 		}
 		
-		$deleted_col = $this->deleted_at_column !== NULL ? $this->deleted_at_column : DataMapper::$config['deleted_at_column'];
-		
-		if (!in_array($deleted_col, $this->fields))
+		$deleted_col = $this->_get_deleted_at_column();
+	
+		if ($deleted_col === NULL || !in_array($deleted_col, $this->fields))
 		{
 			return FALSE;
 		}
@@ -9064,42 +9135,76 @@ class DataMapper implements IteratorAggregate {
 	}
 	
 	/**
-	 * Include soft-deleted records in query results
-	 * Eloquent-style withTrashed()
-	 * 
+	 * Include soft-deleted records in query results.
+	 *
 	 * @return DataMapper Returns self for method chaining
 	 */
-	public function with_trashed()
+	public function with_softdeleted()
 	{
 		$this->_include_trashed = TRUE;
 		$this->_only_trashed = FALSE;
+		$this->_dm_with_softdeleted = TRUE;
+		$this->_dm_only_softdeleted = FALSE;
+		// Maintain legacy flags for compatibility with existing extensions.
+		$this->_dm_with_deleted = TRUE;
+		$this->_dm_only_deleted = FALSE;
 		return $this;
 	}
-	
+
 	/**
-	 * Get only soft-deleted records
-	 * Eloquent-style onlyTrashed()
-	 * 
+	 * Get only soft-deleted records.
+	 *
 	 * @return DataMapper Returns self for method chaining
 	 */
-	public function only_trashed()
+	public function only_softdeleted()
 	{
 		$this->_only_trashed = TRUE;
 		$this->_include_trashed = FALSE;
+		$this->_dm_only_softdeleted = TRUE;
+		$this->_dm_with_softdeleted = FALSE;
+		$this->_dm_only_deleted = TRUE;
+		$this->_dm_with_deleted = FALSE;
 		return $this;
 	}
-	
+
 	/**
-	 * Exclude soft-deleted records (default behavior)
-	 * Eloquent-style withoutTrashed()
-	 * 
+	 * Exclude soft-deleted records (default behavior).
+	 *
 	 * @return DataMapper Returns self for method chaining
 	 */
-	public function without_trashed()
+	public function without_softdeleted()
 	{
 		$this->_include_trashed = FALSE;
 		$this->_only_trashed = FALSE;
+		$this->_dm_with_softdeleted = FALSE;
+		$this->_dm_only_softdeleted = FALSE;
+		$this->_dm_with_deleted = FALSE;
+		$this->_dm_only_deleted = FALSE;
 		return $this;
+	}
+
+	/**
+	 * @deprecated Use with_softdeleted() instead.
+	 */
+	public function with_deleted()
+	{
+		return $this->with_softdeleted();
+	}
+
+	/**
+	 * @deprecated Use only_softdeleted() instead.
+	 */
+	public function only_deleted()
+	{
+		return $this->only_softdeleted();
+	}
+
+	/**
+	 * @deprecated Use without_softdeleted() instead.
+	 */
+	public function without_deleted()
+	{
+		return $this->without_softdeleted();
 	}
 
 }

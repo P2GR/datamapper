@@ -49,10 +49,10 @@ trait DMZ_AttributeCasting
     /**
      * Define attribute casting rules
      * 
-     * Supported types:
-     * - 'int' or 'integer'
-     * - 'float' or 'double' or 'real'
-     * - 'bool' or 'boolean'
+    * Supported types (prefer short names; long-form aliases remain for BC):
+    * - 'int' (alias: 'integer')
+    * - 'float' (aliases: 'double', 'real')
+    * - 'bool' (alias: 'boolean')
      * - 'string'
      * - 'array' (JSON encode/decode)
      * - 'json' (alias for array)

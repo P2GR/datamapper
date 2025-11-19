@@ -3,6 +3,7 @@
 [![PHP Version](https://img.shields.io/badge/PHP-5.4--8.5%2B-blue)](https://php.net)
 [![CodeIgniter](https://img.shields.io/badge/CodeIgniter-3.x-orange)](https://codeigniter.com)
 [![License](https://img.shields.io/badge/License-MIT-green)](license.txt)
+[![CI](https://github.com/P2GR/datamapper/actions/workflows/ci.yml/badge.svg)](https://github.com/P2GR/datamapper/actions/workflows/ci.yml)
 [![GitHub](https://img.shields.io/badge/GitHub-P2GR%2Fdatamapper-blue)](https://github.com/P2GR/datamapper)
 
 A powerful Object-Relational Mapper (ORM) for CodeIgniter 3 with modern features and 100% backward compatibility.
@@ -15,6 +16,7 @@ DataMapper ORM provides an elegant Active Record implementation for CodeIgniter 
 
 ### Core Features
 - **Query Builder** - Modern chainable query syntax for elegant database queries
+- **Result Helpers** - `collect()`, `pluck()`, `value()`, and `first()` bridge classic DataMapper flows with the new collection pipeline
 - **Eager Loading** - Eliminate N+1 query problems with the with() method (96%+ query reduction)
 - **Eager Loading with Constraints** - Filter related records at the database level for maximum efficiency
 - **Enhanced Collections** - Powerful result set manipulation with map, filter, reduce, and more
@@ -22,7 +24,7 @@ DataMapper ORM provides an elegant Active Record implementation for CodeIgniter 
 
 ### Data Management
 - **Attribute Casting** - Automatic type conversion (int, bool, float, array, json, datetime, etc.)
-- **Soft Deletes Trait** - Soft deletion with deleted_at timestamps (withTrashed, onlyTrashed, restore)
+- **Soft Deletes Trait** - Soft deletion with deleted_at timestamps (with_softdeleted, only_softdeleted, restore)
 - **Timestamps Trait** - Automatic created_at and updated_at management with customizable formats
 - **Query Caching** - Built-in caching with File/Redis/Memcached support for improved performance
 
@@ -73,16 +75,16 @@ $post->delete(); // Soft delete (sets deleted_at)
 $posts = (new Post())->get();
 
 // Include soft-deleted records
-$all = (new Post())->withTrashed()->get();
+$all = (new Post())->with_softdeleted()->get();
 
 // Only soft-deleted records
-$trashed = (new Post())->onlyTrashed()->get();
+$trashed = (new Post())->only_softdeleted()->get();
 
 // Restore soft-deleted
 $post->restore();
 
 // Permanently delete
-$post->forceDelete();
+$post->force_delete();
 ```
 
 ### Automatic Timestamps
@@ -113,9 +115,27 @@ $users = (new User())
 // Include soft-deleted relations
 $users = (new User())
     ->with('posts', function($q) {
-        $q->withTrashed(); // Include deleted posts
+        $q->with_softdeleted(); // Include deleted posts
     })
     ->get();
+```
+
+### Collection-Friendly Query Helpers
+```php
+$activeEmails = (new User())
+    ->where('active', 1)
+    ->order_by('last_login', 'DESC')
+    ->pluck('email');
+
+$topPosts = (new Post())
+    ->where('status', 'published')
+    ->with('author')
+    ->collect()
+    ->take(5);
+
+$latestSlug = (new Post())
+    ->order_by('created_at', 'DESC')
+    ->value('slug', 'draft-placeholder');
 ```
 
 ### Memory-Efficient Streaming

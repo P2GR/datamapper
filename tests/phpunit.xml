@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="bootstrap.php"
+         colors="true"
+         verbose="true">
+    <testsuites>
+        <testsuite name="DataMapper Test Suite">
+            <directory suffix="Test.php">.</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

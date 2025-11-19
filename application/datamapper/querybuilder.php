@@ -781,12 +781,14 @@ class DMZ_QueryBuilder {
     /**
      * Explicit collection accessor.
      *
-     * Reads naturally when you want to make it obvious that you're
-     * switching from the fluent QueryBuilder API to collection helpers:
+     * Useful when you want terser fluent chains without repeating `get()`,
+     * or when you need to highlight the transition from query constraints to
+     * collection helpers.
      *
+     * Example:
      *   $ids = (new User())->where('active', 1)->collect()->pluck('id');
      *
-     * @return DMZ_Collection
+     * @return DMZ_Collection Hydrated collection of models respecting the active query
      */
     public function collect()
     {
@@ -794,10 +796,14 @@ class DMZ_QueryBuilder {
     }
 
     /**
-     * Extract a field from all results as an array.
+     * Pluck a field from every model into a plain array.
      *
-     * @param string $field
-     * @return array
+     * Mirrors Laravel's `pluck()` helper and returns simple scalars, which is
+     * perfect for building ID/email lists without dragging along the full
+     * model payload.
+     *
+     * @param string $field Column or accessor name to extract from each model
+     * @return array<int, mixed> Ordered list of extracted values
      */
     public function pluck($field)
     {
@@ -805,10 +811,13 @@ class DMZ_QueryBuilder {
     }
 
     /**
-     * Extract a field from all results as a DMZ_Collection for chaining.
+     * Pluck a field and keep collection chaining alive.
      *
-     * @param string $field
-     * @return DMZ_Collection
+     * Handy when you want the extracted values but still need collection
+     * helpers like `filter()`/`map()`.
+     *
+     * @param string $field Column or accessor name to extract
+     * @return DMZ_Collection Collection whose items are the extracted values
      */
     public function pluck_collection($field)
     {
@@ -816,10 +825,13 @@ class DMZ_QueryBuilder {
     }
 
     /**
-     * Alias for pluck() to make the return type explicit when reading code.
+     * Alias for {@see pluck()} when you want to emphasise the array return type.
      *
-     * @param string $field
-     * @return array
+     * Reads nicely in legacy codebases where the original helper was called
+     * `pluck_values()`.
+     *
+     * @param string $field Column or accessor name to extract
+     * @return array<int, mixed> Ordered list of extracted values
      */
     public function pluck_values($field)
     {
@@ -827,11 +839,15 @@ class DMZ_QueryBuilder {
     }
 
     /**
-     * Fetch a single scalar value from the first matching row.
+     * Fetch a single scalar value from the first matching record.
      *
-     * @param string $field
-     * @param mixed $default Value to return when no rows are found
-     * @return mixed
+     * Useful for lightweight lookups (`value('id')`) where building an entire
+     * model is overkill. Automatically restores any previously configured
+     * limit/offset so the builder can keep chaining afterwards.
+     *
+     * @param string $field Column or accessor to read
+     * @param mixed $default Value returned when the query produces no rows or the field is missing
+     * @return mixed Scalar value (or the provided default)
      */
     public function value($field, $default = NULL)
     {
@@ -1394,7 +1410,7 @@ class DMZ_QueryBuilder {
         
         // Apply DataMapper 2.0 soft delete scope automatically
         // Check if the related model has soft deletes enabled (either trait or built-in)
-        // Pass wrapper so we can respect withTrashed()/onlyTrashed() from constraint callback
+        // Pass wrapper so we can respect withSoftDeleted()/onlySoftDeleted() (or legacy withDeleted()/onlyDeleted()) from constraint callback
         $related_instance = new $related_class();
         $this->_apply_soft_delete_scope_to_db($db, $related_instance, $related_table, $wrapper);
         
@@ -1626,14 +1642,14 @@ class DMZ_QueryBuilder {
         // Check if user explicitly set soft delete scope in constraint callback
         if ($wrapper !== NULL) {
             $scope = $wrapper->getSoftDeleteScope();
-            
-            // If user called withTrashed(), don't apply any deleted_at filter
-            if ($scope === 'with_trashed') {
+			
+            // If user called withSoftDeleted(), don't apply any deleted_at filter
+            if ($scope === 'with_softdeleted' || $scope === 'with_deleted') {
                 return;
             }
-            
-            // If user called onlyTrashed(), apply deleted_at IS NOT NULL
-            if ($scope === 'only_trashed') {
+			
+            // If user called onlySoftDeleted(), apply deleted_at IS NOT NULL
+            if ($scope === 'only_softdeleted' || $scope === 'only_deleted') {
                 $deleted_col = $this->_get_deleted_at_column($model);
                 if ($deleted_col) {
                     $column_name = !empty($table_prefix) ? $table_prefix . '.' . $deleted_col : $deleted_col;
@@ -1642,18 +1658,20 @@ class DMZ_QueryBuilder {
                 return;
             }
             
-            // Otherwise fall through to apply default withoutTrashed() scope
+            // Otherwise fall through to apply default without_softdeleted() scope
         }
         
         // IMPORTANT: Ignore LODataMapper custom implementation
         // Check for native DataMapper 2.0 flags first (NOT LODataMapper's _withoutSoftDeletedScope)
-        if (property_exists($model, '_dm_with_trashed') && $model->_dm_with_trashed === TRUE) {
-            // User explicitly called withTrashed() on main query - don't filter
+        if ((property_exists($model, '_dm_with_softdeleted') && $model->_dm_with_softdeleted === TRUE)
+            || (property_exists($model, '_dm_with_deleted') && $model->_dm_with_deleted === TRUE)) {
+            // User explicitly called with_softdeleted() (or legacy with_deleted()) on main query - don't filter
             return;
         }
         
-        if (property_exists($model, '_dm_only_trashed') && $model->_dm_only_trashed === TRUE) {
-            // User explicitly called onlyTrashed() on main query
+        if ((property_exists($model, '_dm_only_softdeleted') && $model->_dm_only_softdeleted === TRUE)
+            || (property_exists($model, '_dm_only_deleted') && $model->_dm_only_deleted === TRUE)) {
+            // User explicitly called only_softdeleted() (or legacy only_deleted()) on main query
             $deleted_col = $this->_get_deleted_at_column($model);
             if ($deleted_col) {
                 $column_name = !empty($table_prefix) ? $table_prefix . '.' . $deleted_col : $deleted_col;
@@ -2373,47 +2391,108 @@ class DMZ_Collection implements IteratorAggregate, Countable {
 	// Soft Delete Methods (DataMapper 2.0)
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Include soft-deleted records in query results
-	 * 
-	 * Sets a flag that will be checked during query execution to skip
-	 * the automatic deleted_at IS NULL filter.
-	 *
-	 * @return DataMapper Returns self for method chaining
-	 */
-	public function withTrashed() {
-		// Set flag on model to skip soft delete scope
-		$this->model->_dm_with_trashed = TRUE;
-		return $this->model;
-	}
+    /**
+     * Include soft-deleted records in query results.
+     *
+     * @return DataMapper Returns self for method chaining
+     */
+    public function withSoftDeleted() {
+        $this->model->_dm_with_softdeleted = TRUE;
+        $this->model->_dm_only_softdeleted = FALSE;
+        // Maintain legacy flags for older integrations.
+        $this->model->_dm_with_deleted = TRUE;
+        $this->model->_dm_only_deleted = FALSE;
+        return $this->model;
+    }
 
-	/**
-	 * Get only soft-deleted records
-	 * 
-	 * Adds WHERE deleted_at IS NOT NULL to get only deleted records.
-	 *
-	 * @return DataMapper Returns self for method chaining
-	 */
-	public function onlyTrashed() {
-		// Set flag on model to only get deleted records
-		$this->model->_dm_only_trashed = TRUE;
-		return $this->model;
-	}
+    /**
+     * @deprecated Use withSoftDeleted() instead.
+     */
+    public function withDeleted() {
+        return $this->withSoftDeleted();
+    }
 
-	/**
-	 * Exclude soft-deleted records (default behavior)
-	 * 
-	 * This is the default - soft-deleted records are automatically excluded.
-	 * You only need to call this explicitly if you want to be clear about intent.
-	 *
-	 * @return DataMapper Returns self for method chaining
-	 */
-	public function withoutTrashed() {
-		// Clear any soft delete flags (back to default)
-		$this->model->_dm_with_trashed = FALSE;
-		$this->model->_dm_only_trashed = FALSE;
-		return $this->model;
-	}
+    /**
+     * @deprecated Use withSoftDeleted() instead.
+     */
+    public function with_softdeleted() {
+        return $this->withSoftDeleted();
+    }
+
+    /**
+     * @deprecated Use withSoftDeleted() instead.
+     */
+    public function with_deleted() {
+        return $this->withSoftDeleted();
+    }
+
+    /**
+     * Get only soft-deleted records.
+     *
+     * @return DataMapper Returns self for method chaining
+     */
+    public function onlySoftDeleted() {
+        $this->model->_dm_only_softdeleted = TRUE;
+        $this->model->_dm_with_softdeleted = FALSE;
+        $this->model->_dm_only_deleted = TRUE;
+        $this->model->_dm_with_deleted = FALSE;
+        return $this->model;
+    }
+
+    /**
+     * @deprecated Use onlySoftDeleted() instead.
+     */
+    public function onlyDeleted() {
+        return $this->onlySoftDeleted();
+    }
+
+    /**
+     * @deprecated Use onlySoftDeleted() instead.
+     */
+    public function only_softdeleted() {
+        return $this->onlySoftDeleted();
+    }
+
+    /**
+     * @deprecated Use onlySoftDeleted() instead.
+     */
+    public function only_deleted() {
+        return $this->onlySoftDeleted();
+    }
+
+    /**
+     * Exclude soft-deleted records (default behavior).
+     *
+     * @return DataMapper Returns self for method chaining
+     */
+    public function withoutSoftDeleted() {
+        $this->model->_dm_with_softdeleted = FALSE;
+        $this->model->_dm_only_softdeleted = FALSE;
+        $this->model->_dm_with_deleted = FALSE;
+        $this->model->_dm_only_deleted = FALSE;
+        return $this->model;
+    }
+
+    /**
+     * @deprecated Use withoutSoftDeleted() instead.
+     */
+    public function withoutDeleted() {
+        return $this->withoutSoftDeleted();
+    }
+
+    /**
+     * @deprecated Use withoutSoftDeleted() instead.
+     */
+    public function without_softdeleted() {
+        return $this->withoutSoftDeleted();
+    }
+
+    /**
+     * @deprecated Use withoutSoftDeleted() instead.
+     */
+    public function without_deleted() {
+        return $this->withoutSoftDeleted();
+    }
 }
 
 /**
@@ -2440,11 +2519,11 @@ class DMZ_DB_Constraint_Wrapper {
 	 */
 	protected $table_prefix;
 	
-	/**
-	 * Soft delete scope state
-	 * @var string 'active'|'with_trashed'|'only_trashed'
-	 */
-	protected $soft_delete_scope = 'active';
+    /**
+     * Soft delete scope state
+     * @var string 'active'|'with_softdeleted'|'only_softdeleted'
+     */
+    protected $soft_delete_scope = 'active';
 	
 	/**
 	 * Constructor
@@ -2593,43 +2672,106 @@ class DMZ_DB_Constraint_Wrapper {
 	// Soft Delete Methods
 	// ============================================================
 	
-	/**
-	 * Include soft-deleted records (disable deleted_at filter)
-	 * 
-	 * @return DMZ_DB_Constraint_Wrapper
-	 */
-	public function withTrashed() {
-		$this->soft_delete_scope = 'with_trashed';
+    /**
+     * Include soft-deleted records (disable deleted_at filter)
+     * 
+     * @return DMZ_DB_Constraint_Wrapper
+     */
+    public function withSoftDeleted() {
+        $this->soft_delete_scope = 'with_softdeleted';
 		return $this;
 	}
-	
-	/**
-	 * Exclude soft-deleted records (default behavior)
+
+    /**
+     * @deprecated Use withSoftDeleted() instead.
+     */
+    public function withDeleted() {
+        return $this->withSoftDeleted();
+    }
+
+    /**
+     * @deprecated Use withSoftDeleted() instead.
+     */
+    public function with_softdeleted() {
+        return $this->withSoftDeleted();
+    }
+
+    /**
+     * @deprecated Use withSoftDeleted() instead.
+     */
+    public function with_deleted() {
+        return $this->withSoftDeleted();
+    }
+    
+    /**
+     * Exclude soft-deleted records (default behavior)
 	 * Apply deleted_at IS NULL filter
 	 * 
 	 * @return DMZ_DB_Constraint_Wrapper
 	 */
-	public function withoutTrashed() {
-		$this->soft_delete_scope = 'active';
-		return $this;
-	}
-	
-	/**
-	 * Get ONLY soft-deleted records
+    public function withoutSoftDeleted() {
+        $this->soft_delete_scope = 'active';
+        return $this;
+    }
+
+    /**
+     * @deprecated Use withoutSoftDeleted() instead.
+     */
+    public function withoutDeleted() {
+        return $this->withoutSoftDeleted();
+    }
+
+    /**
+     * @deprecated Use withoutSoftDeleted() instead.
+     */
+    public function without_softdeleted() {
+        return $this->withoutSoftDeleted();
+    }
+
+    /**
+     * @deprecated Use withoutSoftDeleted() instead.
+     */
+    public function without_deleted() {
+        return $this->withoutSoftDeleted();
+    }
+    
+    /**
+     * Get ONLY soft-deleted records
 	 * Apply deleted_at IS NOT NULL filter
 	 * 
 	 * @return DMZ_DB_Constraint_Wrapper
 	 */
-	public function onlyTrashed() {
-		$this->soft_delete_scope = 'only_trashed';
+    public function onlySoftDeleted() {
+        $this->soft_delete_scope = 'only_softdeleted';
 		return $this;
 	}
+
+    /**
+     * @deprecated Use onlySoftDeleted() instead.
+     */
+    public function onlyDeleted() {
+        return $this->onlySoftDeleted();
+    }
+
+    /**
+     * @deprecated Use onlySoftDeleted() instead.
+     */
+    public function only_softdeleted() {
+        return $this->onlySoftDeleted();
+    }
+
+    /**
+     * @deprecated Use onlySoftDeleted() instead.
+     */
+    public function only_deleted() {
+        return $this->onlySoftDeleted();
+    }
 	
 	/**
 	 * Get the current soft delete scope state
 	 * Used internally by eager loading to apply the correct WHERE clause
 	 * 
-	 * @return string 'active'|'with_trashed'|'only_trashed'
+     * @return string 'active'|'with_softdeleted'|'only_softdeleted'
 	 */
 	public function getSoftDeleteScope() {
 		return $this->soft_delete_scope;

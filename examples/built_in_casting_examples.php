@@ -262,14 +262,14 @@ class NewUser extends DataMapper
 // ============================================================================
 
 /*
-'int' or 'integer'     - Cast to integer
-'float' or 'double'    - Cast to float
-'bool' or 'boolean'    - Cast to boolean
-'string'               - Cast to string
-'array' or 'json'      - JSON encode/decode
-'datetime'             - DateTime object
-'date'                 - DateTime object (date only, time set to 00:00:00)
-'timestamp'            - Unix timestamp to DateTime
+'int' (alias: 'integer')     - Cast to integer
+'float' (aliases: 'double', 'real') - Cast to float
+'bool' (alias: 'boolean')    - Cast to boolean
+'string'                     - Cast to string
+'array' or 'json'            - JSON encode/decode
+'datetime'                   - DateTime object
+'date'                       - DateTime object (date only, time set to 00:00:00)
+'timestamp'                  - Unix timestamp to DateTime
 */
 
 

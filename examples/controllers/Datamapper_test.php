@@ -1358,62 +1358,62 @@ class Datamapper_test extends CI_Controller
      * Test 7: Soft Delete Tests
      * 
      * DataMapper 2.0 has native soft delete support that automatically filters deleted_at IS NULL
-     * unless you explicitly call withTrashed() or onlyTrashed()
+     * unless you explicitly call with_softdeleted() or only_softdeleted()
      */
     public function soft_deletes($display = true)
     {
         if ($display) $this->start_test_suite('Soft Delete Tests');
 
-        // Test 7.1: withTrashed() includes ALL records (active + soft deleted)
+        // Test 7.1: with_softdeleted() includes ALL records (active + soft deleted)
         $this->run_comparison_test(
-            'withTrashed() - include ALL records (NO deleted_at filter)',
+            'with_softdeleted() - include ALL records (NO deleted_at filter)',
             function() {
                 $users = new User();
-                $users->withTrashed();  // LODataMapper's method
+                $users->with_softdeleted();  // DataMapper's helper
                 return $users->get();
             },
             function() {
-                // Fluent: withTrashed() -> with_trashed() via __call()
-                // DataMapper's _apply_soft_delete_scope() sees _include_trashed = TRUE
+                // Fluent: with_softdeleted() -> with_softdeleted() via __call()
+                // DataMapper's _apply_soft_delete_scope() sees _dm_with_softdeleted = TRUE
                 // Result: NO WHERE deleted_at filter applied
                 return (new User())
-                    ->withTrashed()
+                    ->with_softdeleted()
                     ->get();
             }
         );
 
-        // Test 7.2: onlyTrashed() - get ONLY soft deleted records  
+        // Test 7.2: only_softdeleted() - get ONLY soft deleted records  
         $this->run_comparison_test(
-            'onlyTrashed() - ONLY deleted records (deleted_at IS NOT NULL)',
+            'only_softdeleted() - ONLY deleted records (deleted_at IS NOT NULL)',
             function() {
                 $users = new User();
-                $users->onlyTrashed();  // LODataMapper's method
+                $users->only_softdeleted();  // DataMapper's helper
                 return $users->get();
             },
             function() {
-                // Fluent: onlyTrashed() -> only_trashed() via __call()
-                // DataMapper's _apply_soft_delete_scope() sees _only_trashed = TRUE
+                // Fluent: only_softdeleted() -> only_softdeleted() via __call()
+                // DataMapper's _apply_soft_delete_scope() sees _dm_only_softdeleted = TRUE
                 // Result: WHERE deleted_at IS NOT NULL
                 return (new User())
-                    ->onlyTrashed()
+                    ->only_softdeleted()
                     ->get();
             }
         );
 
-        // Test 7.3: withoutTrashed() - explicitly exclude soft deleted
+        // Test 7.3: without_softdeleted() - explicitly exclude soft deleted
         $this->run_comparison_test(
-            'withoutTrashed() - exclude deleted (deleted_at IS NULL)',
+            'without_softdeleted() - exclude deleted (deleted_at IS NULL)',
             function() {
                 $users = new User();
                 $users->where('deleted_at IS NULL', null, false);
                 return $users->get();
             },
             function() {
-                // Fluent: withoutTrashed() -> without_trashed() via __call()
+                // Fluent: without_softdeleted() -> without_softdeleted() via __call()
                 // DataMapper's _apply_soft_delete_scope() sees both flags = FALSE
                 // Result: WHERE deleted_at IS NULL (default behavior)
                 return (new User())
-                    ->withoutTrashed()
+                    ->without_softdeleted()
                     ->get();
             }
         );
@@ -1856,7 +1856,7 @@ class Datamapper_test extends CI_Controller
                 $building_ids = array();
                 $buildings_binded = new Building();
                 $buildings_binded->where_related('user', 'id', $user_id);
-                $buildings_binded->where_trashed();
+                $buildings_binded->with_softdeleted();
                 $buildings_binded->get();
                 
                 foreach ($buildings_binded as $b) {
@@ -1869,7 +1869,7 @@ class Datamapper_test extends CI_Controller
                 if (!empty($building_ids)) {
                     $buildings = $client->building;
                     $buildings->where_in('id', $building_ids);
-                    $buildings->where_trashed();
+                    $buildings->with_softdeleted();
                     return $buildings->get();
                 }
                 return array();
@@ -1880,7 +1880,7 @@ class Datamapper_test extends CI_Controller
                 
                 $buildings_binded = (new Building())
                     ->whereRelatedUser('id', $user_id)
-                    ->whereTrashed()
+                    ->with_softdeleted()
                     ->get();
                 
                 $building_ids = array();
@@ -1892,7 +1892,7 @@ class Datamapper_test extends CI_Controller
                     return (new Building())
                         ->where('client_id', $client_id)
                         ->whereIn('id', $building_ids)
-                        ->whereTrashed()
+                        ->with_softdeleted()
                         ->get();
                 }
                 return array();
@@ -1929,7 +1929,7 @@ class Datamapper_test extends CI_Controller
             function() {
                 $search = 'a';
                 $clients = new Client();
-                $clients->where_trashed();
+                $clients->with_softdeleted();
                 $clients->group_start();
                 $clients->like('company_name', $search);
                 $clients->or_like('street', $search);
@@ -1942,7 +1942,7 @@ class Datamapper_test extends CI_Controller
             function() {
                 $search = 'a';
                 return (new Client())
-                    ->whereTrashed()
+                    ->with_softdeleted()
                     ->groupStart()
                         ->like('company_name', $search)
                         ->orLike('street', $search)

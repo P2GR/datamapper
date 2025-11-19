@@ -1176,12 +1176,12 @@ class DMZ_Nestedsets {
 					// prefix based on requested type
 					switch ($type)
 					{
-						case 'tab';
+						case 'tab':
 							$convert .= str_repeat("\t", $value['__level'] * 4 );
 							break;
-						case 'csv';
+						case 'csv':
 							break;
-						case 'html';
+						case 'html':
 							$convert .= str_repeat("&nbsp;", $value['__level'] * 4 );
 							break;
 					}
@@ -1210,13 +1210,13 @@ class DMZ_Nestedsets {
 					// postfix based on requested type
 					switch ($type)
 					{
-						case 'tab';
+						case 'tab':
 							$convert .= "\n";
 							break;
-						case 'csv';
+						case 'csv':
 							$convert .= "\n";
 							break;
-						case 'html';
+						case 'html':
 							$convert .= "<br />";
 							break;
 					}
