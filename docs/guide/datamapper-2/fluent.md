@@ -382,7 +382,7 @@ $users->collect()->each(function($user) {
 
 ```
 
-[[Get documentation](/guide/models/get).
+[Get documentation](/guide/models/get).
 
 ## Performance Optimization Tips
 
@@ -449,7 +449,7 @@ $posts->where('featured', 1)
 
 ```
 
-[[Query Caching](caching) for more details.
+[Query Caching](caching) for more details.
 
 ## Real-World Examples
 

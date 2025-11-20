@@ -42,7 +42,7 @@ echo $u->error->transaction;
 
 ```
 
-[[configuration setting](/guide/getting-started/configuration) called *auto_transaction* which, when set to TRUE, will automatically wrap your save and delete calls in transactions, even going so far as to give you an error message if the transaction was rolled back.
+[configuration setting](/guide/getting-started/configuration) called *auto_transaction* which, when set to TRUE, will automatically wrap your save and delete calls in transactions, even going so far as to give you an error message if the transaction was rolled back.
 
 So, instead of the above, you can do the following and get the same result (provided you've got *auto_transaction* set to TRUE of course):
 

@@ -61,7 +61,7 @@ $has_many = array("book", "setting");
 
 ## Populating Related Objects
 
-[[Get](/guide/models/get) for more information). For example:
+[Get](/guide/models/get) for more information). For example:
 
 ```php
 

@@ -1,6 +1,6 @@
 # Getting Started
 
-[[install](installation) Datamapper ORM, then read all the topics in the **General Topics** section of the Table of Contents. You should read them in order as each topic builds on the previous one, and may include code examples that you are encouraged to try.
+[install](installation) Datamapper ORM, then read all the topics in the **General Topics** section of the Table of Contents. You should read them in order as each topic builds on the previous one, and may include code examples that you are encouraged to try.
 
 Once you understand the basics you'll be ready to explore the magic that is **DataMapper ORM**. Below is a glimpse of what's to come!
 

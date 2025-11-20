@@ -1,8 +1,8 @@
 # Setting up Table Prefixes
 
-[[Installation Instructions](../getting-started/installation) asks you to make sure you set the dbprefix in your database settings to an empty string. The reason for this is because DataMapper has its own way of managing prefixing, giving some added flexibility as well.
+[Installation Instructions](../getting-started/installation) asks you to make sure you set the dbprefix in your database settings to an empty string. The reason for this is because DataMapper has its own way of managing prefixing, giving some added flexibility as well.
 
-[[Relationship Types](/guide/relationships/types) section.
+[Relationship Types](/guide/relationships/types) section.
 
 ## Prefix Settings
 
@@ -11,7 +11,7 @@ There's a few ways you can define your prefixes, with the use of the *$prefix* a
 - *$prefix* - If set, will require all tables (both normal and joining tables) to have this prefix.
 - *$join_prefix* - If set, will require all joining tables to have this prefix (overrides *$prefix*).
 
-[[DataMapper config](/guide/getting-started/configuration), rather than setting the same prefixes in all of them. If you do this, you can still override the prefix for individual models by setting the prefix within them.
+[DataMapper config](/guide/getting-started/configuration), rather than setting the same prefixes in all of them. If you do this, you can still override the prefix for individual models by setting the prefix within them.
 
 ## Prefix Only
 
@@ -24,7 +24,7 @@ var $join_prefix = "";
 
 ```
 
-[[Database Tables](/guide/getting-started/database) section, those being **countries**, **countries_users** and **users**, this is how they would be changed to work with the above set prefix:
+[Database Tables](/guide/getting-started/database) section, those being **countries**, **countries_users** and **users**, this is how they would be changed to work with the above set prefix:
 
 ### ci_countries
 

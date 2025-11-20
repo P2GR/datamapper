@@ -81,7 +81,7 @@ Datamapper ORM will attempt to add the table name to values when using formulas.
 
 ## Getting the Number of Affected Rows
 
-[[existing CodeIgniter method](http://codeigniter.com/user_guide/database/helpers):
+[existing CodeIgniter method](http://codeigniter.com/user_guide/database/helpers):
 
 ```php
 

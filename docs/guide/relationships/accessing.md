@@ -157,7 +157,7 @@ echo '<p>' . $u->group->name . '</p>';
 
 ```
 
-[[Get](/guide/models/get) for more information) before accessing the values themselves. Now we'll look at which users are related to the Member Group. From the groups point of view, there may be one or more users. We know it has 2 users since we added them. The related objects are fully functional DataMapper objects. You can do all the usual get, save and delete actions on them. Since we expect multiple related objects, we'll use the related all list.
+[Get](/guide/models/get) for more information) before accessing the values themselves. Now we'll look at which users are related to the Member Group. From the groups point of view, there may be one or more users. We know it has 2 users since we added them. The related objects are fully functional DataMapper objects. You can do all the usual get, save and delete actions on them. Since we expect multiple related objects, we'll use the related all list.
 
 ```php
 
@@ -217,4 +217,4 @@ foreach ($u->group->get()->user->get() as $user)
 
 ```
 
-[[Usage guides](../datamapper-2/index) as they go into further depth on Accessing Relationships.
+[Usage guides](../datamapper-2/index) as they go into further depth on Accessing Relationships.

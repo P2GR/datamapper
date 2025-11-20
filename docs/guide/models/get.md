@@ -1,6 +1,6 @@
 # Get
 
-[[Active Record](http://codeigniter.com/user_guide/database/active_record) class. All the relevant query clauses from Active Record are available in DataMapper so you have the full power of retrieving data, in Active Record style!
+[Active Record](http://codeigniter.com/user_guide/database/active_record) class. All the relevant query clauses from Active Record are available in DataMapper so you have the full power of retrieving data, in Active Record style!
 
 **Note:** There are enough differences between CodeIgniter and DataMapper's Active Record like query clauses that you should read on to be able to take full advantage of it.
 
@@ -65,7 +65,7 @@ foreach ($o as $obj)
 
 ```
 
-[[get_iterated](/guide/models/get-iterated#get_iterated).
+[get_iterated](/guide/models/get-iterated#get_iterated).
 
 ## $object->validate->get();
 
@@ -73,7 +73,7 @@ Normally, get() will generate its query from building up any query clauses you h
 
 **Note:** When doing $object->validate()->get(); all other query clauses (such as select, where etc) will be ignored.
 
-[[Getting Started](/guide/getting-started/introduction) page. Taking part of the example from there, we see that the User model is setup to encrypt the password field with the salt from the matching users stored record (by username), when they attempt to login.
+[Getting Started](/guide/getting-started/introduction) page. Taking part of the example from there, we see that the User model is setup to encrypt the password field with the salt from the matching users stored record (by username), when they attempt to login.
 
 ### User model (excerpt)
 
@@ -437,7 +437,7 @@ $o->or_where_not_in('lastname', $lastnames);
 
 This function enables you to generate **LIKE** clauses, useful for doing searches.
 
-[[ilike](#ilike) below.
+[ilike](#ilike) below.
 
 **Note:** All values passed to this function are escaped automatically.
 
@@ -520,7 +520,7 @@ $o->or_not_like('body', 'match');
 
 ## $object->ilike();
 
-[[like](#like) methods. However, they convert both the query and the column to upper case first, to ensure case-insensitive matching. This method is better than writing your own, because it can protect identifiers and the string properly.
+[like](#like) methods. However, they convert both the query and the column to upper case first, to ensure case-insensitive matching. This method is better than writing your own, because it can protect identifiers and the string properly.
 
 Also available as or_ilike, not_ilike, and or_not_ilike.
 
@@ -591,7 +591,7 @@ $o->group_start()
 
 # Other Features
 
-[[Get (Advanced)](/guide/models/get-advanced#Get.Advanced).)
+[Get (Advanced)](/guide/models/get-advanced#Get.Advanced).)
 
 ## $object->group_by();
 

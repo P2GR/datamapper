@@ -382,7 +382,7 @@ $unique = $collection1->union($collection2);
 
 ```php
 $zipped = $names->zip($emails, $ages);
-// Result: [['John', 'john@example.com', 30], ...]
+// Result: ['John', 'john@example.com', 30], ...]
 ```
 
 ### Checking Methods

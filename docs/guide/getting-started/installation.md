@@ -44,4 +44,4 @@ require_once APPPATH.'third_party/datamapper/bootstrap.php';
 
 That's it!
 
-[[Getting Started](/guide/getting-started/introduction) section of the User Guide to begin learning how to use DataMapper. Enjoy!
+[Getting Started](/guide/getting-started/introduction) section of the User Guide to begin learning how to use DataMapper. Enjoy!

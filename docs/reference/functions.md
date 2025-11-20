@@ -95,7 +95,7 @@ $u->get();
 
 ## $object->{query}_field_func($field, $function_name, [$arg1, [$arg2, [...]])
 
-[[supported query clause](/guide/models/get-advanced#Supported.Query.Clauses).
+[supported query clause](/guide/models/get-advanced#Supported.Query.Clauses).
 
 ### Example
 

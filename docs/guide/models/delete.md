@@ -1,6 +1,6 @@
 # Delete
 
-[[Save](/guide/models/save) function.
+[Save](/guide/models/save) function.
 
 ***Important:*** Delete should only be used on existing objects.
 

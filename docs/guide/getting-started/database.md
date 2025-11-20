@@ -18,7 +18,7 @@ The joining table shows that country ID 14 (Australia) has a relationship with u
 
 ## Table Naming Rules
 
-[[ORM](/reference/glossary#ORM) methods.
+[ORM](/reference/glossary#ORM) methods.
 
 - [Every** table must have a primary numeric key named **id** that by default is automatically generated. You can [override](/guide/models/save#saving-new-objects-with-an-existing-id) this behaviour.
 - [**User**, the table would be named **users**. For **Country**, it would be **countries**. ([For odd pluralizations](/help/troubleshooting#General.Plural.Unusual), you may need to hard code the *$table* or *$model* fields.)
@@ -27,7 +27,7 @@ The joining table shows that country ID 14 (Australia) has a relationship with u
 - Joining tables must be named with both of the table names it is joining, in *alphabetical order*, separated by an underscore (_). For example, the joining table for **users** and **countries** is **countries_users**.
 - Joining tables must have a specially name id field for each of the tables it is joining, named as the singular of the table name, followed by an underscore (_) and the word **id**. For example, the joining id field name for table **users** would be **user_id**. The joining id field name for table **countries** would be **country_id**. This same column name could be used for in-table foreign keys.
 
-[[Advanced Relationship Patterns](/guide/advanced/usage#advanced-relationship-patterns).
+[Advanced Relationship Patterns](/guide/advanced/usage#advanced-relationship-patterns).
 
 ### In-Table Foreign Keys
 
@@ -41,4 +41,4 @@ For this example, let's look at the same data, but when there is only one countr
 
 Notice we've removed the joining table, and added the column **country_id** directly to the table **users**. Now the relationships are preserved, but we have less clutter in the database, and slightly faster queries as well.
 
-[[DataMapper models](/guide/models/).
+[DataMapper models](/guide/models/).

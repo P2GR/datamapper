@@ -257,7 +257,7 @@ $alarm->where_join_field('user', 'wasfired', FALSE)->get();
 
 ```
 
-[[Working with Join Fields](/guide/models/get-advanced#include_join_fields) for more details.
+[Working with Join Fields](/guide/models/get-advanced#include_join_fields) for more details.
 
 # Get (Advanced Selection)
 
@@ -353,7 +353,7 @@ At this time, deep relationships **do not support instatiation**.
 
 This method can be used to include the number of related items. By default, this is stored in the alias **{$related_field}_count**, but you can override this alias using the second argument. This method also supports using deep relationships, although the operation may fail for relationships that are not has_one (excluding, of course, the last).
 
-[[subqueries](/guide/advanced/subqueries).
+[subqueries](/guide/advanced/subqueries).
 
 Example:
 
@@ -396,4 +396,4 @@ foreach($u->alarm as $alarm) {
 
 ```
 
-[[Working with Join Fields](/guide/models/get-advanced#include_join_fields) for more details.
+[Working with Join Fields](/guide/models/get-advanced#include_join_fields) for more details.

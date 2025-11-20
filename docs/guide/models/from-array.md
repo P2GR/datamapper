@@ -181,7 +181,7 @@ $post->from_array($data);
 var_dump($post->published_at);  // DateTime object
 var_dump($post->view_count);    // int(150)
 var_dump($post->is_featured);   // bool(true)
-var_dump($post->metadata);      // array(['tags' => ['php', 'coding']])
+var_dump($post->metadata);      // array(['tags' => ['php', 'coding'])
 ```
 :::
 

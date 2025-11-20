@@ -63,7 +63,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 * Constructor
 	 *
 	 * @param array $config Configuration options
-	 *                      - servers: Array of server configs [[host, port, weight], ...]
+	 *                      - servers: Array of server configs [host, port, weight], ...]
 	 *                      - prefix: Key prefix (default: 'dmz:')
 	 *                      - compression: Enable compression (default: true)
 	 *                      - persistent_id: Persistent connection ID (optional)

@@ -1,6 +1,6 @@
 # Validation
 
-[[Form Validation](http://codeigniter.com/user_guide/libraries/form_validation) library. In fact, the validation is quite similar so you'll have no problems picking it up if you're already familiar with it. However, there are enough differences that you should read on to take full advantage of it!
+[Form Validation](http://codeigniter.com/user_guide/libraries/form_validation) library. In fact, the validation is quite similar so you'll have no problems picking it up if you're already familiar with it. However, there are enough differences that you should read on to take full advantage of it!
 
 **Note:** validate() is automatically run whenever you perform a save().
 
@@ -108,7 +108,7 @@ You can also define the fieldname by specifying a 'field' element in the array, 
 
 ## Setting Related Validation Rules
 
-[[**save()**](/guide/models/save), you can save both an object and its relationships at the same time. This is useful if you, for example, have a requirement that a User must relate to a Group. To validate this requirement, you would add rules for the Group relationship to the User *$validation* array in this way:
+[**save()**](/guide/models/save), you can save both an object and its relationships at the same time. This is useful if you, for example, have a requirement that a User must relate to a Group. To validate this requirement, you would add rules for the Group relationship to the User *$validation* array in this way:
 
 ```php
 
@@ -204,7 +204,7 @@ function _encrypt($field) // optional second parameter is not used
 
 ### Where to Store Custom Validation Rules
 
-[[extension class](../extensions/). The naming and usage rules are different depending on where you store them. You should always put rules that are used in multiple places in an extension class.
+[extension class](../extensions/). The naming and usage rules are different depending on where you store them. You should always put rules that are used in multiple places in an extension class.
 
 ### Rules
 
@@ -226,7 +226,7 @@ For extension-based rules:
 - The second parameter contains the field name to be validated.
 - The optional third parameter contains a setting that can be used by the function. Whether you use this depends upon your function. For example, the **max_length** function uses the second parameter as a number signifying the maximum length to validate the field against.
 
-[[Exact Length](#Extension.Rule)
+[Exact Length](#Extension.Rule)
 
 DataMapper's validate function ensures the validation rules are only applied to a field if it has changed since the last time validate ran. This prevents a field from having prepping functions applied to it multiple times, such as encryption, and the main reason why you should not call the actual validation functions directly. Calling an object's validate() function is all that's needed to have the validation rules applied. Note that validate is automatically run whenever you perform a save() call without parameters. You can also run or validate()->get() on an object to get a matching record using the objects current field values.
 

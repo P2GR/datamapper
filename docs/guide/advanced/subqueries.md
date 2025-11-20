@@ -50,7 +50,7 @@ $u->get();
 
 ```
 
-[[include_related_count](/guide/models/get-advanced#include_related_count)
+[include_related_count](/guide/models/get-advanced#include_related_count)
 
 ## $object->{query}_subquery($subquery, [$value]) OR $object->{query}_subquery($field, $subquery)
 
