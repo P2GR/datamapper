@@ -54,7 +54,7 @@ $u->get();
 
 ## $object->{query}_subquery($subquery, [$value]) OR $object->{query}_subquery($field, $subquery)
 
-[where statements, ordering, and [other supported query clauses](/guide/models/get-advanced#Supported.Query.Clauses).
+where statements, ordering, and [other supported query clauses](/guide/models/get-advanced#Supported.Query.Clauses).
 
 The subquery can either be first (such as for order_by statements) or second (such as where or where_in statements).
 

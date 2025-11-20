@@ -1,29 +1,48 @@
 # Server Requirements
 
-- [PHP](http://php.net/) version 5.1.2 or newer (necessary for autoloading models). (Some extensions may require a newer version of PHP to function correctly.)
-- [CodeIgniter](http://codeigniter.com/) version 1.7.2 or newer.
-- [CodeIgniter's Server Requirements](http://codeigniter.com/user_guide/general/requirements). PostgreSQL and MySQL are tested and supported. Other DBs should work. (Not all databases support all features.)
+DataMapper ORM 2.0 requires:
 
-### Using PHP older than 5.1.2
+- **[PHP](http://php.net/)** version **7.4 or newer** (PHP 8.0, 8.1, 8.2, and 8.3 are fully supported)
+- **[CodeIgniter](http://codeigniter.com/)** version **3.1.13 or newer**
+- A database supported by CodeIgniter (MySQL, PostgreSQL, SQLite, etc.)
 
-It is possible, by manually modifying the DataMapper library, to get Datamapper ORM to work on PHP older than 5.1.2. PHP **5.0.0 or newer** is still required, and it is not officially supported.
+::: tip Recommended
+- PHP 8.1+
+- CodeIgniter 3.1.13 (latest stable version)
+- 
+- MySQL 5.7+ or PostgreSQL 10+
+:::
 
-[this forum post for instructions](http://codeigniter.com/forums/viewreply/728767/).
+## PHP Version Support
 
-::: info
+| PHP Version | Support Status |
+|-------------|----------------|
+| 7.4 - 8.3   |  Fully Supported |
+| 7.0 - 7.3   |  Not Supported |
+| 5.x         |  Not Supported |
 
-### CodeIgniter 2.0
+## CodeIgniter Version Support
 
-Datamapper is tested with the latest CodeIgniter 2.0 (which has not yet been released at this time) from the Bitbucket repository and is proven to work.
+DataMapper ORM 2.0 is designed specifically for **CodeIgniter 3.x**. 
 
-However, until it is released, we can not guarantee it will work with any particular development version.
+::: tip Recommended Fork
+For modern PHP 8+ support and active maintenance, we recommend using the [pocketarc CodeIgniter 3 fork](https://github.com/pocketarc/codeigniter), which includes PHP 8.1 - PHP 8.5 compatibility and continued updates.
+:::
 
-::: info
+::: warning CodeIgniter 4
+CodeIgniter 4 is not supported. If you need an ORM for CI4, consider using CodeIgniter's built-in Entity/Model system or Eloquent.
+:::
 
-### Expression Engine
+## Database Support
 
-Please note: Expression Engine is not officially supported.
+DataMapper has been tested and is fully compatible with:
 
-Patches and suggestions are welcome, however.
+- **MySQL** 5.7+ / MariaDB 10.2+
+- **PostgreSQL** 10+
+- **SQLite** 3.x
 
-::: info
+Other databases supported by CodeIgniter should work, but may have limited testing.
+
+::: info Need Help?
+See the [Installation Guide](/guide/getting-started/installation) for setup instructions or visit our [Troubleshooting](/help/troubleshooting) page if you encounter issues.
+:::
