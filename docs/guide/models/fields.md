@@ -207,13 +207,13 @@ Certain property names are reserved by DataMapper and should not be used as colu
 :::
 
 ```php
-// ❌ Bad - 'error' is reserved
+// Bad - 'error' is reserved
 CREATE TABLE users (
     id INT PRIMARY KEY,
     error VARCHAR(255)  -- Don't use 'error' as column name
 );
 
-// ✅ Good - Use alternative names
+// Good - Use alternative names
 CREATE TABLE users (
     id INT PRIMARY KEY,
     error_message VARCHAR(255)  -- OK
@@ -414,11 +414,11 @@ echo json_encode($safe_data);
 ### Select Only Needed Fields
 
 ```php
-// ❌ Loads all fields
+// Loads all fields
 $user = new User();
 $user->get();
 
-// ✅ Loads only needed fields
+// Loads only needed fields
 $user = new User();
 $user->select('id, name, email')
      ->get();

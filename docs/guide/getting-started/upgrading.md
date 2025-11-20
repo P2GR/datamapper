@@ -13,14 +13,14 @@ All your existing DataMapper 1.x code will continue to work without changes!
 :::
 
 **New Features:**
-- ✨ Modern query builder
-- 🚀 Eager loading with constraints
-- 📦 Collection methods
-- ⚡ Query caching
-- 🗑️ Soft deletes
-- 🕐 Automatic timestamps
-- 🔄 Attribute casting
-- 📊 Streaming results
+- Modern query builder
+- Eager loading with constraints
+- Collection methods
+- Query caching
+- Soft deletes
+- Automatic timestamps
+- Attribute casting
+- Streaming results
 
 ### Requirements
 
@@ -358,7 +358,7 @@ Before deploying to production:
 
 ```php
 // Solution: Check autoload.php
-$autoload['libraries'] = array('database', 'datamapper');
+$autoload['libraries'] = ['database', 'datamapper'];
 ```
 
 ### Timestamps Not Updating
@@ -386,14 +386,14 @@ class User extends DataMapper {
 ## Version History
 
 ### Version 2.0.0 (2025)
-- ✨ Modern query builder
-- 🚀 Eager loading with constraints
-- 📦 Collections
-- ⚡ Query caching
-- 🗑️ Soft deletes trait
-- 🕐 Timestamps trait
-- 🔄 Attribute casting
-- 📊 Streaming results
+- Modern query builder
+- Eager loading with constraints
+- Collections
+- Query caching
+- Soft deletes trait
+- Timestamps trait
+- Attribute casting
+- Streaming results
 
 ### Version 1.8.x (2016-2024)
 - Stable release for PHP 5.6-7.4

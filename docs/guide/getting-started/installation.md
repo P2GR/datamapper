@@ -16,7 +16,7 @@ DataMapper is installed in seven steps, with two optional steps:
 - Upload the application/language folder to your CodeIgniter application/language folder.
 
 ```php
-$autoload['libraries'] = array('database', 'datamapper');
+$autoload['libraries'] = ['database', 'datamapper'];
 ```
 
 ```php

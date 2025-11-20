@@ -270,7 +270,7 @@ See [Soft Deletes](/guide/datamapper-2/soft-deletes).
 Make sure DataMapper is loaded in `application/config/autoload.php`:
 
 ```php
-$autoload['libraries'] = array('database', 'datamapper');
+$autoload['libraries'] = ['database', 'datamapper'];
 ```
 
 ### "Table doesn't exist"

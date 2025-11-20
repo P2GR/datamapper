@@ -240,8 +240,8 @@ CREATE TABLE posts_tags (
 
 ::: tip Join Table Naming
 DataMapper auto-detects join tables named: `{table1}_{table2}` (alphabetically sorted)
-- ✅ `posts_tags` (p comes before t)
-- ❌ `tags_posts` (wrong order)
+- `posts_tags` (p comes before t)
+- `tags_posts` (wrong order)
 :::
 
 ### Usage
@@ -437,12 +437,12 @@ class Category extends DataMapper {
 
 ::: danger Avoid N+1
 ```php
-// ❌ Bad: 1 query for users + N queries for each user's posts
+// Inefficient: 1 query for users plus N queries for each user's posts
 $user = new User();
 $user->get();
 
 foreach ($user as $u) {
-    $u->post->get(); // N queries!
+    $u->post->get(); // N queries
     foreach ($u->post as $post) {
         echo $post->title;
     }
@@ -452,7 +452,7 @@ foreach ($user as $u) {
 
 ::: tip Solution: Eager Loading (DataMapper 2.0)
 ```php
-// ✅ Good: Only 2 queries total
+// Efficient: Only 2 queries total
 $user = new User();
 $user->with('post')  // Eager load posts
      ->get();

@@ -228,7 +228,7 @@ $history = $user->revisions();
 // ]
 ```
 
-### Status: Planning 📋
+### Status: Planning
 
 - [ ] RFC open for feedback
 - [ ] Community input period
@@ -321,7 +321,7 @@ class User extends DataMapper {
 }
 ```
 
-### Status: Future Planning 🔮
+### Status: Future Planning
 
 - [ ] Community feedback
 - [ ] Design phase
@@ -339,16 +339,16 @@ Based on GitHub issues and community feedback:
 
 | Feature | Votes | Status | Target Version |
 |---------|-------|--------|----------------|
-| Model Events | 45 | ✅ Planned | 2.1 |
-| Multi-Database | 38 | ✅ Planned | 2.2 |
-| JSON Columns | 35 | ✅ Planned | 2.1 |
-| Migrations | 32 | ✅ Planned | 2.2 |
-| Batch Operations | 28 | ✅ Planned | 2.1 |
-| Audit Logging | 25 | ✅ Planned | 2.2 |
-| Read/Write Split | 22 | ✅ Planned | 2.2 |
-| Async Queries | 20 | 📋 Considering | 3.0 |
-| GraphQL Support | 15 | 📋 Considering | TBD |
-| MongoDB Support | 12 | ❌ Won't Add | - |
+| Model Events | 45 | Planned | 2.1 |
+| Multi-Database | 38 | Planned | 2.2 |
+| JSON Columns | 35 | Planned | 2.1 |
+| Migrations | 32 | Planned | 2.2 |
+| Batch Operations | 28 | Planned | 2.1 |
+| Audit Logging | 25 | Planned | 2.2 |
+| Read/Write Split | 22 | Planned | 2.2 |
+| Async Queries | 20 | Considering | 3.0 |
+| GraphQL Support | 15 | Considering | TBD |
+| MongoDB Support | 12 | Won't Add | - |
 
 ### Vote on Features
 
@@ -360,7 +360,7 @@ Want to influence the roadmap?
 
 ---
 
-## Recently Completed ✅
+## Recently Completed
 
 Features from the roadmap that have been completed:
 
@@ -402,11 +402,11 @@ Features from the roadmap that have been completed:
 
 Help shape the future of DataMapper:
 
-- 💬 [Discuss Features](https://github.com/P2GR/datamapper/discussions)
-- 🐛 [Report Bugs](https://github.com/P2GR/datamapper/issues)
-- 💻 [Contribute Code](/help/contributing)
-- 📖 [Improve Docs](https://github.com/P2GR/datamapper/tree/master/docs)
-- ⭐ [Star on GitHub](https://github.com/P2GR/datamapper)
+- [Discuss Features](https://github.com/P2GR/datamapper/discussions)
+- [Report Bugs](https://github.com/P2GR/datamapper/issues)
+- [Contribute Code](/help/contributing)
+- [Improve Docs](https://github.com/P2GR/datamapper/tree/master/docs)
+- [Star on GitHub](https://github.com/P2GR/datamapper)
 
 ## See Also
 

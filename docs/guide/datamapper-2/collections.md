@@ -1,6 +1,6 @@
 # Collections (DataMapper 2.0)
 
-Transform query results into powerful Collection objects with fluent methods for filtering, mapping, sorting, and aggregating data. Think of Collections as **arrays on steroids**.
+Transform query results into powerful Collection objects with query builder-style methods for filtering, mapping, sorting, and aggregating data. Think of Collections as **arrays on steroids**.
 
 **New in DataMapper 2.0:** Collection API inspired by Laravel, providing 50+ methods for data manipulation with elegant, chainable syntax.
 
@@ -8,7 +8,7 @@ Transform query results into powerful Collection objects with fluent methods for
 
 Traditional DataMapper returns arrays or iterators. Collections provide:
 
-- **Fluent API** - Chain methods elegantly
+- **Query Builder API** - Chain methods elegantly
 - **Type Safety** - Work with DataMapper objects
 - **Memory Efficient** - Lazy evaluation where possible
 - **Rich Functionality** - 50+ built-in methods
@@ -63,7 +63,7 @@ $collection = collect([]);
 
 DataMapper 2.0 ships first-class helpers on the query builder so you can choose the return style that matches your workload without extra plumbing:
 
-- `collect()` — returns a `DMZ_Collection` for fluent chaining.
+- `collect()` — returns a `DMZ_Collection` for query builder chaining.
 - `pluck($column)` — returns a plain array of column values (ideal for IDs or emails).
 - `pluck_collection($column)` — returns a collection seeded with the plucked values when you still want collection methods.
 - `pluck_values($column)` — legacy-friendly alias that mirrors the classic DataMapper helper.
@@ -640,7 +640,7 @@ $users->admins()->sendEmail('Update', 'System update tonight');
 
 ## Related Documentation
 
-- [Fluent Query Builder](fluent)
+- [Query Builder](query-builder)
 - [Eager Loading](eager-loading)
 - [Streaming & Chunking](streaming)
 - [Get Iterated](../models/get-iterated)

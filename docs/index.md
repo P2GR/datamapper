@@ -4,7 +4,7 @@ layout: home
 hero:
   name: DataMapper ORM
   text: Modern Active Record for CodeIgniter
-  tagline: Build faster with the native query builder, eager loading, and zero configuration
+  tagline: Build faster with modern query syntax, eager loading, and zero configuration
   actions:
     - theme: brand
       text: Get Started
@@ -17,13 +17,13 @@ hero:
       link: https://github.com/P2GR/datamapper
 
 features:
-  - icon: ⚡
-    title: Native Query Builder
+  - icon: 🔗
+    title: Query Builder
     details: Chain methods naturally with modern syntax. Write clean, readable queries that feel like Laravel Eloquent.
     link: /guide/datamapper-2/query-builder
     linkText: Learn More
     
-  - icon: 🚀
+  - icon: ⚡
     title: Eager Loading
     details: Eliminate N+1 queries with powerful eager loading. Load relationships efficiently with constraints and nesting.
     link: /guide/datamapper-2/eager-loading
@@ -35,7 +35,7 @@ features:
     link: /guide/datamapper-2/collections
     linkText: Explore Collections
     
-  - icon: ⚡
+  - icon: 💾
     title: Query Caching
     details: Cache expensive queries automatically. Improve performance with flexible TTL and cache invalidation.
     link: /guide/datamapper-2/caching
@@ -68,6 +68,33 @@ features:
 
 <!-- Custom content below features -->
 
+## Get Started in 3 Steps
+
+<div class="vp-doc" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin: 2rem 0;">
+
+<div style="border: 2px solid var(--vp-c-brand-1); border-radius: 12px; padding: 2rem; text-align: center;">
+  <div style="font-size: 3rem; margin-bottom: 1rem;">1️⃣</div>
+  <h3 style="margin-top: 0;">Install</h3>
+  <p>Drop DataMapper into your CodeIgniter application in under 5 minutes.</p>
+  <a href="/guide/getting-started/installation" style="font-weight: 600; color: var(--vp-c-brand-1);">Installation Guide →</a>
+</div>
+
+<div style="border: 2px solid var(--vp-c-brand-1); border-radius: 12px; padding: 2rem; text-align: center;">
+  <div style="font-size: 3rem; margin-bottom: 1rem;">2️⃣</div>
+  <h3 style="margin-top: 0;">Create Models</h3>
+  <p>Build your first model and start querying your database with elegant syntax.</p>
+  <a href="/guide/getting-started/quickstart" style="font-weight: 600; color: var(--vp-c-brand-1);">Quick Start →</a>
+</div>
+
+<div style="border: 2px solid var(--vp-c-brand-1); border-radius: 12px; padding: 2rem; text-align: center;">
+  <div style="font-size: 3rem; margin-bottom: 1rem;">3️⃣</div>
+  <h3 style="margin-top: 0;">Optimize</h3>
+  <p>Add eager loading, caching, and other advanced features to boost performance.</p>
+  <a href="/guide/datamapper-2/" style="font-weight: 600; color: var(--vp-c-brand-1);">Explore Features →</a>
+</div>
+
+</div>
+
 ## Why DataMapper 2.0?
 
 ::: info Modern Syntax
@@ -94,13 +121,13 @@ foreach ($user as $u) {
 }
 ```
 
-```php [Query Builder (2.0) ✨]
+```php [Query Builder (2.0)]
 $users = (new User())
     ->where('active', 1)
     ->where('age >', 18)
     ->orderBy('created_at', 'DESC')
     ->limit(10)
-    ->with('post')  // ✅ Eager load - ONE query!
+    ->with('post')  // Eager load - ONE query!
     ->get();
 
 // No N+1 problem!
@@ -170,16 +197,16 @@ $topCustomer = $customers->first();
 
 | Feature | DataMapper 2.0 | Laravel Eloquent | Doctrine ORM |
 |---------|---------------|------------------|--------------|
-| **Modern Query Builder** | ✅ Yes | ✅ Yes | ⚠️ DQL |
-| **Eager Loading** | ✅ Yes | ✅ Yes | ✅ Yes |
-| **Query Caching** | ✅ Built-in | ⚠️ Manual | ⚠️ Complex |
-| **Soft Deletes** | ✅ Trait | ✅ Trait | ⚠️ Manual |
-| **Timestamps** | ✅ Trait | ✅ Trait | ⚠️ Callbacks |
-| **Collections** | ✅ Yes | ✅ Yes | ❌ Arrays |
-| **Streaming** | ✅ Yes | ⚠️ Chunk | ❌ No |
-| **CodeIgniter 3** | ✅ Perfect | ❌ N/A | ⚠️ Complex |
-| **Learning Curve** | ✅ Easy | ⚠️ Medium | ❌ Steep |
-| **Setup Time** | ⚡ 5 min | ⚡⚡ N/A | ⚡⚡⚡ Hours |
+| **Modern Query Builder** | Yes | Yes | DQL |
+| **Eager Loading** | Yes | Yes | Yes |
+| **Query Caching** | Built-in | Manual | Complex |
+| **Soft Deletes** | Trait | Trait | Manual |
+| **Timestamps** | Trait | Trait | Callbacks |
+| **Collections** | Yes | Yes | Arrays |
+| **Streaming** | Yes | Chunk | No |
+| **CodeIgniter 3** | Perfect | N/A | Complex |
+| **Learning Curve** | Easy | Medium | Steep |
+| **Setup Time** | 5 min | N/A | Hours |
 
 ## Authors & Maintainers
 
@@ -195,25 +222,25 @@ DataMapper ORM was originally created by **Phil DeJarnett** and **Simon Stenhous
 <div class="vp-doc" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 2rem;">
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>📖 Documentation</h3>
+  <h3>Documentation</h3>
   <p>Comprehensive guides and API reference</p>
   <a href="/guide/getting-started/introduction">Read the Docs →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>💬 GitHub Discussions</h3>
+  <h3>GitHub Discussions</h3>
   <p>Ask questions and share knowledge</p>
   <a href="https://github.com/P2GR/datamapper/discussions" target="_blank">Join Discussion →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>🐛 Issue Tracker</h3>
+  <h3>Issue Tracker</h3>
   <p>Report bugs and request features</p>
   <a href="https://github.com/P2GR/datamapper/issues" target="_blank">Report Issue →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>🤝 Contributing</h3>
+  <h3>Contributing</h3>
   <p>Help improve DataMapper</p>
   <a href="/help/contributing">Contribute →</a>
 </div>
@@ -230,11 +257,11 @@ If you previously linked to URLs such as `/manual/pages/gettingstarted.html`, up
 
 DataMapper ORM powers applications across diverse industries:
 
-- 🏥 **Healthcare** - Patient management systems
-- 🛒 **E-commerce** - Online stores and marketplaces
-- 🏢 **Enterprise** - Business management platforms
-- 🎓 **Education** - Learning management systems
-- 💰 **Fintech** - Financial tracking applications
+- **Healthcare** - Patient management systems
+- **E-commerce** - Online stores and marketplaces
+- **Enterprise** - Business management platforms
+- **Education** - Learning management systems
+- **Fintech** - Financial tracking applications
 
 ---
 

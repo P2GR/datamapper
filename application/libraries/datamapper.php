@@ -376,7 +376,7 @@ class DataMapper implements IteratorAggregate {
 	protected $_only_trashed = FALSE;
 
 	/**
-	 * Internal soft delete scope flags for fluent query builder coordination.
+	 * Internal soft delete scope flags for query builder coordination.
 	 *
 	 * @var bool
 	 */
@@ -384,7 +384,7 @@ class DataMapper implements IteratorAggregate {
 	public $_dm_only_softdeleted = FALSE;
 
 	/**
-	 * @deprecated Back-compat shim for fluent helpers renamed to with_softdeleted()/only_softdeleted().
+	 * @deprecated Back-compat shim for query builder helpers renamed to with_softdeleted()/only_softdeleted().
 	 * @var bool
 	 */
 	public $_dm_with_deleted = FALSE;
@@ -3807,9 +3807,9 @@ class DataMapper implements IteratorAggregate {
 	 *
 	 * Called by get_where()
 	 *
-	 * DataMapper 2.0: Now supports operator as 3rd parameter for fluent syntax:
+	 * DataMapper 2.0: Now supports operator as 3rd parameter for query builder syntax:
 	 * - Legacy:  ->where('id >', 10)
-	 * - Fluent:  ->where('id', 10, '>')
+	 * - Current:  ->where('id', 10, '>')
 	 *
 	 * @param	mixed $key A field or array of fields to check.
 	 * @param	mixed $value For a single field, the value to compare to.
@@ -3820,7 +3820,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		// DataMapper 2.0: Detect if 3rd parameter is an operator (string) or escape flag (boolean)
 		if (is_string($escape_or_operator) && $escape_or_operator !== '' && !is_bool($escape_or_operator)) {
-			// Fluent syntax: ->where('id', 10, '>')
+			// Query builder syntax: ->where('id', 10, '>')
 			// Only append operator if it's not '=' (default)
 			if ($escape_or_operator !== '=') {
 				$key = $key . ' ' . $escape_or_operator;
@@ -3842,9 +3842,9 @@ class DataMapper implements IteratorAggregate {
 	 * Sets the WHERE portion of the query.
 	 * Separates multiple calls with OR.
 	 *
-	 * Supports operator as 3rd parameter for fluent syntax:
+	 * Supports operator as 3rd parameter for query builder syntax:
 	 * - Legacy:  ->or_where('id >', 10)
-	 * - Fluent:  ->or_where('id', 10, '>')
+	 * - Query Builder:  ->or_where('id', 10, '>')
 	 *
 	 * @param	mixed $key A field or array of fields to check.
 	 * @param	mixed $value For a single field, the value to compare to.
@@ -3855,7 +3855,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		// DataMapper 2.0: Detect if 3rd parameter is an operator (string) or escape flag (boolean)
 		if (is_string($escape_or_operator) && $escape_or_operator !== '' && !is_bool($escape_or_operator)) {
-			// Fluent syntax: ->or_where('id', 10, '>')
+			// Query builder syntax: ->or_where('id', 10, '>')
 			// Only append operator if it's not '=' (default)
 			if ($escape_or_operator !== '=') {
 				$key = $key . ' ' . $escape_or_operator;
@@ -4755,9 +4755,9 @@ class DataMapper implements IteratorAggregate {
 	 * Sets the HAVING portion of the query.
 	 * Separates multiple calls with AND.
 	 *
-	 * DataMapper 2.0: Now supports operator as 3rd parameter for fluent syntax:
+	 * DataMapper 2.0: Now supports operator as 3rd parameter for query builder syntax:
 	 * - Legacy:  ->having('count >', 5)
-	 * - Fluent:  ->having('count', 5, '>')
+	 * - Query Builder:  ->having('count', 5, '>')
 	 *
 	 * @param	string $key Field to compare.
 	 * @param	string $value value to compare to.
@@ -4768,7 +4768,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		// DataMapper 2.0: Detect if 3rd parameter is an operator (string) or escape flag (boolean)
 		if (is_string($escape_or_operator) && $escape_or_operator !== '' && !is_bool($escape_or_operator)) {
-			// Fluent syntax: ->having('count', 5, '>')
+			// Query builder syntax: ->having('count', 5, '>')
 			// Only append operator if it's not '=' (default)
 			if ($escape_or_operator !== '=') {
 				$key = $key . ' ' . $escape_or_operator;
@@ -4790,9 +4790,9 @@ class DataMapper implements IteratorAggregate {
 	 * Sets the OR HAVING portion of the query.
 	 * Separates multiple calls with OR.
 	 *
-	 * DataMapper 2.0: Now supports operator as 3rd parameter for fluent syntax:
+	 * DataMapper 2.0: Now supports operator as 3rd parameter for query builder syntax:
 	 * - Legacy:  ->or_having('count >', 5)
-	 * - Fluent:  ->or_having('count', 5, '>')
+	 * - Query Builder:  ->or_having('count', 5, '>')
 	 *
 	 * @param	string $key Field to compare.
 	 * @param	string $value value to compare to.
@@ -4803,7 +4803,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		// DataMapper 2.0: Detect if 3rd parameter is an operator (string) or escape flag (boolean)
 		if (is_string($escape_or_operator) && $escape_or_operator !== '' && !is_bool($escape_or_operator)) {
-			// Fluent syntax: ->or_having('count', 5, '>')
+			// Query builder syntax: ->or_having('count', 5, '>')
 			// Only append operator if it's not '=' (default)
 			if ($escape_or_operator !== '=') {
 				$key = $key . ' ' . $escape_or_operator;
@@ -7608,17 +7608,17 @@ class DataMapper implements IteratorAggregate {
 	}
 	
 	// ============================================================================
-	// FLUENT QUERY BUILDER METHODS (DataMapper 2.0)
+	// QUERY BUILDER METHODS (DataMapper 2.0)
 	// ============================================================================
 	
 	/**
 	 * Eager load relationships using QueryBuilder
 	 * 
 	* Automatically loads related data in batch queries to prevent N+1 problems.
-	* Supports fluent chaining.
+	* Supports query builder chaining.
 	 * 
 	 * @param string ...$relations Relationship names to eager load
-	 * @return DMZ_QueryBuilder For fluent chaining
+	 * @return DMZ_QueryBuilder For query builder chaining
 	 */
 	public function with(...$relations)
 	{
@@ -7763,7 +7763,7 @@ class DataMapper implements IteratorAggregate {
 	 * 
 	 * @param string $field Field to order by
 	 * @param string $direction ASC or DESC
-	 * @return DMZ_QueryBuilder For fluent chaining
+	 * @return DMZ_QueryBuilder For query builder chaining
 	 */
 	public function orderBy($field, $direction = 'ASC')
 	{
@@ -7775,7 +7775,7 @@ class DataMapper implements IteratorAggregate {
 		// Call order_by method first
 		$this->order_by($field, $direction);
 		
-		// Return QueryBuilder for fluent chaining
+		// Return QueryBuilder for query builder chaining
 		return new DMZ_QueryBuilder($this);
 	}
 	
@@ -8071,7 +8071,7 @@ class DataMapper implements IteratorAggregate {
 	 * 
 	 * @param int $ttl Time to live in seconds (default: 3600 = 1 hour)
 	 * @param string|null $key Custom cache key (auto-generated if null)
-	 * @return DataMapper For fluent chaining
+	 * @return DataMapper For query builder chaining
 	 */
 	public function cache($ttl = 3600, $key = null)
 	{
@@ -8096,7 +8096,7 @@ class DataMapper implements IteratorAggregate {
 	 *   $u = new User();
 	 *   $users = $u->where('active', 1)->no_cache()->get();
 	 * 
-	 * @return DataMapper For fluent chaining
+	 * @return DataMapper For query builder chaining
 	 */
 	public function no_cache()
 	{
@@ -8116,7 +8116,7 @@ class DataMapper implements IteratorAggregate {
 	 *     ->get();
 	 * 
 	 * @param int $ttl Time to live in seconds
-	 * @return DataMapper For fluent chaining
+	 * @return DataMapper For query builder chaining
 	 */
 	public function cache_relations($ttl = 3600)
 	{
@@ -8999,7 +8999,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		// DataMapper 2.0 Enhancement: Auto-detect soft delete support
 		// If model has deleted_at column, automatically apply soft delete scope
-		// This makes fluent query builder work like Laravel Eloquent by default
+		// This keeps the query builder behavior aligned with Laravel Eloquent by default
 		
 		// Get column name (NULL = use config default)
 		$deleted_col = $this->_get_deleted_at_column();
@@ -9044,7 +9044,7 @@ class DataMapper implements IteratorAggregate {
 		else if (!$this->_include_trashed)
 		{
 			// Exclude deleted records (default behavior)
-			// This is the fluent query builder default: without_softdeleted()
+			// This matches the query builder default: without_softdeleted()
 			$this->where($deleted_col, NULL);
 		}
 		// else: _include_trashed = TRUE, no filter applied (with_softdeleted() was called)

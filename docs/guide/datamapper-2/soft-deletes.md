@@ -58,7 +58,7 @@ class Project extends DataMapper {
 
 ::: tip CamelCase helpers
 Prefer snake_case helpers (`with_softdeleted()`, `only_softdeleted()`, `without_softdeleted()`, `force_delete()`).
-CamelCase aliases (`withSoftDeleted()`, `onlySoftDeleted()`, `withoutSoftDeleted()`, `forceDelete()`) remain available for fluent chaining.
+CamelCase aliases (`withSoftDeleted()`, `onlySoftDeleted()`, `withoutSoftDeleted()`, `forceDelete()`) remain available for query builder chaining.
 :::
 
 ## Querying Patterns

@@ -3,7 +3,7 @@
 /**
  * DataMapper Query Builder Extension
  *
- * Provides fluent query interface for DataMapper ORM while maintaining
+ * Provides a query builder interface for DataMapper ORM while maintaining
  * full backward compatibility with existing DataMapper functionality.
  *
  * @package    DataMapper ORM
@@ -40,7 +40,7 @@ if (!function_exists('dmz_log_message')) {
 /**
  * DataMapper Query Builder Class
  *
- * Fluent query interface that extends DataMapper functionality without
+ * Query builder interface that extends DataMapper functionality without
  * breaking existing code. All original DataMapper methods remain unchanged.
  */
 class DMZ_QueryBuilder {
@@ -781,7 +781,7 @@ class DMZ_QueryBuilder {
     /**
      * Explicit collection accessor.
      *
-     * Useful when you want terser fluent chains without repeating `get()`,
+    * Useful when you want terser query builder chains without repeating `get()`,
      * or when you need to highlight the transition from query constraints to
      * collection helpers.
      *

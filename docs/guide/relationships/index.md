@@ -326,37 +326,37 @@ Dive deeper into relationships:
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 2rem;">
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>📚 Relationship Types</h3>
+    <h3>Relationship Types</h3>
   <p>Has One, Has Many, Many-to-Many</p>
   <a href="./types">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>🔍 Accessing Relations</h3>
+    <h3>Accessing Relations</h3>
   <p>Load and query related data</p>
   <a href="./accessing">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>✏️ Setting Relations</h3>
+    <h3>Setting Relations</h3>
   <p>Create and modify relationships</p>
   <a href="./setting">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>💾 Saving Relations</h3>
+    <h3>Saving Relations</h3>
   <p>Persist related data</p>
   <a href="./saving">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>🗑️ Deleting Relations</h3>
+    <h3>Deleting Relations</h3>
   <p>Remove relationships safely</p>
   <a href="./deleting">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>⚡ Eager Loading</h3>
+    <h3>Eager Loading</h3>
   <p>Optimize with DataMapper 2.0</p>
   <a href="/guide/datamapper-2/eager-loading">Optimize Queries →</a>
 </div>

@@ -13,7 +13,7 @@ Common issues and their solutions.
 1. **Check autoload configuration**:
 ```php
 // application/config/autoload.php
-$autoload['libraries'] = array('database', 'datamapper');
+$autoload['libraries'] = ['database', 'datamapper'];
 ```
 
 2. **Verify file locations**:
@@ -47,13 +47,13 @@ chmod 644 application/libraries/datamapper.php
 2. **Check class name matches filename**:
 ```php
 // File: User.php
-class User extends DataMapper {  // ✅ Correct
+class User extends DataMapper {  // Correct
     ...
 }
 
 // NOT:
-class user extends DataMapper {  // ❌ Wrong case
-class Users extends DataMapper { // ❌ Plural
+class user extends DataMapper {  // Incorrect: wrong case
+class Users extends DataMapper { // Incorrect: plural form
 ```
 
 3. **Load model before using**:
@@ -158,8 +158,8 @@ DESCRIBE users;
 
 2. **Check spelling**:
 ```php
-$user->username;  // ✅ Correct
-$user->user_name; // ❌ Check database column name
+$user->username;  // Correct
+$user->user_name; // Incorrect: check database column name
 ```
 
 3. **Refresh table info** (development):
@@ -175,11 +175,11 @@ $user->user_name; // ❌ Check database column name
 **Solution**: Set properties before calling update():
 
 ```php
-// ❌ Wrong
+// Incorrect
 $user = new User();
 $user->where('id', 1)->update();
 
-// ✅ Correct
+// Correct
 $user = new User();
 $user->where('id', 1)->update('active', 1);
 
@@ -200,11 +200,11 @@ $user->save();
 1. **Check both sides of relationship are defined**:
 ```php
 class User extends DataMapper {
-    public $has_many = ['post'];  // ✅ Defined
+    public $has_many = ['post'];  // Defined
 }
 
 class Post extends DataMapper {
-    public $has_one = ['user'];   // ✅ Also defined
+    public $has_one = ['user'];   // Also defined
 }
 ```
 
@@ -242,7 +242,7 @@ foreach ($user->post as $post) {
 **Solution**: Use eager loading (DataMapper 2.0):
 
 ```php
-// ❌ N+1 problem (101 queries)
+// Inefficient N+1 problem (101 queries)
 $users = (new User())->get();
 foreach ($users as $user) {
     foreach ($user->post as $post) {  // +1 query per user
@@ -250,7 +250,7 @@ foreach ($users as $user) {
     }
 }
 
-// ✅ Eager loading (2 queries)
+// Eager loading (2 queries)
 $users = (new User())->with('post')->get();
 foreach ($users as $user) {
     foreach ($user->post as $post) {  // Already loaded
@@ -279,8 +279,8 @@ CREATE TABLE posts_tags (
 ```
 
 2. **Verify table name is alphabetical**:
-   - `posts_tags` ✅ (p before t)
-   - `tags_posts` ❌ (wrong order)
+    - `posts_tags` (p before t)
+    - `tags_posts` (wrong order)
 
 3. **Custom join table name**:
 ```php
@@ -386,10 +386,10 @@ ADD COLUMN deleted_at DATETIME NULL;
 
 2. **Wrap in parentheses**:
 ```php
-// ❌ Wrong
+// Incorrect
 $users = new User()->where('active', 1)->get();
 
-// ✅ Correct
+// Correct
 $users = (new User())->where('active', 1)->get();
 ```
 
@@ -408,7 +408,7 @@ $user->get();
 
 1. **Verify you're using with()**:
 ```php
-$users = (new User())->with('post')->get();  // ✅ Eager load
+$users = (new User())->with('post')->get();  // Eager load
 ```
 
 2. **Check relationship is defined**:
@@ -422,10 +422,10 @@ class User extends DataMapper {
 ```php
 // Traditional syntax doesn't support with()
 $user = new User();
-$user->with('post');  // ❌ Doesn't work
+$user->with('post');  // Does not execute the query
 
 // Use the chainable query builder
-$users = (new User())->with('post')->get();  // ✅ Works
+$users = (new User())->with('post')->get();  // Works
 ```
 
 ## Performance Issues
@@ -481,7 +481,7 @@ $users = (new User())
 
 ```php
 // Instead of loading all at once
-$users = (new User())->get();  // ❌ Loads all into memory
+$users = (new User())->get();  // Loads all into memory
 
 // Use streaming
 (new User())->stream(function($user) {

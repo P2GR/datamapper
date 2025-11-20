@@ -3,7 +3,7 @@
 /**
  * DataMapper Lazy Collection
  *
- * Provides chunked, memory-friendly iteration with fluent helpers.
+ * Provides chunked, memory-friendly iteration with query builder-style helpers.
  */
 
 /**

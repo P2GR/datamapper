@@ -21,19 +21,19 @@ All methods work directly on your DataMapper models:
 $posts = new Post();
 $posts->where('status', 'published')->get();
 
-// ✨ New: Eager loading with with()
+// New: Eager loading with with()
 $posts = new Post();
 $posts->where('status', 'published')
       ->with('user', 'comments')  // Eager load relationships!
       ->get();
 
-// ✨ New: orderBy() alias - returns QueryBuilder for chaining
+// New: orderBy() alias - returns QueryBuilder for chaining
 $posts = (new Post())
     ->where('status', 'published')
     ->orderBy('created_at', 'desc')  // Camel case alias
     ->get();
 
-// ✨ New: Collections - powerful data manipulation
+// New: Collections - powerful data manipulation
 $titles = (new Post())
     ->where('published', 1)
     ->collect()
@@ -59,12 +59,12 @@ The N+1 problem occurs when you load related data in a loop:
 
 ```php
 
-// ❌ BAD: Creates 1 + 50 = 51 database queries
+// Inefficient: Creates 1 + 50 = 51 database queries
 $posts = new Post();
 $posts->limit(50)->get();
 
 foreach ($posts->all as $post) {
-    echo $post->title . ' by ' . $post->user->name;  // Each iteration = 1 query!
+    echo $post->title . ' by ' . $post->user->name;  // Each iteration triggers an extra query
 }
 
 ```
@@ -75,7 +75,7 @@ Eager loading fetches all related records in advance with just one additional qu
 
 ```php
 
-// ✅ GOOD: Only 2 database queries total!
+// Efficient: Only 2 database queries total
 $posts = new Post();
 $posts->with('user')              // Eager load the user relationship
       ->limit(50)
@@ -390,18 +390,18 @@ $users->collect()->each(function($user) {
 
 ```php
 
-// ❌ Don't do this - N+1 problem
+// Inefficient example - N+1 problem
 $posts = new Post();
 $posts->get();
 foreach ($posts->all as $post) {
-    echo $post->user->name;  // Each iteration = 1 query!
+    echo $post->user->name;  // Each iteration triggers another query
 }
 
-// ✅ Do this instead - eager load
+// Efficient approach - eager load
 $posts = new Post();
 $posts->with('user')->get();
 foreach ($posts->all as $post) {
-    echo $post->user->name;  // Already loaded!
+    echo $post->user->name;  // Already loaded
 }
 
 ```

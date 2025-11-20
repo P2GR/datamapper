@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0] - 2024-12-15
 
-### Added - Major Features ✨
+### Added - Major Features
 
 - **Query Builder** - Modern, chainable query interface
   ```php
@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Advanced Query Building** - Subqueries, unions, advanced joins
 - **Better Error Messages** - More descriptive validation and query errors
 
-### Changed - Breaking Changes ⚠️
+### Changed - Breaking Changes
 
 - Minimum PHP version raised to **PHP 7.2** (was PHP 5.3)
 - CodeIgniter 3.1.0+ required (was 2.x)
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default timestamp column names changed to `created_at`/`updated_at`
 - Validation errors now use associative array format
 
-### Improved - Performance 🚀
+### Improved - Performance
 
 - Query optimization reduced database calls by up to 95%
 - Eager loading prevents N+1 queries automatically
@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Collection methods use lazy evaluation
 - Memory usage reduced by 60% for large datasets
 
-### Fixed - Bug Fixes 🐛
+### Fixed - Bug Fixes
 
 - Fixed relationship cascade delete issues
 - Resolved many-to-many join table ambiguity
@@ -176,11 +176,11 @@ Key changes:
 
 | Version | PHP Version | CI Version | Support Status |
 |---------|-------------|------------|----------------|
-| 2.0.x   | 7.2 - 8.3   | 3.1.0+     | ✅ Active |
-| 1.8.x   | 5.3 - 7.4   | 2.x, 3.x   | 🔧 Security Only |
-| 1.7.x   | 5.2 - 7.4   | 2.x        | ❌ End of Life |
-| 1.6.x   | 5.2 - 7.4   | 2.x        | ❌ End of Life |
-| < 1.6   | 5.2+        | 1.x, 2.x   | ❌ End of Life |
+| 2.0.x   | 7.2 - 8.3   | 3.1.0+     | Active |
+| 1.8.x   | 5.3 - 7.4   | 2.x, 3.x   | Security Only |
+| 1.7.x   | 5.2 - 7.4   | 2.x        | End of Life |
+| 1.6.x   | 5.2 - 7.4   | 2.x        | End of Life |
+| < 1.6   | 5.2+        | 1.x, 2.x   | End of Life |
 
 ## See Also
 

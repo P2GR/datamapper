@@ -1,6 +1,6 @@
 # Eager Loading with Constraints
 
-**🆕 New in DataMapper 2.0:** Apply WHERE conditions, ordering, and limits to eager-loaded relationships while maintaining N+1 prevention!
+**New in DataMapper 2.0:** Apply WHERE conditions, ordering, and limits to eager-loaded relationships while maintaining N+1 prevention!
 
 Eager loading constraints allow you to filter, sort, and limit related records at the database level, reducing data transfer and improving performance without losing the benefits of eager loading.
 
@@ -20,14 +20,14 @@ Eager loading constraints allow you to filter, sort, and limit related records a
 
 ```php
 
-// ❌ INEFFICIENT: Load all installations, filter in PHP
+// Inefficient: Load all installations, filter in PHP
 $users = (new User())
     ->with('installation')  // Loads ALL installations
     ->get();
 
 foreach ($users as $user) {
     foreach ($user->installation as $installation) {
-        if ($installation->active === 1) {  // Filter AFTER loading
+        if ($installation->active === 1) {  // Filter after loading
             echo $installation->title;
         }
     }
@@ -39,7 +39,7 @@ foreach ($users as $user) {
 
 ```php
 
-// ✅ EFFICIENT: Load only active installations
+// Efficient: Load only active installations
 $users = (new User())
     ->with('installation', function($q) {
         $q->where('active', 1);  // Filter at DATABASE level
@@ -48,7 +48,7 @@ $users = (new User())
 
 foreach ($users as $user) {
     foreach ($user->installation as $installation) {
-        echo $installation->title;  // Already filtered!
+        echo $installation->title;  // Already filtered
     }
 }
 
@@ -234,7 +234,7 @@ $buildings = (new Building())
 
 ```
 
-### ⚠️ Important Notes
+### Important Notes
 
 - Constraints do NOT increase query count - still just 2 queries per relationship!
 - Soft delete filtering is automatic unless you explicitly use with_softdeleted()
@@ -244,6 +244,6 @@ $buildings = (new Building())
 
 ### See Also
 
-- [Eager Loading Basics](fluent.html#Eager.Loading)
+- [Eager Loading Basics](query-builder.html#Eager.Loading)
 - [Soft Delete Documentation](soft-deletes)
 - [Streaming & Chunking](streaming)

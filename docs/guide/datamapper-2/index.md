@@ -16,37 +16,7 @@ DataMapper 2.0 focuses on three key areas:
 
 ## Major Features
 
-### ⚡ Native Query Builder
-
-Write clean, chainable queries:
-
-::: code-group
-
-```php [Traditional (1.x)]
-$user = new User();
-$user->where('active', 1);
-$user->where('age >', 18);
-$user->order_by('created_at', 'DESC');
-$user->limit(10);
-$user->get();
-```
-
-```php [Query Builder (2.0) ✨]
-$users = (new User())
-    ->where('active', 1)
-    ->where('age >', 18)
-    ->orderBy('created_at', 'DESC')
-    ->limit(10)
-    ->get();
-```
-
-:::
-
-[Learn More →](/guide/datamapper-2/query-builder)
-
----
-
-### 🚀 Eager Loading with Constraints
+### Eager Loading with Constraints
 
 Eliminate N+1 queries and optimize relationship loading:
 
@@ -79,7 +49,7 @@ foreach ($users as $user) {
 
 ---
 
-### 📦 Collections
+### Collections
 
 Work with query results using powerful collection methods:
 
@@ -108,14 +78,14 @@ $last = $users->last();
 ```
 
 ::: tip Migrating gradually
-`get()` still returns the model instance (with `$this->all` populated) so legacy controllers keep working. When you're ready for the fluent API, swap `get()` for `collect()` or the other result helpers (`pluck()`, `value()`, `first()`) on a per-call basis.
+`get()` still returns the model instance (with `$this->all` populated) so legacy controllers keep working. When you're ready for the query builder API, swap `get()` for `collect()` or the other result helpers (`pluck()`, `value()`, `first()`) on a per-call basis.
 :::
 
 [Learn More →](/guide/datamapper-2/collections)
 
 ---
 
-### ⚡ Query Caching
+### Query Caching
 
 Cache expensive queries automatically:
 
@@ -140,7 +110,7 @@ $users = (new User())
 
 ---
 
-### 🗑️ Soft Deletes
+### Soft Deletes
 
 Never lose data with soft delete support:
 
@@ -175,7 +145,7 @@ $user->force_delete();
 
 ---
 
-### 🕐 Automatic Timestamps
+### Automatic Timestamps
 
 Never manually manage created_at and updated_at again:
 
@@ -200,7 +170,7 @@ $user->save();  // updated_at = now()
 
 ---
 
-### 🔄 Attribute Casting
+### Attribute Casting
 
 Automatically cast database values to proper PHP types:
 
@@ -232,7 +202,7 @@ var_dump($user->last_login); // DateTime object
 
 ---
 
-### 📊 Streaming Results
+### Streaming Results
 
 Process massive datasets efficiently with generators:
 
@@ -259,7 +229,7 @@ Process massive datasets efficiently with generators:
 
 ---
 
-### 🔍 Advanced Query Building
+### Advanced Query Building
 
 Build complex queries with ease:
 
@@ -306,12 +276,12 @@ $users = $query->get();
 | **Syntax** | Traditional | Modern query builder + Traditional |
 | **Eager Loading** | Basic | With constraints |
 | **Related Columns** | `include_related()` flattening | `with()` + accessors/attributes |
-| **Collections** | ❌ No | ✅ Yes |
-| **Query Caching** | ❌ No | ✅ Built-in |
+| **Collections** | No | Yes |
+| **Query Caching** | No | Built-in |
 | **Soft Deletes** | Manual | Trait |
 | **Timestamps** | Manual | Trait |
 | **Type Casting** | Manual | Automatic |
-| **Streaming** | ❌ No | ✅ Yes |
+| **Streaming** | No | Yes |
 | **PHP Version** | 5.6 - 7.4 | 7.4 - 8.3+ |
 | **Performance** | Good | Excellent |
 
@@ -423,49 +393,49 @@ Ready to upgrade? Follow our guide:
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 2rem;">
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-    <h3>⚡ Query Builder</h3>
+        <h3>Query Builder</h3>
     <p>Modern, chainable query syntax</p>
     <a href="./query-builder">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>🚀 Eager Loading</h3>
+    <h3>Eager Loading</h3>
   <p>Eliminate N+1 query problems</p>
   <a href="./eager-loading">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>📦 Collections</h3>
+    <h3>Collections</h3>
   <p>Powerful result manipulation</p>
   <a href="./collections">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>⚡ Caching</h3>
+    <h3>Caching</h3>
   <p>Automatic query result caching</p>
   <a href="./caching">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>🗑️ Soft Deletes</h3>
+    <h3>Soft Deletes</h3>
   <p>Safe data removal with restore</p>
   <a href="./soft-deletes">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>🕐 Timestamps</h3>
+    <h3>Timestamps</h3>
   <p>Automatic timestamp management</p>
   <a href="./timestamps">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>🔄 Type Casting</h3>
+    <h3>Type Casting</h3>
   <p>Automatic attribute type conversion</p>
   <a href="./casting">Learn More →</a>
 </div>
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
-  <h3>📊 Streaming</h3>
+    <h3>Streaming</h3>
   <p>Handle massive datasets efficiently</p>
   <a href="./streaming">Learn More →</a>
 </div>

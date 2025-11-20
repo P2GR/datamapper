@@ -87,10 +87,10 @@ CREATE TABLE books (
 
 | Model Name | Table Name | Auto-Detected? |
 |------------|------------|----------------|
-| `User` | `users` | ✅ Yes |
-| `Book` | `books` | ✅ Yes |
-| `Category` | `categories` | ✅ Yes |
-| `Author` | `authors` | ✅ Yes |
+| `User` | `users` | Yes |
+| `Book` | `books` | Yes |
+| `Category` | `categories` | Yes |
+| `Author` | `authors` | Yes |
 
 ### Irregular Plurals
 
@@ -98,10 +98,10 @@ For irregular plurals, DataMapper includes a customized Inflector Helper that ha
 
 | Model Name | Table Name | Auto-Detected? |
 |------------|------------|----------------|
-| `Country` | `countries` | ✅ Yes (with Inflector) |
-| `Person` | `people` | ✅ Yes (with Inflector) |
-| `Child` | `children` | ✅ Yes (with Inflector) |
-| `Tooth` | `teeth` | ✅ Yes (with Inflector) |
+| `Country` | `countries` | Yes (with Inflector) |
+| `Person` | `people` | Yes (with Inflector) |
+| `Child` | `children` | Yes (with Inflector) |
+| `Tooth` | `teeth` | Yes (with Inflector) |
 
 ## Custom Table Names
 
@@ -309,15 +309,15 @@ Model files should follow CodeIgniter's naming convention:
 - **Example**: `User` class → `user.php` file
 
 ```php
-// ✅ Correct
+// Correct
 File: user.php
 Class: User
 
-// ✅ Correct
+// Correct
 File: blog_post.php
 Class: Blog_post
 
-// ❌ Wrong
+// Incorrect
 File: User.php      // Should be lowercase
 Class: Users        // Should be singular
 ```

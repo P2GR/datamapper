@@ -6,13 +6,13 @@ Thank you for your interest in contributing to DataMapper ORM! This document pro
 
 There are many ways to contribute to DataMapper:
 
-- 🐛 Report bugs
-- 💡 Suggest new features
-- 📖 Improve documentation
-- 💻 Submit code changes
-- 🧪 Write tests
-- 💬 Help others in discussions
-- ⭐ Star the repository
+- Report bugs
+- Suggest new features
+- Improve documentation
+- Submit code changes
+- Write tests
+- Help others in discussions
+- Star the repository
 
 ## Code of Conduct
 
@@ -155,32 +155,32 @@ private $_internal_state = null;
 #### Code Style
 
 ```php
-// ✅ Good
+// Good
 if ($user->exists()) {
     $user->name = 'New Name';
     $user->save();
 }
 
-// ❌ Bad
+// Bad
 if($user->exists()){
     $user->name='New Name';
     $user->save();
 }
 
-// ✅ Good - Proper spacing
+// Good - Proper spacing
 $result = $this->calculate_total($a, $b, $c);
 
-// ❌ Bad - No spacing
+// Bad - No spacing
 $result=$this->calculate_total($a,$b,$c);
 
-// ✅ Good - Array formatting
+// Good - Array formatting
 $config = array(
     'host'     => 'localhost',
     'database' => 'app',
     'user'     => 'root'
 );
 
-// ✅ Good - Chaining
+// Good - Chaining
 $user = new User();
 $user->where('status', 'active')
      ->where('role', 'admin')
@@ -409,12 +409,12 @@ Closes #issue_number
 
 We review for:
 
-- ✅ Code quality and style
-- ✅ Test coverage
-- ✅ Documentation completeness
-- ✅ Backward compatibility
-- ✅ Performance impact
-- ✅ Security considerations
+- Code quality and style
+- Test coverage
+- Documentation completeness
+- Backward compatibility
+- Performance impact
+- Security considerations
 
 ## Reporting Bugs
 
@@ -499,9 +499,9 @@ Any other relevant information.
 
 ### Get Help
 
-- 💬 [GitHub Discussions](https://github.com/P2GR/datamapper/discussions)
-- 🐛 [Issue Tracker](https://github.com/P2GR/datamapper/issues)
-- 📧 Email: support@datamapper.org
+- [GitHub Discussions](https://github.com/P2GR/datamapper/discussions)
+- [Issue Tracker](https://github.com/P2GR/datamapper/issues)
+- Email: support@datamapper.org
 
 ### Recognition
 
@@ -517,7 +517,7 @@ Top contributors may be invited to join the core team!
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
 
-## Thank You! 🎉
+## Thank You!
 
 Every contribution, no matter how small, makes DataMapper better for everyone. We appreciate your time and effort!
 
@@ -525,11 +525,11 @@ Every contribution, no matter how small, makes DataMapper better for everyone. W
 
 ## Quick Links
 
-- 📖 [Documentation](/)
-- 🐛 [Report Bug](https://github.com/P2GR/datamapper/issues/new?template=bug_report.md)
-- 💡 [Request Feature](https://github.com/P2GR/datamapper/issues/new?template=feature_request.md)
-- 💬 [Discussions](https://github.com/P2GR/datamapper/discussions)
-- 🔄 [Pull Requests](https://github.com/P2GR/datamapper/pulls)
+- [Documentation](/)
+- [Report Bug](https://github.com/P2GR/datamapper/issues/new?template=bug_report.md)
+- [Request Feature](https://github.com/P2GR/datamapper/issues/new?template=feature_request.md)
+- [Discussions](https://github.com/P2GR/datamapper/discussions)
+- [Pull Requests](https://github.com/P2GR/datamapper/pulls)
 
 ## See Also
 

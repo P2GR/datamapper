@@ -480,7 +480,7 @@ Conclusion: Minimal performance impact for huge gains in code quality
 
 ## See Also
 
-- [Fluent Query Builder](fluent) - Modern query interface
+- [Query Builder](query-builder) - Modern query interface
 - [Get Methods](/guide/models/get) - Classic data retrieval
 - [Save & Update](/guide/models/save) - Persisting data
 - [Validation](/guide/advanced/validation) - Data validation rules

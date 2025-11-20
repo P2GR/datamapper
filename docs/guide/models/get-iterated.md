@@ -16,7 +16,7 @@ $user->get_iterated();
 foreach ($user as $u) {
     echo $u->name . '<br/>';
 }
-// ✅ Low memory usage
+// Low memory usage
 ```
 
 ```php [get() - Loads All]
@@ -27,14 +27,14 @@ $user->get();
 foreach ($user as $u) {
     echo $u->name . '<br/>';
 }
-// ⚠️ High memory usage with large datasets
+// High memory usage with large datasets
 ```
 
 :::
 
 ## When to Use get_iterated()
 
-### ✅ Use get_iterated() When:
+### Use get_iterated() When:
 
 - Processing **thousands of records**
 - Memory usage is a concern
@@ -42,7 +42,7 @@ foreach ($user as $u) {
 - Performing batch operations (exports, migrations, reports)
 - Processing records sequentially
 
-### ❌ Don't Use get_iterated() When:
+### Avoid get_iterated() When:
 
 - Working with small result sets (< 100 records)
 - You need random access to results (`$user->all[5]`)
@@ -163,11 +163,11 @@ $user->where('status', 'active')
 $user = new User();
 $user->get_iterated();
 
-// ❌ Won't work - no array access
+// Does not support direct array access
 echo $user->all[0]->name;
 echo $user->all[5]->email;
 
-// ✅ Only foreach iteration works
+// Use foreach iteration instead
 foreach ($user as $u) {
     echo $u->name;
 }
@@ -179,10 +179,10 @@ foreach ($user as $u) {
 $user = new User();
 $user->get_iterated();
 
-// ❌ Won't work - count not available until after iteration
+// Count not available until after iteration
 echo $user->result_count(); // Returns 0
 
-// ✅ Use get() if you need count first
+// Use get() if you need count first
 $user = new User();
 $user->get();
 echo $user->result_count(); // Returns actual count
@@ -199,12 +199,12 @@ foreach ($user as $u) {
     echo $u->name;
 }
 
-// ❌ Second iteration - no results!
+// Second iteration returns no results
 foreach ($user as $u) {
     // Won't execute - iterator already exhausted
 }
 
-// ✅ Get again for another iteration
+// Call get_iterated() again for another iteration
 $user->get_iterated();
 foreach ($user as $u) {
     echo $u->name; // Works
@@ -260,12 +260,12 @@ foreach ($user as $u) {
 ### 1. Use for Large Datasets Only
 
 ```php
-// ❌ Overkill for small datasets
+// Overkill for small datasets
 $user = new User();
 $user->limit(10)
      ->get_iterated(); // Unnecessary for 10 records
 
-// ✅ Good for large datasets
+// Good for large datasets
 $user = new User();
 $user->where('created_at >', '2020-01-01')
      ->get_iterated(); // Potentially thousands of records
@@ -331,10 +331,10 @@ function migrate_old_data()
 |---------|-------|----------------|
 | Memory Usage | High (all records) | Low (one at a time) |
 | Iteration Speed | Fast | Slightly slower |
-| Array Access | ✅ Yes (`$user->all[0]`) | ❌ No |
-| Count Available | ✅ Yes (immediate) | ❌ No (until after) |
-| Multiple Iterations | ✅ Yes | ❌ No (need re-query) |
-| Random Access | ✅ Yes | ❌ No |
+| Array Access | Yes (`$user->all[0]`) | No |
+| Count Available | Yes (immediate) | No (until after) |
+| Multiple Iterations | Yes | No (need re-query) |
+| Random Access | Yes | No |
 | Best For | < 1000 records | > 1000 records |
 | Use Case | General queries | Batch processing |
 

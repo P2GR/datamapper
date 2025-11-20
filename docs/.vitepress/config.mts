@@ -5,7 +5,7 @@ const base = process.env.DOCS_BASE ?? '/';
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: 'DataMapper ORM 2.0',
-  description: 'Modern Active Record ORM for CodeIgniter 3.x with fluent query builder, eager loading, and advanced features',
+  description: 'Modern Active Record ORM for CodeIgniter 3.x with Query Builder, eager loading, and advanced features',
   
   // Base URL if deploying to GitHub Pages
   base,
@@ -45,16 +45,39 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/getting-started/introduction' },
-      { 
+      {
         text: 'DataMapper 2.0',
         items: [
-          { text: "What's New", link: '/guide/datamapper-2/' },
-          { text: 'Fluent Query Builder', link: '/guide/datamapper-2/fluent' },
-          { text: 'Eager Loading', link: '/guide/datamapper-2/eager-loading' },
-          { text: 'Collections', link: '/guide/datamapper-2/collections' },
-          { text: 'Query Caching', link: '/guide/datamapper-2/caching' },
-          { text: 'Soft Deletes', link: '/guide/datamapper-2/soft-deletes' },
-          { text: 'Timestamps', link: '/guide/datamapper-2/timestamps' },
+          {
+            text: 'Plan Your Upgrade',
+            items: [
+              { text: "What's New", link: '/guide/datamapper-2/' },
+            ]
+          },
+          {
+            text: 'Build Queries',
+            items: [
+              { text: 'Query Builder', link: '/guide/datamapper-2/query-builder' },
+              { text: 'Eager Loading', link: '/guide/datamapper-2/eager-loading' },
+              { text: 'Collections', link: '/guide/datamapper-2/collections' },
+              { text: 'Advanced Queries', link: '/guide/datamapper-2/advanced-query-building' }
+            ]
+          },
+          {
+            text: 'Data Lifecycle',
+            items: [
+              { text: 'Query Caching', link: '/guide/datamapper-2/caching' },
+              { text: 'Soft Deletes', link: '/guide/datamapper-2/soft-deletes' },
+              { text: 'Timestamps', link: '/guide/datamapper-2/timestamps' },
+              { text: 'Streaming Results', link: '/guide/datamapper-2/streaming' }
+            ]
+          },
+          {
+            text: 'Data Shapes',
+            items: [
+              { text: 'Attribute Casting', link: '/guide/datamapper-2/casting' }
+            ]
+          }
         ]
       },
       { text: 'API Reference', link: '/reference/quick-reference' },
@@ -121,16 +144,36 @@ export default defineConfig({
           text: 'DataMapper 2.0',
           collapsed: false,
           items: [
-            { text: "What's New", link: '/guide/datamapper-2/' },
-            { text: 'Fluent Query Builder', link: '/guide/datamapper-2/fluent' },
-            { text: 'Eager Loading', link: '/guide/datamapper-2/eager-loading' },
-            { text: 'Collections', link: '/guide/datamapper-2/collections' },
-            { text: 'Query Caching', link: '/guide/datamapper-2/caching' },
-            { text: 'Soft Deletes', link: '/guide/datamapper-2/soft-deletes' },
-            { text: 'Timestamps', link: '/guide/datamapper-2/timestamps' },
-            { text: 'Attribute Casting', link: '/guide/datamapper-2/casting' },
-            { text: 'Streaming Results', link: '/guide/datamapper-2/streaming' },
-            { text: 'Advanced Queries', link: '/guide/datamapper-2/advanced-query-building' },
+            {
+              text: 'Overview & Planning',
+              items: [
+                { text: "What's New", link: '/guide/datamapper-2/' },
+              ]
+            },
+            {
+              text: 'Query Workflow',
+              items: [
+                { text: 'Query Builder', link: '/guide/datamapper-2/query-builder' },
+                { text: 'Eager Loading', link: '/guide/datamapper-2/eager-loading' },
+                { text: 'Collections', link: '/guide/datamapper-2/collections' },
+                { text: 'Advanced Queries', link: '/guide/datamapper-2/advanced-query-building' }
+              ]
+            },
+            {
+              text: 'Data Lifecycle',
+              items: [
+                { text: 'Query Caching', link: '/guide/datamapper-2/caching' },
+                { text: 'Soft Deletes', link: '/guide/datamapper-2/soft-deletes' },
+                { text: 'Timestamps', link: '/guide/datamapper-2/timestamps' },
+                { text: 'Streaming Results', link: '/guide/datamapper-2/streaming' }
+              ]
+            },
+            {
+              text: 'Data Shapes',
+              items: [
+                { text: 'Attribute Casting', link: '/guide/datamapper-2/casting' }
+              ]
+            }
           ]
         },
         {

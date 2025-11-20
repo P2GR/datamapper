@@ -20,22 +20,22 @@ foreach ($users as $user) {
 
 ## Why DataMapper?
 
-### 🎯 Built for CodeIgniter
+### Built for CodeIgniter
 Unlike generic ORMs, DataMapper is designed specifically for CodeIgniter 3.x. It integrates seamlessly with CI's ecosystem and follows CI conventions.
 
-### ⚡ Performance First
+### Performance First
 - **Query caching** - Automatic result caching
 - **Eager loading** - Eliminate N+1 queries
 - **Streaming** - Handle millions of records
 - **Optimized SQL** - Efficient query generation
 
-### 📝 Developer Experience
+### Developer Experience
 - **Modern query builder** - Chainable, readable queries
 - **Type safety** - Attribute casting
 - **Collections** - Rich array helpers
 - **Validation** - Built-in validation rules
 
-### 🔧 Feature Rich
+### Feature Rich
 - **Relationships** - Has-many, belongs-to, many-to-many
 - **Soft deletes** - Safe data removal
 - **Timestamps** - Automatic tracking
@@ -123,15 +123,15 @@ $post->restore();
 
 | Feature | DataMapper 2.0 | CodeIgniter Query Builder | Laravel Eloquent |
 |---------|----------------|---------------------------|------------------|
-| **Query Builder Syntax** | ✅ Yes | ⚠️ Basic | ✅ Yes |
-| **Relationships** | ✅ Full | ❌ Manual | ✅ Full |
-| **Eager Loading** | ✅ Advanced | ❌ No | ✅ Advanced |
-| **Soft Deletes** | ✅ Trait | ❌ Manual | ✅ Trait |
-| **Collections** | ✅ Rich | ❌ Arrays | ✅ Rich |
-| **Caching** | ✅ Built-in | ⚠️ Manual | ⚠️ Manual |
-| **Validation** | ✅ Built-in | ❌ No | ⚠️ Separate |
-| **Learning Curve** | ⚡ Easy | ⚡ Easy | ⚡⚡ Medium |
-| **CI3 Integration** | ✅ Perfect | ✅ Native | ❌ N/A |
+| **Query Builder Syntax** | Yes | Basic | Yes |
+| **Relationships** | Full | Manual | Full |
+| **Eager Loading** | Advanced | No | Advanced |
+| **Soft Deletes** | Trait | Manual | Trait |
+| **Collections** | Rich | Arrays | Rich |
+| **Caching** | Built-in | Manual | Manual |
+| **Validation** | Built-in | No | Separate |
+| **Learning Curve** | Easy | Easy | Medium |
+| **CI3 Integration** | Perfect | Native | N/A |
 
 ## Philosophy
 
@@ -170,11 +170,11 @@ $user = (new User())->find(1);
 
 DataMapper powers thousands of CodeIgniter applications worldwide:
 
-- 🏢 **Enterprise apps** - Business management platforms
-- 🛒 **E-commerce** - Online stores with complex product catalogs
-- 📱 **SaaS** - Multi-tenant applications
-- 🏥 **Healthcare** - Patient record systems
-- 📚 **Education** - Learning management systems
+- **Enterprise apps** - Business management platforms
+- **E-commerce** - Online stores with complex product catalogs
+- **SaaS** - Multi-tenant applications
+- **Healthcare** - Patient record systems
+- **Education** - Learning management systems
 
 ## Next Steps
 
@@ -202,16 +202,16 @@ Dive into advanced features like eager loading and caching.
 
 ## Community
 
-- 💬 [GitHub Discussions](https://github.com/P2GR/datamapper/discussions) - Ask questions
-- 🐛 [Issue Tracker](https://github.com/P2GR/datamapper/issues) - Report bugs
-- 📖 [Changelog](/help/changelog) - See what's new
-- 🗺️ [Roadmap](/help/roadmap) - Future plans
+- [GitHub Discussions](https://github.com/P2GR/datamapper/discussions) - Ask questions
+- [Issue Tracker](https://github.com/P2GR/datamapper/issues) - Report bugs
+- [Changelog](/help/changelog) - See what's new
+- [Roadmap](/help/roadmap) - Future plans
 
 ---
 
 <div style="text-align: center; margin-top: 3rem; padding: 2rem; background: var(--vp-c-bg-soft); border-radius: 12px;">
 
-### 🚀 Start Building Better Apps Today
+### Start Building Better Apps Today
 
 DataMapper 2.0 makes database operations simple, fast, and enjoyable.
 

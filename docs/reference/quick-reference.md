@@ -637,30 +637,30 @@ $user->where_in('id', $selected_ids)
 ## Performance Tips
 
 ```php
-// ✅ Use eager loading
+// Use eager loading
 $user->with('post')->get();
 
-// ✅ Select only needed fields
+// Select only needed fields
 $user->select('id, name, email')->get();
 
-// ✅ Use indexes
+// Use indexes
 $user->where('email', $email)->get(); // indexed column
 
-// ✅ Cache queries
+// Cache queries
 $user->cache(3600)->get();
 
-// ✅ Use get_iterated() for large datasets
+// Use get_iterated() for large datasets
 $user->get_iterated();
 foreach ($user as $u) {
     // Process one at a time
 }
 
-// ❌ Avoid N+1
+// Avoid N+1
 foreach ($user->all as $u) {
     $u->post->get(); // BAD: N queries
 }
 
-// ❌ Don't select *  unnecessarily
+// Don't select * unnecessarily
 $user->get(); // Loads all fields (including large TEXT columns)
 ```
 
