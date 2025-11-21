@@ -88,3 +88,9 @@ However, with that said, I have included a customised version of CodeIgniter's *
 [Troubleshooting](/help/troubleshooting)) and I'll try to update the inflector helper.
 
 There is one other scenario to look at where the singular and plural name of an object can get a little confusing. What do you do if the singular name of an object is the same as the plural name? For example, the word **fruit** is used for both a single piece of fruit and multiple pieces of fruit. In this case, you will have to use the singular model name of **Fruit** and the plural table name of **fruits**. Alternatively, you can specify a different table name to the automatically determined name, in the same way as done above.
+
+## Next Steps
+
+- [Mass Assignment](mass-assignment) – Configure `$fillable` / `$guarded`, learn how `fill()` works, and keep user input locked down.
+- [Fields & Properties](fields) – Understand how DataMapper maps columns and virtual attributes.
+- [Save](save) – Review the full persistence lifecycle and validation flow.

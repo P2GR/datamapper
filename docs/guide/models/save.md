@@ -25,6 +25,25 @@ $u->save();
 
 The new user **foo** will now have an ID and an encrypted password (as well as a salt for use later on when he logs in).
 
+## Create in One Call <Badge type="tip" text="2.0" />
+
+When you simply need to persist an array of attributes, use the new static `create()` helper. It fills the model, honours `$fillable` / `$guarded`, calls `save()`, and returns the model on success (or `FALSE` on failure).
+
+```php
+class User extends DataMapper {
+    var $fillable = array('username', 'email', 'password');
+}
+
+$user = User::create($this->input->post());
+
+if ($user) {
+    return redirect('dashboard');
+}
+
+// Validation failed
+return view('register', array('errors' => $user->error->all));
+```
+
 ## Save on an Existing Object
 
 Running Save on an existing object will update its corresponding record in the database.

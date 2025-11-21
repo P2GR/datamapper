@@ -268,6 +268,12 @@ class DataMapper implements IteratorAggregate {
 	 */
 	static $global_extensions = array();
 	/**
+	 * Global guard toggle for mass assignment.
+	 * When TRUE, fillable/guarded restrictions are ignored.
+	 * @var bool
+	 */
+	protected static $unguarded = FALSE;
+	/**
 	 * Used to override unset default properties.
 	 * @var array
 	 */
@@ -335,6 +341,16 @@ class DataMapper implements IteratorAggregate {
 	 * @var array
 	 */
 	protected $casts = array();
+
+	/**
+	 * Mass assignment configuration.
+	 * Declare $fillable to allow specific attributes, or use $guarded
+	 * as a blacklist. Defaults guard the primary key.
+	 *
+	 * @var array
+	 */
+	public $fillable = array();
+	public $guarded = array('id');
 
 	/**
 	 * DataMapper 2.0 - Timestamps
@@ -9006,6 +9022,175 @@ class DataMapper implements IteratorAggregate {
 		return array($enabled, $enabled); // If trait is used, it's explicitly enabled
 	}
 	
+	// --------------------------------------------------------------------
+
+	/**
+	 * Fill the model with an array of attributes.
+	 * Respects $fillable and $guarded settings for mass assignment.
+	 *
+	 * @param array $attributes
+	 * @return static
+	 */
+	public function fill(array $attributes)
+	{
+		return $this->_assign_fillable_attributes(
+			$this->_filter_fillable($attributes)
+		);
+	}
+
+	/**
+	 * Fill the model with an array of attributes without guard checks.
+	 * Useful for seeding, factories, or internal framework usage.
+	 *
+	 * @param array $attributes
+	 * @return static
+	 */
+	public function forceFill(array $attributes)
+	{
+		return $this->_assign_fillable_attributes($attributes);
+	}
+
+	/**
+	 * Create a new model instance, fill it, and persist to the database.
+	 * Returns the model on success or FALSE when validation/save fails.
+	 *
+	 * @param array $attributes
+	 * @return static|bool
+	 */
+	public static function create(array $attributes = array())
+	{
+		$model = new static();
+		$model->fill($attributes);
+
+		if ($model->save())
+		{
+			return $model;
+		}
+
+		return FALSE;
+	}
+
+	/**
+	 * Temporarily disable mass-assignment guarding.
+	 * Returns the previous guard state when toggled manually.
+	 *
+	 * @param bool|callable $state TRUE to disable guarding, callable for scoped usage
+	 * @return bool|mixed
+	 */
+	public static function unguard($state = TRUE)
+	{
+		if (is_callable($state))
+		{
+			return self::unguarded($state);
+		}
+
+		$previous = self::$unguarded;
+		self::$unguarded = (bool) $state;
+		return $previous;
+	}
+
+	/**
+	 * Re-enable mass-assignment guarding.
+	 *
+	 * @return void
+	 */
+	public static function reguard()
+	{
+		self::$unguarded = FALSE;
+	}
+
+	/**
+	 * Execute the given callback while mass-assignment protection is disabled.
+	 * Restores the previous guard state afterwards.
+	 *
+	 * @param callable $callback
+	 * @return mixed
+	 */
+	public static function unguarded(callable $callback)
+	{
+		$previous = self::unguard(TRUE);
+
+		try
+		{
+			return $callback();
+		}
+		finally
+		{
+			self::$unguarded = $previous;
+		}
+	}
+
+	/**
+	 * Filter an attribute array using fillable/guarded rules.
+	 *
+	 * @param array $attributes
+	 * @return array
+	 */
+	protected function _filter_fillable(array $attributes)
+	{
+		if (self::$unguarded)
+		{
+			return $attributes;
+		}
+
+		$fillable = array_filter((array) $this->fillable, function($value) {
+			return $value !== '' && $value !== NULL;
+		});
+		if ( ! empty($fillable))
+		{
+			return array_intersect_key($attributes, array_flip($fillable));
+		}
+
+		$guarded = array_filter((array) $this->guarded, function($value) {
+			return $value !== '' && $value !== NULL;
+		});
+		if (empty($guarded))
+		{
+			return $attributes;
+		}
+
+		if (in_array('*', $guarded, TRUE))
+		{
+			return array();
+		}
+
+		return array_diff_key($attributes, array_flip($guarded));
+	}
+
+	/**
+	 * Assign an array of attributes onto the model.
+	 *
+	 * @param array $attributes
+	 * @return static
+	 */
+	protected function _assign_fillable_attributes(array $attributes)
+	{
+		if (empty($attributes))
+		{
+			return $this;
+		}
+
+		$field_lookup = array_flip($this->fields);
+
+		foreach ($attributes as $key => $value)
+		{
+			$mutator = 'set_' . $key;
+
+			if (method_exists($this, $mutator))
+			{
+				$this->{$mutator}($value);
+				continue;
+			}
+
+			if (isset($field_lookup[$key]) || property_exists($this, $key))
+			{
+				$this->{$key} = $value;
+			}
+		}
+
+		return $this;
+	}
+
 	/**
 	 * Update the updated_at timestamp without saving other changes
 	 * Eloquent-style touch() method

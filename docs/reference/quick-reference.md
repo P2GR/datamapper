@@ -35,10 +35,13 @@ $user->name = 'John Doe';
 $user->email = 'john@example.com';
 $user->save();
 
-// From array
+// Mass assignment with fillable whitelist
+class User extends DataMapper {
+    var $fillable = array('name', 'email');
+}
+
 $user = new User();
-$user->from_array($_POST, array('name', 'email'));
-$user->save();
+$user->fill($_POST)->save();
 
 // With relationship
 $user = new User();
@@ -93,6 +96,22 @@ $user->from_array(array(
     'email' => 'jane@example.com'
 ));
 $user->save();
+```
+
+### Mass Assignment
+
+```php
+$user = new User();
+$user->guarded = array('is_admin');
+
+$user->fill($_POST);       // Respects $fillable / $guarded
+$user->forceFill($seed);   // Skips guarding (trusted data only)
+
+DataMapper::unguarded(function () use ($user, $payload) {
+    $user->fill($payload);
+});
+
+$post = Post::create(array('title' => 'Hello', 'body' => '...'));
 ```
 
 ### Delete

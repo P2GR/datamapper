@@ -5,6 +5,14 @@ All notable changes to DataMapper ORM will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Laravel-style mass-assignment protection: `$fillable`, `$guarded`, `fill()`, `forceFill()`, `unguard()` helpers, and a static `create()` convenience method.
+
+### Documentation
+- Documented mass-assignment workflow, updated the quick reference, model template, and added a dedicated guide page.
+
 ## [2.0.0-beta1] - 2025-10-14
 
 ### Highlights

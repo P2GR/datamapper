@@ -201,6 +201,15 @@ class Users extends Controller {
             // Each individual error is automatically wrapped with an error_prefix and error_suffix, which you can change (default: <p>error message</p>)
         }
 
+        // Shortcut: opt into expected fields and fill straight from input
+        $user = new User();
+        $user->fillable = array('username', 'email', 'password');
+
+        if ($user->fill($this->input->post())->save())
+        {
+            echo 'Created with fill(): ' . $user->username;
+        }
+
         // Let's now get the first 5 books from our database
         $b = new Book();
         $b->limit(5)->get();

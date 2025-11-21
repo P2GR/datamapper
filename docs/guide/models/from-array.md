@@ -2,6 +2,10 @@
 
 Populate a DataMapper object from an array. This is perfect for processing form data, API requests, or bulk imports.
 
+::: warning DataMapper 2.0
+Prefer `$model->fill($input)` with `$fillable` / `$guarded` for day-to-day assignments. `from_array()` still works through the Array extension, but `fill()` ships in core and respects your mass-assignment rules automatically. See [Mass Assignment](/guide/models/mass-assignment) for full details.
+:::
+
 ## Basic Usage
 
 ```php
@@ -77,15 +81,7 @@ $user->save();
 ```
 
 ::: tip Whitelist Pattern
-**Always whitelist fields** from user input to prevent mass-assignment vulnerabilities:
-
-```php
-// GOOD: Only allow specific fields
-$user->from_array($_POST, array('username', 'email', 'bio'));
-
-// BAD: Allows any field in $_POST
-$user->from_array($_POST);  // User could inject 'is_admin' => 1
-```
+Define `$fillable` on your model (or pass the `$fields` argument) to explicitly control what may be mass-assigned. Guarding everything by default and opting-in the fields you expect is the safest approach when consuming request payloads.
 :::
 
 ### Bulk Import from CSV/JSON

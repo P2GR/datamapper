@@ -32,6 +32,27 @@ $user->password = "secret123";
 $user->save();
 ```
 
+## Mass Assignment Protection <Badge type="tip" text="2.0" />
+
+DataMapper 2.0 adopts Laravel-style mass assignment controls so you can safely populate models from request data. Declare either a whitelist via `$fillable` or a blacklist via `$guarded` on your model and call `fill()`:
+
+```php
+class User extends DataMapper {
+    var $fillable = array('name', 'email', 'password');
+}
+
+$payload = $this->input->post();
+
+$user = new User();
+$user->fill($payload)->save();
+```
+
+- `$fillable` lists the attributes that may be mass-assigned.
+- `$guarded` lists attributes that must never be mass-assigned (use `array('*')` to block everything by default).
+- `forceFill()` ignores guarding and is intended for framework code, seeders, or carefully audited scripts.
+- `DataMapper::unguard()` / `DataMapper::reguard()` toggle the protection globally; `DataMapper::unguarded(function () { ... })` disables it only within the supplied callback.
+- Static `Model::create($attributes)` now mirrors Laravel’s helper: it fills the model, saves it, and returns the instance on success.
+
 ## Special Properties
 
 ### ID Property
@@ -356,30 +377,27 @@ foreach ($user as $u) {
 ### Bulk Assignment
 
 ```php
-function create_user($data)
-{
-    $user = new User();
-    
-    // Bulk assignment from array
-    $user->from_array($data, array(
-        'name',
-        'email',
-        'password'
-    ));
-    
-    return $user->save();
+class User extends DataMapper {
+    var $fillable = array('name', 'email', 'password');
 }
 
-// Usage
+function create_user(array $input)
+{
+    $user = new User();
+    return $user->fill($input)->save();
+}
+
 $data = array(
     'name' => 'Bob',
     'email' => 'bob@example.com',
     'password' => 'secret',
-    'admin_note' => 'malicious' // Ignored - not in whitelist
+    'is_admin' => 1 // Silently ignored because it is not fillable
 );
 
 create_user($data);
 ```
+
+`from_array()` remains available via the Array extension when you need its additional helpers, but new applications should prefer `fill()` so `$fillable` / `$guarded` rules are enforced consistently.
 
 ### Property Blacklisting
 

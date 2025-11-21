@@ -34,6 +34,10 @@ class Template extends DataMapper {
 	// var $model = 'template';
 	// var $table = 'templates';
 
+	// Mass-assignment options: whitelist fields or guard specific columns.
+	// var $fillable = array('name', 'email');
+	// var $guarded = array('id', 'is_admin');
+
 	// You can override the database connections with this option
 	// var $db_params = 'db_config_name';
 

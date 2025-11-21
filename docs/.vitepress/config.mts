@@ -120,6 +120,7 @@ export default defineConfig({
             { text: 'Update', link: '/guide/models/update' },
             { text: 'Delete', link: '/guide/models/delete' },
             { text: 'Fields & Properties', link: '/guide/models/fields' },
+            { text: 'Mass Assignment', link: '/guide/models/mass-assignment' },
             { text: 'From Array', link: '/guide/models/from-array' },
             { text: 'To Array', link: '/guide/models/to-array' },
             { text: 'To JSON', link: '/guide/models/to-json' },
