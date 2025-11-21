@@ -1625,12 +1625,9 @@ class DMZ_QueryBuilder {
     /**
      * Apply soft delete scope to a database query builder
      * 
-     * Automatically excludes soft-deleted records when:
-     * 1. Model has deleted_at column (auto-detection)
-     * 2. Model has soft_delete enabled (DataMapper 2.0 built-in)
-     * 3. Model uses SoftDeletes trait
-    * 
-    * Keeps eager-loaded results consistent with standard queries.
+    * Automatically excludes soft-deleted records when the consuming
+    * model imports the SoftDeletes trait. Keeps eager-loaded results
+    * consistent with standard queries.
     * 
      * @param CI_DB_query_builder $db The database query builder
      * @param DataMapper $model The model instance to check for soft delete configuration
@@ -1680,44 +1677,23 @@ class DMZ_QueryBuilder {
             return;
         }
         
-        // Check various ways soft deletes can be configured
-        // NOTE: We explicitly ignore LODataMapper's $_withoutSoftDeletedScope property
-        //       That's a custom implementation - we only use native DataMapper 2.0 detection
-        
-        // 1. Check if model uses SoftDeletes trait (native DataMapper 2.0)
-        $uses_trait = in_array('SoftDeletes', class_uses($model));
-        
-        // 2. Check if model has soft_delete property (native DataMapper 2.0 built-in)
-        $has_soft_delete_property = property_exists($model, 'soft_delete');
-        
-        // 3. Check if model has deleted_at column (auto-detection)
+        // Soft deletes now require the SoftDeletes trait explicitly
+        if (! DataMapper::usesTrait($model, array('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes'))) {
+            return;
+        }
+
         $deleted_col = $this->_get_deleted_at_column($model);
-        
-        // Check if column exists in model's fields
-        $has_deleted_column = $deleted_col && property_exists($model, 'fields') && 
-                             is_array($model->fields) && 
-                             in_array($deleted_col, $model->fields);
-        
-        // Determine if soft deletes are enabled
-        $soft_delete_enabled = FALSE;
-        
-        if ($uses_trait) {
-            // Trait is used - check if enabled (default TRUE for trait)
-            $soft_delete_enabled = !property_exists($model, 'softDelete') || $model->softDelete !== FALSE;
-        } elseif ($has_soft_delete_property) {
-            // Built-in soft delete - check property and config
-            $config_soft_delete = isset(DataMapper::$config['soft_delete']) ? DataMapper::$config['soft_delete'] : FALSE;
-            $soft_delete_enabled = $model->soft_delete !== NULL ? $model->soft_delete : $config_soft_delete;
-        } elseif ($has_deleted_column) {
-            // Auto-detection: has deleted_at column, enable automatically
-            $soft_delete_enabled = TRUE;
+
+        if (! $deleted_col || ! property_exists($model, 'fields') || ! is_array($model->fields) || ! in_array($deleted_col, $model->fields, TRUE)) {
+            return;
         }
-        
-        // Apply the scope if enabled and column exists
-        if ($soft_delete_enabled && $has_deleted_column) {
-            $column_name = !empty($table_prefix) ? $table_prefix . '.' . $deleted_col : $deleted_col;
-            $db->where($column_name, NULL);
+
+        // Apply the default without_softdeleted() scope
+        if (!empty($table_prefix)) {
+            $deleted_col = $table_prefix . '.' . $deleted_col;
         }
+
+        $db->where($deleted_col, NULL);
     }
     
     /**

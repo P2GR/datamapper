@@ -10,7 +10,7 @@ DataMapper is an Object-Relational Mapper (ORM) that provides an elegant Active 
 // Simple, expressive syntax
 $users = (new User())
     ->where('active', 1)
-    ->orderBy('name')
+    ->order_by('name')
     ->get();
 
 foreach ($users as $user) {
@@ -56,7 +56,7 @@ $posts = (new Post())
     ->with(['user', 'comments'])
     ->where('published', 1)
     ->where('views >', 1000)
-    ->orderBy('created_at', 'DESC')
+    ->order_by('created_at', 'DESC')
     ->limit(10)
     ->cache(3600)
     ->get();
@@ -70,10 +70,10 @@ $users = (new User())
     ->with([
         'post' => function($q) {
             $q->where('published', 1)
-              ->orderBy('views', 'DESC');
+              ->order_by('views', 'DESC');
         },
         'post.comment' => function($q) {
-            $q->orderBy('created_at', 'DESC')
+            $q->order_by('created_at', 'DESC')
               ->limit(5);
         }
     ])

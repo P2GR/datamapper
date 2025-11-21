@@ -1,11 +1,32 @@
 <?php
 
+namespace DataMapper\Traits {
+
 /**
  * SoftDeletes Trait for DataMapper
  *
- * Provides a thin compatibility layer that enables soft deletes when the trait
- * is used while forwarding to DataMapper's native implementation. It also
- * exposes camelCase helper aliases to mirror Laravel-style method names.
+ * Provides soft delete functionality for DataMapper models.
+ * Simply use this trait in your model to enable soft deletes.
+ *
+ * Usage:
+ * ```php
+ * use DataMapper\Traits\SoftDeletes;
+ *
+ * class User extends DataMapper {
+ *     use SoftDeletes;
+ * }
+ * ```
+ *
+ * Customize the deleted_at column name:
+ * ```php
+ * use DataMapper\Traits\SoftDeletes;
+ *
+ * class User extends DataMapper {
+ *     use SoftDeletes;
+ *     
+ *     protected $deletedAtColumn = 'archived_at';
+ * }
+ * ```
  *
  * @package DataMapper
  * @category Traits
@@ -14,49 +35,24 @@
 trait SoftDeletes
 {
 	/**
-	 * Default soft delete toggle for trait consumers (camelCase for BC).
+	 * The name of the "deleted at" column.
+	 * Override in your model to customize.
 	 *
-	 * @var bool|null
-	 */
-	protected $softDelete = TRUE;
-
-	/**
-	 * Optional camelCase column override retained for backwards compatibility.
-	 *
-	 * @var string|null
+	 * @var string
 	 */
 	protected $deletedAtColumn = 'deleted_at';
-
 	/**
-	 * Normalise configuration before delegating to the core implementation.
+	 * Get the name of the "deleted at" column.
 	 *
-	 * @return void
+	 * @return string
 	 */
-	protected function syncSoftDeleteConfiguration()
+	public function getDeletedAtColumn()
 	{
-		if ($this->soft_delete === NULL && $this->softDelete !== NULL)
-		{
-			$this->soft_delete = (bool) $this->softDelete;
-		}
-
-		if (($this->deleted_at_column === NULL || $this->deleted_at_column === '') && !empty($this->deletedAtColumn))
-		{
-			$this->deleted_at_column = $this->deletedAtColumn;
-		}
+		return $this->deletedAtColumn;
 	}
 
 	/**
-	 * Allow invoking from legacy bootstrapping hooks without side effects.
-	 *
-	 * @return void
-	 */
-	protected function _soft_delete_boot()
-	{
-		// Intentional no-op: DataMapper applies the scope internally.
-	}
-
-	/**
-	 * Proxy delete() to parent while ensuring configuration is in sync.
+	 * Proxy delete() to parent.
 	 *
 	 * @param mixed $object
 	 * @param string $related_field
@@ -64,7 +60,6 @@ trait SoftDeletes
 	 */
 	public function delete($object = '', $related_field = '')
 	{
-		$this->syncSoftDeleteConfiguration();
 		return parent::delete($object, $related_field);
 	}
 
@@ -75,7 +70,6 @@ trait SoftDeletes
 	 */
 	public function restore()
 	{
-		$this->syncSoftDeleteConfiguration();
 		return parent::restore();
 	}
 
@@ -86,7 +80,6 @@ trait SoftDeletes
 	 */
 	public function trashed()
 	{
-		$this->syncSoftDeleteConfiguration();
 		return parent::trashed();
 	}
 
@@ -97,7 +90,6 @@ trait SoftDeletes
 	 */
 	public function withSoftDeleted()
 	{
-		$this->syncSoftDeleteConfiguration();
 		return $this->with_softdeleted();
 	}
 
@@ -108,7 +100,6 @@ trait SoftDeletes
 	 */
 	public function onlySoftDeleted()
 	{
-		$this->syncSoftDeleteConfiguration();
 		return $this->only_softdeleted();
 	}
 
@@ -119,7 +110,6 @@ trait SoftDeletes
 	 */
 	public function withoutSoftDeleted()
 	{
-		$this->syncSoftDeleteConfiguration();
 		return $this->without_softdeleted();
 	}
 
@@ -154,20 +144,16 @@ trait SoftDeletes
 	 */
 	public function forceDelete()
 	{
-		$this->syncSoftDeleteConfiguration();
 		return $this->force_delete();
 	}
+}
 
-	/**
-	 * Expose the resolved deleted_at column for consumers expecting camelCase.
-	 *
-	 * @return string|null
-	 */
-	public function getDeletedAtColumn()
+}
+
+
+namespace {
+	if ( ! trait_exists('SoftDeletes', FALSE))
 	{
-		$this->syncSoftDeleteConfiguration();
-		return $this->deleted_at_column !== NULL && $this->deleted_at_column !== ''
-			? $this->deleted_at_column
-			: (isset(DataMapper::$config['deleted_at_column']) ? DataMapper::$config['deleted_at_column'] : NULL);
+		class_alias('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes');
 	}
 }

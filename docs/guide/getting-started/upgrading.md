@@ -147,7 +147,7 @@ $user->get();
 // After
 $users = (new User())
     ->where('active', 1)
-    ->orderBy('created_at', 'DESC')
+    ->order_by('created_at', 'DESC')
     ->limit(10)
     ->get();
 ```

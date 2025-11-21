@@ -125,7 +125,7 @@ foreach ($user as $u) {
 $users = (new User())
     ->where('active', 1)
     ->where('age >', 18)
-    ->orderBy('created_at', 'DESC')
+    ->order_by('created_at', 'DESC')
     ->limit(10)
     ->with('post')  // Eager load - ONE query!
     ->get();
@@ -176,14 +176,14 @@ $customers = (new Customer())
         'order' => function($q) {
             $q->where('created_at >', date('Y-m-d', strtotime('-30 days')))
               ->where('status', 'completed')
-              ->orderBy('created_at', 'DESC')
+              ->order_by('created_at', 'DESC')
               ->limit(10);
         }
     ])
     ->where('status', 'premium')
     ->where('credits >', 100)
     ->whereNotNull('email_verified_at')
-    ->orderBy('total_spent', 'DESC')
+    ->order_by('total_spent', 'DESC')
     ->cache(3600)  // Cache for 1 hour
     ->get();
 

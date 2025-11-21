@@ -26,7 +26,7 @@ $users = (new User())
     ->with([
         'post' => function($q) {
             $q->where('published', 1)
-              ->orderBy('views', 'DESC')
+              ->order_by('views', 'DESC')
               ->limit(5);
         }
     ])
@@ -363,11 +363,11 @@ $customers = (new Customer())
     ->with([
         'order' => function($q) {
             $q->where('created_at >', date('Y-m-d', strtotime('-30 days')))
-              ->orderBy('created_at', 'DESC');
+              ->order_by('created_at', 'DESC');
         }
     ])
     ->where('status', 'premium')
-    ->orderBy('total_spent', 'DESC')
+    ->order_by('total_spent', 'DESC')
     ->limit(50)
     ->cache(1800)  // Cache for 30 minutes
     ->get();

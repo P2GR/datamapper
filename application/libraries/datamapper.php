@@ -337,36 +337,28 @@ class DataMapper implements IteratorAggregate {
 	protected $casts = array();
 
 	/**
-	 * DataMapper 2.0 - Timestamps (Eloquent-style)
+	 * DataMapper 2.0 - Timestamps
 	 * 
-	 * Enable automatic created_at and updated_at timestamp management:
+	 * To enable automatic timestamps, use the HasTimestamps trait:
 	 * 
-	 * public $timestamps = TRUE;  // Enable timestamps for this model
+	 * use HasTimestamps;
 	 * 
-	 * Customize column names if needed:
-	 * public $created_at_column = 'date_created';
-	 * public $updated_at_column = 'date_modified';
-	 * 
-	 * @var bool|null  NULL = use config default, TRUE = enabled, FALSE = disabled
+	 * The trait manages created_at and updated_at columns automatically.
+	 * Column names can be customized via trait properties.
 	 */
-	public $timestamps = NULL;
-	public $created_at_column = NULL;
-	public $updated_at_column = NULL;
+	// Timestamp functionality now provided via HasTimestamps trait
 
 	/**
-	 * DataMapper 2.0 - Soft Deletes (Eloquent-style)
+	 * DataMapper 2.0 - Soft Deletes
 	 * 
-	 * Enable soft deletion (mark as deleted instead of removing):
+	 * To enable soft deletes, use the SoftDeletes trait:
 	 * 
-	 * public $soft_delete = TRUE;  // Enable soft deletes for this model
+	 * use SoftDeletes;
 	 * 
-	 * Customize column name if needed:
-	 * public $deleted_at_column = 'removed_at';
-	 * 
-	 * @var bool|null  NULL = use config default, TRUE = enabled, FALSE = disabled
+	 * The trait provides soft delete functionality automatically.
+	 * Column name can be customized via trait properties.
 	 */
-	public $soft_delete = NULL;
-	public $deleted_at_column = NULL;
+	// Soft delete functionality now provided via SoftDeletes trait
 
 	/**
 	 * Internal flags for soft delete query scopes
@@ -374,6 +366,13 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected $_include_trashed = FALSE;
 	protected $_only_trashed = FALSE;
+
+	/**
+	 * Internal flag to signal a force delete operation.
+	 * Ensures delete() skips the soft-delete branch when set.
+	 * @var bool
+	 */
+	protected $_force_delete_in_progress = FALSE;
 
 	/**
 	 * Internal soft delete scope flags for query builder coordination.
@@ -908,6 +907,47 @@ class DataMapper implements IteratorAggregate {
 				self::$model_paths[] = $path;
 			}
 		}
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Determine if a model or class uses any of the provided traits.
+	 *
+	 * This helper walks the inheritance chain so traits applied to parent
+	 * classes are detected as well.
+	 *
+	 * @param	object|string $model Instance or class name to inspect.
+	 * @param	array $trait_names Fully qualified trait names to match.
+	 * @return	bool
+	 */
+	public static function usesTrait($model, array $trait_names)
+	{
+		$class = is_object($model) ? get_class($model) : $model;
+		$traits = array();
+
+		while ($class)
+		{
+			$traits = array_merge($traits, class_uses($class, TRUE));
+			$class = get_parent_class($class);
+		}
+
+		if (empty($traits))
+		{
+			return FALSE;
+		}
+
+		$traits = array_unique($traits);
+
+		foreach ($trait_names as $name)
+		{
+			if (in_array($name, $traits, TRUE))
+			{
+				return TRUE;
+			}
+		}
+
+		return FALSE;
 	}
 
 	// --------------------------------------------------------------------
@@ -2230,10 +2270,8 @@ class DataMapper implements IteratorAggregate {
 			if ( ! empty($this->id))
 			{
 				// DataMapper 2.0 - Soft Delete (Eloquent-style)
-				// Check if soft delete is enabled for this model
-				$soft_delete_enabled = $this->_soft_delete_is_enabled();
-				
-				if ($soft_delete_enabled)
+				// Skip soft deletes when force delete has been requested
+				if ( ! $this->_force_delete_in_progress && $this->_soft_delete_is_enabled())
 				{
 					// Get column name
 					$deleted_col = $this->_get_deleted_at_column();
@@ -2244,17 +2282,19 @@ class DataMapper implements IteratorAggregate {
 						// Perform soft delete
 						$this->{$deleted_col} = $this->_fresh_timestamp();
 						
-						// Update updated_at if timestamps enabled
-						$timestamps_enabled = $this->timestamps !== NULL ? $this->timestamps : DataMapper::$config['timestamps'];
-						if ($timestamps_enabled)
+						// Update updated_at if HasTimestamps trait is used
+						if ($this->_timestamps_is_enabled())
 						{
-							$updated_col = $this->updated_at_column !== NULL ? $this->updated_at_column : DataMapper::$config['updated_at_column'];
+							$updated_col = property_exists($this, 'updatedAtColumn') && !empty($this->updatedAtColumn) ?
+								$this->updatedAtColumn :
+								(isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
+							
 							if (in_array($updated_col, $this->fields))
 							{
 								$this->{$updated_col} = $this->_fresh_timestamp();
 							}
 						}
-						
+
 						return $this->save();
 					}
 				}
@@ -8861,17 +8901,20 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _handle_timestamps()
 	{
-		// Check if timestamps are enabled (NULL = use config default)
-		$timestamps_enabled = $this->timestamps !== NULL ? $this->timestamps : DataMapper::$config['timestamps'];
-		
-		if (!$timestamps_enabled)
+		// Check if model uses HasTimestamps trait
+		if (!$this->_timestamps_is_enabled())
 		{
 			return;
 		}
 		
-		// Get column names (NULL = use config defaults)
-		$created_col = $this->created_at_column !== NULL ? $this->created_at_column : DataMapper::$config['created_at_column'];
-		$updated_col = $this->updated_at_column !== NULL ? $this->updated_at_column : DataMapper::$config['updated_at_column'];
+		// Get column names from trait properties or fall back to config
+		$created_col = property_exists($this, 'createdAtColumn') && !empty($this->createdAtColumn) ? 
+			$this->createdAtColumn : 
+			(isset(DataMapper::$config['created_at_column']) ? DataMapper::$config['created_at_column'] : 'created_at');
+		
+		$updated_col = property_exists($this, 'updatedAtColumn') && !empty($this->updatedAtColumn) ? 
+			$this->updatedAtColumn : 
+			(isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
 		
 		// Generate fresh timestamp
 		$timestamp = $this->_fresh_timestamp();
@@ -8913,54 +8956,54 @@ class DataMapper implements IteratorAggregate {
 
 	/**
 	 * Determine if soft deletes are enabled for this model.
+	 * Now checks if SoftDeletes trait is used.
 	 *
 	 * @return bool
 	 */
 	protected function _soft_delete_is_enabled()
 	{
-		list($enabled) = $this->_soft_delete_settings();
-		return $enabled;
+		return self::usesTrait($this, array('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes'));
+	}
+
+	/**
+	 * Determine if timestamps are enabled for this model.
+	 * Checks if HasTimestamps trait is used.
+	 *
+	 * @return bool
+	 */
+	protected function _timestamps_is_enabled()
+	{
+		return self::usesTrait($this, array('DataMapper\\Traits\\HasTimestamps', 'HasTimestamps'));
 	}
 
 	/**
 	 * Get the configured deleted_at column name for the current model.
+	 * Checks the trait's deletedAtColumn property or falls back to config.
 	 *
 	 * @return string|null
 	 */
 	protected function _get_deleted_at_column()
 	{
-		if ($this->deleted_at_column !== NULL && $this->deleted_at_column !== '')
-		{
-			return $this->deleted_at_column;
-		}
-
+		// If model uses SoftDeletes trait, get column from trait property
 		if (property_exists($this, 'deletedAtColumn') && !empty($this->deletedAtColumn))
 		{
 			return $this->deletedAtColumn;
 		}
 
+		// Fall back to global config
 		return isset(DataMapper::$config['deleted_at_column']) ? DataMapper::$config['deleted_at_column'] : NULL;
 	}
 
 	/**
 	 * Resolve soft delete preferences and whether they were explicitly set on the model.
+	 * Returns enabled status based on trait usage.
 	 *
 	 * @return array{0: bool, 1: bool}
 	 */
 	protected function _soft_delete_settings()
 	{
-		if ($this->soft_delete !== NULL)
-		{
-			return array((bool) $this->soft_delete, TRUE);
-		}
-
-		if (property_exists($this, 'softDelete') && $this->softDelete !== NULL)
-		{
-			return array((bool) $this->softDelete, TRUE);
-		}
-
-		$default = isset(DataMapper::$config['soft_delete']) ? (bool) DataMapper::$config['soft_delete'] : FALSE;
-		return array($default, FALSE);
+		$enabled = $this->_soft_delete_is_enabled();
+		return array($enabled, $enabled); // If trait is used, it's explicitly enabled
 	}
 	
 	/**
@@ -8971,14 +9014,15 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function touch()
 	{
-		$timestamps_enabled = $this->timestamps !== NULL ? $this->timestamps : DataMapper::$config['timestamps'];
-		
-		if (!$timestamps_enabled || empty($this->id))
+		// Check if model uses HasTimestamps trait
+		if (!$this->_timestamps_is_enabled() || empty($this->id))
 		{
 			return FALSE;
 		}
 		
-		$updated_col = $this->updated_at_column !== NULL ? $this->updated_at_column : DataMapper::$config['updated_at_column'];
+		$updated_col = property_exists($this, 'updatedAtColumn') && !empty($this->updatedAtColumn) ? 
+			$this->updatedAtColumn : 
+			(isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
 		
 		if (!in_array($updated_col, $this->fields))
 		{
@@ -8997,14 +9041,16 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _apply_soft_delete_scope()
 	{
-		// DataMapper 2.0 Enhancement: Auto-detect soft delete support
-		// If model has deleted_at column, automatically apply soft delete scope
-		// This keeps the query builder behavior aligned with Laravel Eloquent by default
+		// Only apply scopes when the SoftDeletes trait is actually in use
+		if ( ! $this->_soft_delete_is_enabled())
+		{
+			return;
+		}
 		
 		// Get column name (NULL = use config default)
 		$deleted_col = $this->_get_deleted_at_column();
 		
-		// Check if column exists - if it does, enable soft delete automatically
+		// Ensure the configured column exists on this model before applying scope
 		if ($deleted_col === NULL || !in_array($deleted_col, $this->fields))
 		{
 			return;
@@ -9058,15 +9104,22 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function force_delete()
 	{
-		// Temporarily disable soft delete and call parent delete
-		$original_soft_delete = $this->soft_delete;
-		$this->soft_delete = FALSE;
-		
-		$result = $this->delete();
-		
-		// Restore original setting
-		$this->soft_delete = $original_soft_delete;
-		
+		if (empty($this->id))
+		{
+			return FALSE;
+		}
+
+		$this->_force_delete_in_progress = TRUE;
+
+		try
+		{
+			$result = $this->delete();
+		}
+		finally
+		{
+			$this->_force_delete_in_progress = FALSE;
+		}
+
 		return $result;
 	}
 	
@@ -9095,11 +9148,13 @@ class DataMapper implements IteratorAggregate {
 		// Clear deleted_at
 		$this->{$deleted_col} = NULL;
 		
-		// Update updated_at if timestamps enabled
-		$timestamps_enabled = $this->timestamps !== NULL ? $this->timestamps : DataMapper::$config['timestamps'];
-		if ($timestamps_enabled)
+		// Update updated_at if HasTimestamps trait is used
+		if ($this->_timestamps_is_enabled())
 		{
-			$updated_col = $this->updated_at_column !== NULL ? $this->updated_at_column : DataMapper::$config['updated_at_column'];
+			$updated_col = property_exists($this, 'updatedAtColumn') && !empty($this->updatedAtColumn) ? 
+				$this->updatedAtColumn : 
+				(isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
+			
 			if (in_array($updated_col, $this->fields))
 			{
 				$this->{$updated_col} = $this->_fresh_timestamp();

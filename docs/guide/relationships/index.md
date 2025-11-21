@@ -159,7 +159,7 @@ $users = (new User())
     ->with([
         'post' => function($q) {
             $q->where('published', 1)
-              ->orderBy('created_at', 'DESC')
+              ->order_by('created_at', 'DESC')
               ->limit(5);
         }
     ])
@@ -251,7 +251,7 @@ $post = (new Post())
         'tag',
         'comment' => function($q) {
             $q->where('approved', 1)
-              ->orderBy('created_at', 'DESC');
+              ->order_by('created_at', 'DESC');
         }
     ])
     ->find(1);

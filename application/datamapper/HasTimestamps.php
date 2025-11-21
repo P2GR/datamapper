@@ -1,12 +1,17 @@
 <?php
 
+namespace DataMapper\Traits {
+
 /**
  * HasTimestamps Trait for DataMapper
  * 
  * Automatically manages created_at and updated_at timestamps on models.
+ * Simply use this trait in your model to enable automatic timestamps.
  * 
  * Usage:
  * ```php
+ * use DataMapper\Traits\HasTimestamps;
+ *
  * class User extends DataMapper {
  *     use HasTimestamps;
  * }
@@ -14,10 +19,11 @@
  * 
  * Customization:
  * ```php
+ * use DataMapper\Traits\HasTimestamps;
+ *
  * class User extends DataMapper {
  *     use HasTimestamps;
  *     
- *     protected $timestamps = TRUE;           // Enable/disable (default: TRUE)
  *     protected $createdAtColumn = 'created'; // Customize column name
  *     protected $updatedAtColumn = 'modified'; // Customize column name
  *     protected $timestampFormat = 'U';       // Unix timestamp format
@@ -30,12 +36,6 @@
  */
 trait HasTimestamps
 {
-    /**
-     * Enable or disable automatic timestamps
-     * @var bool
-     */
-    protected $timestamps = TRUE;
-    
     /**
      * The name of the "created at" column
      * @var string
@@ -63,10 +63,6 @@ trait HasTimestamps
      */
     protected function _timestamp_before_save()
     {
-        if (!$this->_use_timestamps()) {
-            return;
-        }
-        
         $timestamp = $this->_fresh_timestamp();
         
         // If this is a new record (no ID), set created_at
@@ -80,17 +76,6 @@ trait HasTimestamps
         // Always update updated_at on save
         $updated_column = $this->updatedAtColumn;
         $this->{$updated_column} = $timestamp;
-    }
-    
-    /**
-     * Check if timestamps should be used
-     * 
-     * @return bool
-     */
-    protected function _use_timestamps(): bool
-    {
-        // Check if timestamps property exists and is TRUE
-        return property_exists($this, 'timestamps') && $this->timestamps === TRUE;
     }
     
     /**
@@ -118,7 +103,7 @@ trait HasTimestamps
      */
     public function touch(): bool
     {
-        if (!$this->exists() || !$this->_use_timestamps()) {
+        if (!$this->exists()) {
             return FALSE;
         }
         
@@ -130,28 +115,6 @@ trait HasTimestamps
         $this->db->update($this->table, array($updated_column => $this->{$updated_column}));
         
         return TRUE;
-    }
-    
-    /**
-     * Disable timestamps for this instance
-     * 
-     * @return $this
-     */
-    public function withoutTimestamps(): self
-    {
-        $this->timestamps = FALSE;
-        return $this;
-    }
-    
-    /**
-     * Enable timestamps for this instance
-     * 
-     * @return $this
-     */
-    public function withTimestamps(): self
-    {
-        $this->timestamps = TRUE;
-        return $this;
     }
     
     /**
@@ -176,5 +139,14 @@ trait HasTimestamps
         return property_exists($this, 'updatedAtColumn') ? 
                $this->updatedAtColumn : 
                'updated_at';
+    }
+}
+
+}
+
+namespace {
+    if ( ! trait_exists('HasTimestamps', FALSE))
+    {
+        class_alias('DataMapper\\Traits\\HasTimestamps', 'HasTimestamps');
     }
 }

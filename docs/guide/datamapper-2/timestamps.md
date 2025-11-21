@@ -2,7 +2,7 @@
 
 Automatically track when records are created and updated. The `HasTimestamps` trait adds `created_at` and `updated_at` columns that are managed automatically.
 
-**New in DataMapper 2.0:** Zero-configuration automatic timestamps with full customization options.
+**New in DataMapper 2.0:** Simply use the `HasTimestamps` trait in your model for zero-configuration automatic timestamps with full customization options.
 
 ## Why Timestamps?
 
@@ -134,28 +134,8 @@ $post->delete();
 class User extends DataMapper {
     use HasTimestamps;
     
-    const CREATED_AT = 'date_created';
-    const UPDATED_AT = 'date_modified';
-}
-```
-
-### Disable Updated At
-
-```php
-class User extends DataMapper {
-    use HasTimestamps;
-    
-    const UPDATED_AT = NULL; // Only use created_at
-}
-```
-
-### Disable Created At
-
-```php
-class User extends DataMapper {
-    use HasTimestamps;
-    
-    const CREATED_AT = NULL; // Only use updated_at
+    protected $createdAtColumn = 'date_created';
+    protected $updatedAtColumn = 'date_modified';
 }
 ```
 
@@ -165,13 +145,10 @@ class User extends DataMapper {
 class User extends DataMapper {
     use HasTimestamps;
     
-    protected function getTimestamp() {
-        return date('Y-m-d H:i:s'); // Default
-        // or
-        return time(); // Unix timestamp
-        // or
-        return date('c'); // ISO 8601
-    }
+    protected $timestampFormat = 'U'; // Unix timestamp
+    // or
+    protected $timestampFormat = 'c'; // ISO 8601
+    // Default: 'Y-m-d H:i:s'
 }
 ```
 
@@ -304,24 +281,6 @@ Update `updated_at` without changing other fields:
 $post->touch();
 
 // Only updated_at changes, no other modifications
-```
-
-### Save Without Updating Timestamp
-
-```php
-class User extends DataMapper {
-    use HasTimestamps;
-    
-    public function saveWithoutTimestamp() {
-        $this->timestamps = FALSE;
-        $result = $this->save();
-        $this->timestamps = TRUE;
-        return $result;
-    }
-}
-
-$user->email = 'new@example.com';
-$user->saveWithoutTimestamp(); // updated_at doesn't change
 ```
 
 ## Soft Deletes Integration

@@ -163,8 +163,9 @@ $config['cascade_delete'] = TRUE;
 |--------------------------------------------------------------------------
 |
 | Enable automatic created_at/updated_at timestamp management.
-| When enabled, DataMapper automatically manages these fields.
-| Set to true to enable globally, or enable per-model with $timestamps property.
+| Modern DataMapper projects should import the HasTimestamps trait on
+| each model that requires timestamps. The global toggle remains for
+| legacy configurations but trait usage is now the preferred pattern.
 |
 */
 $config['timestamps'] = FALSE;             // Global timestamp management (enable per-model)
@@ -176,9 +177,10 @@ $config['updated_at_column'] = 'updated_at';
 | DataMapper 2.0 - Soft Deletes
 |--------------------------------------------------------------------------
 |
-| Enable soft deletion functionality. When enabled, records are marked
-| as deleted instead of being physically removed from the database.
-| Set to true to enable globally, or enable per-model with $soft_delete property.
+| Enable soft deletion functionality. Modern DataMapper projects should
+| import the SoftDeletes trait on each model that requires soft delete
+| behaviour. The global toggle remains for legacy configurations but
+| traits now control activation.
 |
 */
 $config['soft_delete'] = FALSE;           // Global soft delete (enable per-model)

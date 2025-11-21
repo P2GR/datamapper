@@ -321,7 +321,7 @@ Prefer `(new User())->with('country')` for new code—`with()` eager loads the r
 $user = (new User())
     ->where('status', 'active')
     ->where('age >', 18)
-    ->orderBy('created_at', 'desc')
+    ->order_by('created_at', 'desc')
     ->limit(10)
     ->get();
 ```

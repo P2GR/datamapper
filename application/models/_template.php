@@ -1,5 +1,9 @@
 <?php
 
+// Optional behaviour traits:
+// use DataMapper\Traits\HasTimestamps;
+// use DataMapper\Traits\SoftDeletes;
+
 /**
  * Template DataMapper Model
  *
@@ -20,6 +24,10 @@
  * @link		http://www.overzealous.com
  */
 class Template extends DataMapper {
+
+	// Uncomment inside the class body to enable behaviour traits:
+	// use HasTimestamps;
+	// use SoftDeletes;
 
 	// Uncomment and edit these two if the class has a model name that
 	//   doesn't convert properly using the inflector_helper.

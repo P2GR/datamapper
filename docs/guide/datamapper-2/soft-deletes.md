@@ -2,7 +2,7 @@
 
 Safely "delete" records by marking them as deleted instead of removing them from the database. This keeps relational data intact, powers undo workflows, and satisfies audit/compliance requirements.
 
-**New in DataMapper 2.0:** Soft deletes are now built in. The ORM automatically applies `deleted_at IS NULL` scopes, sets the timestamp on `delete()`, and exposes query builder helpers. The optional `SoftDeletes` trait adds convenience methods plus customization hooks when you need them.
+**New in DataMapper 2.0:** Soft deletes are now trait-based. Simply use the `SoftDeletes` trait in your model to enable automatic `deleted_at IS NULL` scopes, set timestamps on `delete()`, and gain access to query builder helpers like `restore()`, `force_delete()`, and `with_softdeleted()`.
 
 ## Why Soft Deletes?
 
@@ -20,40 +20,31 @@ Safely "delete" records by marking them as deleted instead of removing them from
 ALTER TABLE users ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL;
 ```
 
-### 2. Let DataMapper handle the plumbing
-
-Once the column exists, DataMapper 2.0 automatically:
-
-1. Sets `deleted_at` when you call `delete()`.
-2. Adds `deleted_at IS NULL` to all queries.
-3. Provides `with_softdeleted()`, `only_softdeleted()`, `restore()`, and `force_delete()` helpers.
-
-No extra config is required.
-
-### 3. (Optional) Pull in helper methods
+### 2. Use the SoftDeletes trait
 
 ```php
 <?php
 use DataMapper\Traits\SoftDeletes;
 
 class User extends DataMapper {
-    use SoftDeletes; // adds restore(), force_delete(), with_softdeleted(), only_softdeleted(), etc.
+    use SoftDeletes;
 }
 ```
 
-### 4. Configure per model
+That's it! The trait automatically:
+
+1. Sets `deleted_at` when you call `delete()`.
+2. Adds `deleted_at IS NULL` to all queries.
+3. Provides `restore()`, `force_delete()`, `with_softdeleted()`, `only_softdeleted()`, and `trashed()` methods.
+
+### 3. Customize the column name (optional)
 
 ```php
-class AuditLog extends DataMapper {
-    public $soft_delete = FALSE; // hard-delete this model
-}
-
 class Project extends DataMapper {
-    public $deleted_at_column = 'archived_at'; // custom column name
+    use SoftDeletes;
+    
+    protected $deletedAtColumn = 'archived_at'; // custom column name
 }
-
-// Using the SoftDeletes trait? It will sync camelCase properties like
-// $softDelete and $deletedAtColumn for you, so legacy configurations keep working.
 ```
 
 ::: tip CamelCase helpers
@@ -175,13 +166,16 @@ $user->include_related('post', 'title', NULL, array(
 
 ```php
 class Company extends DataMapper {
-    public $deleted_at_column = 'removed_on';
+    use SoftDeletes;
+    
+    protected $deletedAtColumn = 'removed_on';
 }
 ```
 
-### Disable soft deletes for specific operations
+### Permanently delete instead of soft delete
 
 ```php
+// Use force_delete() to permanently remove a record
 $project = new Project();
 $project->with_softdeleted()->get_by_id($id);
 $project->force_delete();

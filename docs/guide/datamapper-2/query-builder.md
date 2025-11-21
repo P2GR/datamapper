@@ -26,7 +26,7 @@ $users->get();
 $users = (new User())
     ->where('status', 'active')
     ->where('age', 18, '>')
-    ->orderBy('created_at', 'DESC')
+    ->order_by('created_at', 'DESC')
     ->with('posts', 'comments') // eager load relationships
     ->limit(10)
     ->get();
@@ -70,8 +70,8 @@ $installations = (new Installation())
 ## Sorting, Limiting & Logical Grouping
 ```php
 $users = (new User())
-    ->orderBy('created_at', 'DESC')
-    ->orderBy('name')
+    ->order_by('created_at', 'DESC')
+    ->order_by('name')
     ->limit(20)
     ->offset(40)
     ->groupStart()
@@ -88,7 +88,7 @@ $installations = (new Installation())
     ->select('building_id, COUNT(*) AS total')
     ->groupBy('building_id')
     ->having('total', 5, '>')
-    ->orderBy('total', 'DESC')
+    ->order_by('total', 'DESC')
     ->get();
 ```
 
@@ -123,7 +123,7 @@ foreach ($posts as $post) {
 // With eager loading (two queries)
 $posts = (new Post())
     ->with('user')
-    ->orderBy('created_at', 'DESC')
+    ->order_by('created_at', 'DESC')
     ->limit(25)
     ->get();
 
@@ -147,6 +147,41 @@ $posts = (new Post())
 ::: info Need deeper patterns?
 See `guide/datamapper-2/eager-loading.md` for constraint callbacks, benchmarking tips, and troubleshooting N+1 issues.
 :::
+
+### Why eager loading matters
+Without eager loading, iterating related models quickly turns into the classic **N+1** problem—one query to fetch parents plus one query per child row. A list of 50 posts with author information becomes 51 queries.
+
+```php
+// Inefficient: 1 (posts) + 50 (authors) queries
+$posts = (new Post())->limit(50)->get();
+
+foreach ($posts as $post) {
+    echo $post->title . ' by ' . $post->user->name; // each iteration hits the DB
+}
+```
+
+Attach a `with()` call and the same view renders with just two queries: one for the posts, one for every related author.
+
+```php
+// Efficient: 2 queries total
+$posts = (new Post())
+    ->with('user')
+    ->limit(50)
+    ->get();
+
+foreach ($posts as $post) {
+    echo $post->title . ' by ' . $post->user->name; // already hydrated
+}
+```
+
+You can eager load multiple or nested relationships using the same fluent syntax:
+
+```php
+$posts = (new Post())
+    ->with('user', 'category', 'comments.user')
+    ->order_by('created_at', 'DESC')
+    ->get();
+```
 
 ## Finding Individual Records
 ```php
@@ -262,7 +297,7 @@ $posts = (new Post())
 
 // 3. Paginate or limit large datasets
 $recent = (new Post())
-    ->orderBy('created_at', 'DESC')
+    ->order_by('created_at', 'DESC')
     ->limit(50)
     ->get();
 
@@ -277,6 +312,58 @@ $featured = (new Post())
     ->get();
 ```
 More advanced scenarios (chunking, streaming, or cache management) are covered in the dedicated guides under `guide/datamapper-2/`.
+
+## Real-world examples
+
+### Blog index with authors and comment counts
+```php
+$posts = (new Post())
+    ->where('published', 1)
+    ->with('user', 'comments')
+    ->order_by('created_at', 'DESC')
+    ->limit(50)
+    ->get();
+
+foreach ($posts as $post) {
+    echo $post->title;
+    echo $post->user->name;        // eager loaded
+    echo $post->comments->count(); // hydrated collection
+}
+```
+
+### Product catalogue with nested eager loading
+```php
+$products = (new Product())
+    ->where('active', 1)
+    ->where('stock >', 0)
+    ->with('category', 'images', 'reviews.user')
+    ->order_by('name')
+    ->get();
+
+$featured = $products->collect()
+    ->filter(fn ($product) => $product->featured)
+    ->take(10);
+```
+
+### Admin report with grouped analytics
+```php
+$orders = (new Order())
+    ->where('created_at >=', '2024-01-01')
+    ->with('user', 'items.product')
+    ->order_by('created_at', 'DESC')
+    ->get();
+
+$report = $orders->collect()
+    ->filter(fn ($order) => $order->total > 100)
+    ->group_by('user_id')
+    ->map(function ($group) {
+        return array(
+            'user'  => $group->first()->user->name,
+            'count' => $group->count(),
+            'total' => $group->sum('total'),
+        );
+    });
+```
 
 ## See Also
 - `guide/datamapper-2/eager-loading.md` - In-depth eager loading & constraint patterns.

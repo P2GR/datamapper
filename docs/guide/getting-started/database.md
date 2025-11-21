@@ -1,6 +1,6 @@
 # Database Tables
 
-[ in mind. In short, that means every table is aware only of itself, with fields relevant only to itself, as well as optional fields describing *$has_one* relationships. If a table has a **many** relationship with another table, it is represented by a special joining table. In either case, the same two objects can only [have one relationship between them](/help/troubleshooting#Relationships.NtoM).
+ in mind. In short, that means every table is aware only of itself, with fields relevant only to itself, as well as optional fields describing *$has_one* relationships. If a table has a **many** relationship with another table, it is represented by a special joining table. In either case, the same two objects can only [have one relationship between them](/help/troubleshooting#Relationships.NtoM).
 
 (This is different from original DM, because it doesn't require a dedicated table for every relationship join.)
 
@@ -20,8 +20,8 @@ The joining table shows that country ID 14 (Australia) has a relationship with u
 
 [ORM](/reference/glossary#ORM) methods.
 
-- [Every** table must have a primary numeric key named **id** that by default is automatically generated. You can [override](/guide/models/save#saving-new-objects-with-an-existing-id) this behaviour.
-- [**User**, the table would be named **users**. For **Country**, it would be **countries**. ([For odd pluralizations](/help/troubleshooting#General.Plural.Unusual), you may need to hard code the *$table* or *$model* fields.)
+- Every** table must have a primary numeric key named **id** that by default is automatically generated. You can [override](/guide/models/save#saving-new-objects-with-an-existing-id) this behaviour.
+- **User**, the table would be named **users**. For **Country**, it would be **countries**. ([For odd pluralizations](/help/troubleshooting#General.Plural.Unusual), you may need to hard code the *$table* or *$model* fields.)
 - A joining table must exist between each $has_many related normal tables. You can also use a joining table for any *$has_one* relationships.
 - For in-table foreign keys, the column **must** allow NULLs, because DataMapper saves the object first, and relationships later.
 - Joining tables must be named with both of the table names it is joining, in *alphabetical order*, separated by an underscore (_). For example, the joining table for **users** and **countries** is **countries_users**.
