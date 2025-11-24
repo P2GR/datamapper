@@ -857,7 +857,17 @@ class DataMapper implements IteratorAggregate {
 		is_null($CI) AND $CI =& get_instance();
 
 		// Don't attempt to autoload CI_ , EE_, or custom prefixed classes
-		if (in_array(substr($class, 0, 3), array('CI_', 'EE_')) OR strpos($class, $CI->config->item('subclass_prefix')) === 0)
+		$subclass_prefix = '';
+		if (is_object($CI) && isset($CI->config) && method_exists($CI->config, 'item'))
+		{
+			$prefix_value = $CI->config->item('subclass_prefix');
+			if (is_string($prefix_value))
+			{
+				$subclass_prefix = $prefix_value;
+			}
+		}
+
+		if (in_array(substr($class, 0, 3), array('CI_', 'EE_')) OR ($subclass_prefix !== '' && strpos($class, $subclass_prefix) === 0))
 		{
 			return;
 		}
@@ -1074,7 +1084,7 @@ class DataMapper implements IteratorAggregate {
 
 				if(!file_exists($file))
 				{
-					throw new DataMapper_Extension_Exception('DataMapper Error: loading extension ' . $name . ': File not found.');
+					throw new Exception('DataMapper Error: loading extension ' . $name . ': File not found.');
 				}
 			}
 			else
@@ -1101,7 +1111,7 @@ class DataMapper implements IteratorAggregate {
 			}
 			if(!class_exists($ext))
 			{
-				throw new DataMapper_Extension_Exception("DataMapper Error: Unable to find a class for extension $name.");
+				throw new Exception("DataMapper Error: Unable to find a class for extension $name.");
 			}
 			// create class
 			if(is_null($options))
@@ -1514,11 +1524,19 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _camel_to_snake($method)
 	{
-		// Convert camelCase to snake_case
+		// Convert camelCase to snake_case (with a few legacy adjustments)
 		// whereIn -> where_in
 		// orWhere -> or_where
 		// groupStart -> group_start
-		return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $method));
+		$snake = strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $method));
+
+		// Historical methods used "softdeleted" rather than "soft_deleted"
+		// Normalize so camelCase helpers still resolve correctly.
+		if (strpos($snake, 'soft_deleted') !== FALSE) {
+			$snake = str_replace('soft_deleted', 'softdeleted', $snake);
+		}
+
+		return $snake;
 	}
 
 	// --------------------------------------------------------------------
@@ -7686,6 +7704,84 @@ class DataMapper implements IteratorAggregate {
 	}
 	
 	/**
+	 * Constrain results by related record counts.
+	 *
+	 * @param string $relation Relation name, dot or slash notation supported
+	 * @param string $operator Comparison operator (>=, =, <, etc.)
+	 * @param int $count Comparison count
+	 * @param callable|null $callback Optional callback to constrain the relation query
+	 * @return DMZ_QueryBuilder
+	 */
+	public function has($relation, $operator = '>=', $count = 1, $callback = NULL)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->has($relation, $operator, $count, $callback);
+	}
+
+	/**
+	 * Snake_case alias for has().
+	 */
+	public function where_has($relation, $callback = NULL, $operator = '>=', $count = 1)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->where_has($relation, $callback, $operator, $count);
+	}
+
+	/**
+	 * OR variant of has().
+	 */
+	public function or_has($relation, $callback = NULL, $operator = '>=', $count = 1)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->or_has($relation, $callback, $operator, $count);
+	}
+
+	/**
+	 * Constrain results missing a relation.
+	 */
+	public function doesnt_have($relation, $callback = NULL)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->doesnt_have($relation, $callback);
+	}
+
+	/**
+	 * Snake_case alias for doesnt_have().
+	 */
+	public function where_doesnt_have($relation, $callback = NULL)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->where_doesnt_have($relation, $callback);
+	}
+
+	/**
+	 * OR variant of doesnt_have().
+	 */
+	public function or_where_doesnt_have($relation, $callback = NULL)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->or_where_doesnt_have($relation, $callback);
+	}
+	
+	/**
 	 * Find a record by its primary key
 	 * 
 	 * @param mixed $id Primary key value
@@ -8971,12 +9067,17 @@ class DataMapper implements IteratorAggregate {
 
 	/**
 	 * Determine if soft deletes are enabled for this model.
-	 * Now checks if SoftDeletes trait is used.
+	 * Honors an explicit $softDelete property when present, otherwise checks trait usage.
 	 *
 	 * @return bool
 	 */
 	protected function _soft_delete_is_enabled()
 	{
+		if (property_exists($this, 'softDelete') && $this->softDelete !== NULL)
+		{
+			return (bool) $this->softDelete;
+		}
+
 		return self::usesTrait($this, array('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes'));
 	}
 
@@ -9017,8 +9118,9 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _soft_delete_settings()
 	{
+		$explicit = property_exists($this, 'softDelete') && $this->softDelete !== NULL;
 		$enabled = $this->_soft_delete_is_enabled();
-		return array($enabled, $enabled); // If trait is used, it's explicitly enabled
+		return array($enabled, $explicit);
 	}
 	
 	// --------------------------------------------------------------------
