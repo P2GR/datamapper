@@ -54,17 +54,17 @@ class SoftDeleteBehaviorTest extends TestCase
     {
         $model = new SoftDeleteModelStub();
 
-        $model->withSoftDeleted();
+        $model->with_softdeleted();
         $model->applySoftDeleteScope();
 
         $this->assertSame(array(), $model->whereLog);
     }
 
-    public function testSnakeCaseHelperStillWorks(): void
+    public function testCamelCaseHelperStillWorks(): void
     {
         $model = new SoftDeleteModelStub();
 
-        $model->with_softdeleted();
+        $model->withSoftDeleted();
         $model->applySoftDeleteScope();
 
         $this->assertSame(array(), $model->whereLog);

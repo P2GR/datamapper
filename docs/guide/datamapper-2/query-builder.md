@@ -37,7 +37,7 @@ Need to keep legacy code untouched? Call builder helpers only where you need the
 
 ## Core Concepts at a Glance
 - Every `DataMapper` model can hand back a `DMZ_QueryBuilder` pipeline.
-- CamelCase helpers are aliases of their snake_case counterparts (`orderBy` / `order_by`).
+- CamelCase method names are converted to snake_case automatically (`orderBy` → `order_by`)
 - Builder chains return the builder until `get()` or another terminal method executes the SQL.
 - Result helpers (`collect()`, `first()`, `value()`, etc.) decide how the record set comes back.
 
@@ -58,13 +58,13 @@ $users = (new User())
 ### Relation-aware filters
 ```php
 $installations = (new Installation())
-    ->whereRelated('building', 'active', 1)
-    ->orWhereRelated('building/client', 'disable', 0)
+    ->where_related('building', 'active', 1)
+    ->or_where_related('building/client', 'disable', 0)
     ->has('tasks', '>=', 3)
-    ->whereHas('tasks', function ($tasks) {
+    ->where_has('tasks', function ($tasks) {
         $tasks->where('status', 'open')->order_by('created_at', 'DESC');
     })
-    ->whereDoesntHave('errors');
+    ->where_doesnt_have('errors');
 ```
 
 ## Sorting, Limiting & Logical Grouping

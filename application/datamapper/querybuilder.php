@@ -306,25 +306,11 @@ class DMZ_QueryBuilder {
     }
 
     /**
-     * CamelCase alias for {@see where_json_contains}.
-     */
-    public function whereJsonContains($field, $value, $path = NULL) {
-        return $this->where_json_contains($field, $value, $path);
-    }
-
-    /**
      * OR variant of {@see where_json_contains}.
      */
     public function or_where_json_contains($field, $value, $path = NULL) {
         $this->model->or_where_json_contains($field, $value, $path);
         return $this;
-    }
-
-    /**
-     * CamelCase OR alias for {@see or_where_json_contains}.
-     */
-    public function orWhereJsonContains($field, $value, $path = NULL) {
-        return $this->or_where_json_contains($field, $value, $path);
     }
 
     /**
@@ -341,25 +327,11 @@ class DMZ_QueryBuilder {
     }
 
     /**
-     * CamelCase alias for {@see where_json_doesnt_contain}.
-     */
-    public function whereJsonDoesntContain($field, $value, $path = NULL) {
-        return $this->where_json_doesnt_contain($field, $value, $path);
-    }
-
-    /**
      * OR variant of {@see where_json_doesnt_contain}.
      */
     public function or_where_json_doesnt_contain($field, $value, $path = NULL) {
         $this->model->or_where_json_doesnt_contain($field, $value, $path);
         return $this;
-    }
-
-    /**
-     * CamelCase OR alias for {@see or_where_json_doesnt_contain}.
-     */
-    public function orWhereJsonDoesntContain($field, $value, $path = NULL) {
-        return $this->or_where_json_doesnt_contain($field, $value, $path);
     }
 
     /**
@@ -603,27 +575,11 @@ class DMZ_QueryBuilder {
     }
 
     /**
-     * CamelCase alias for has().
-     */
-    public function whereHas($relation, $callback = NULL, $operator = '>=', $count = 1)
-    {
-        return $this->where_has($relation, $callback, $operator, $count);
-    }
-
-    /**
      * OR variant of has().
      */
     public function or_has($relation, $callback = NULL, $operator = '>=', $count = 1)
     {
         return $this->_apply_has_constraint('or', $relation, $callback, $operator, $count);
-    }
-
-    /**
-     * CamelCase OR alias for has().
-     */
-    public function orWhereHas($relation, $callback = NULL, $operator = '>=', $count = 1)
-    {
-        return $this->or_has($relation, $callback, $operator, $count);
     }
 
     /**
@@ -635,25 +591,9 @@ class DMZ_QueryBuilder {
     }
 
     /**
-     * Alias for doesnt_have() with camelCase name.
-     */
-    public function doesntHave($relation, $callback = NULL)
-    {
-        return $this->doesnt_have($relation, $callback);
-    }
-
-    /**
      * Snake_case alias for doesnt_have().
      */
     public function where_doesnt_have($relation, $callback = NULL)
-    {
-        return $this->doesnt_have($relation, $callback);
-    }
-
-    /**
-     * CamelCase alias for where_doesnt_have().
-     */
-    public function whereDoesntHave($relation, $callback = NULL)
     {
         return $this->doesnt_have($relation, $callback);
     }
@@ -664,14 +604,6 @@ class DMZ_QueryBuilder {
     public function or_where_doesnt_have($relation, $callback = NULL)
     {
         return $this->_apply_has_constraint('or', $relation, $callback, '<', 1);
-    }
-
-    /**
-     * CamelCase alias for or_where_doesnt_have().
-     */
-    public function orWhereDoesntHave($relation, $callback = NULL)
-    {
-        return $this->or_where_doesnt_have($relation, $callback);
     }
 
     /**
@@ -1410,7 +1342,7 @@ class DMZ_QueryBuilder {
         
         // Apply DataMapper 2.0 soft delete scope automatically
         // Check if the related model has soft deletes enabled (either trait or built-in)
-        // Pass wrapper so we can respect withSoftDeleted()/onlySoftDeleted() (or legacy withDeleted()/onlyDeleted()) from constraint callback
+        // Pass wrapper so we can respect with_softdeleted()/only_softdeleted() flags from constraint callbacks
         $related_instance = new $related_class();
         $this->_apply_soft_delete_scope_to_db($db, $related_instance, $related_table, $wrapper);
         
@@ -1640,7 +1572,7 @@ class DMZ_QueryBuilder {
         if ($wrapper !== NULL) {
             $scope = $wrapper->getSoftDeleteScope();
 			
-            // If user called withSoftDeleted(), don't apply any deleted_at filter
+            // If user called with_softdeleted(), don't apply any deleted_at filter
             if ($scope === 'with_softdeleted' || $scope === 'with_deleted') {
                 return;
             }
@@ -2370,105 +2302,34 @@ class DMZ_Collection implements IteratorAggregate, Countable {
     /**
      * Include soft-deleted records in query results.
      *
-     * @return DataMapper Returns self for method chaining
-     */
-    public function withSoftDeleted() {
-        $this->model->_dm_with_softdeleted = TRUE;
-        $this->model->_dm_only_softdeleted = FALSE;
-        // Maintain legacy flags for older integrations.
-        $this->model->_dm_with_deleted = TRUE;
-        $this->model->_dm_only_deleted = FALSE;
-        return $this->model;
-    }
-
-    /**
-     * @deprecated Use withSoftDeleted() instead.
-     */
-    public function withDeleted() {
-        return $this->withSoftDeleted();
-    }
-
-    /**
-     * @deprecated Use withSoftDeleted() instead.
+     * @return DMZ_QueryBuilder Returns self for method chaining
      */
     public function with_softdeleted() {
-        return $this->withSoftDeleted();
-    }
-
-    /**
-     * @deprecated Use withSoftDeleted() instead.
-     */
-    public function with_deleted() {
-        return $this->withSoftDeleted();
+        $this->model->with_softdeleted();
+        return $this;
     }
 
     /**
      * Get only soft-deleted records.
      *
-     * @return DataMapper Returns self for method chaining
-     */
-    public function onlySoftDeleted() {
-        $this->model->_dm_only_softdeleted = TRUE;
-        $this->model->_dm_with_softdeleted = FALSE;
-        $this->model->_dm_only_deleted = TRUE;
-        $this->model->_dm_with_deleted = FALSE;
-        return $this->model;
-    }
-
-    /**
-     * @deprecated Use onlySoftDeleted() instead.
-     */
-    public function onlyDeleted() {
-        return $this->onlySoftDeleted();
-    }
-
-    /**
-     * @deprecated Use onlySoftDeleted() instead.
+     * @return DMZ_QueryBuilder Returns self for method chaining
      */
     public function only_softdeleted() {
-        return $this->onlySoftDeleted();
-    }
-
-    /**
-     * @deprecated Use onlySoftDeleted() instead.
-     */
-    public function only_deleted() {
-        return $this->onlySoftDeleted();
+        $this->model->only_softdeleted();
+        return $this;
     }
 
     /**
      * Exclude soft-deleted records (default behavior).
      *
-     * @return DataMapper Returns self for method chaining
-     */
-    public function withoutSoftDeleted() {
-        $this->model->_dm_with_softdeleted = FALSE;
-        $this->model->_dm_only_softdeleted = FALSE;
-        $this->model->_dm_with_deleted = FALSE;
-        $this->model->_dm_only_deleted = FALSE;
-        return $this->model;
-    }
-
-    /**
-     * @deprecated Use withoutSoftDeleted() instead.
-     */
-    public function withoutDeleted() {
-        return $this->withoutSoftDeleted();
-    }
-
-    /**
-     * @deprecated Use withoutSoftDeleted() instead.
+     * @return DMZ_QueryBuilder Returns self for method chaining
      */
     public function without_softdeleted() {
-        return $this->withoutSoftDeleted();
+        $this->model->without_softdeleted();
+        return $this;
     }
 
-    /**
-     * @deprecated Use withoutSoftDeleted() instead.
-     */
-    public function without_deleted() {
-        return $this->withoutSoftDeleted();
-    }
+    
 }
 
 /**
@@ -2653,31 +2514,11 @@ class DMZ_DB_Constraint_Wrapper {
      * 
      * @return DMZ_DB_Constraint_Wrapper
      */
-    public function withSoftDeleted() {
+    public function with_softdeleted() {
         $this->soft_delete_scope = 'with_softdeleted';
 		return $this;
 	}
 
-    /**
-     * @deprecated Use withSoftDeleted() instead.
-     */
-    public function withDeleted() {
-        return $this->withSoftDeleted();
-    }
-
-    /**
-     * @deprecated Use withSoftDeleted() instead.
-     */
-    public function with_softdeleted() {
-        return $this->withSoftDeleted();
-    }
-
-    /**
-     * @deprecated Use withSoftDeleted() instead.
-     */
-    public function with_deleted() {
-        return $this->withSoftDeleted();
-    }
     
     /**
      * Exclude soft-deleted records (default behavior)
@@ -2685,31 +2526,11 @@ class DMZ_DB_Constraint_Wrapper {
 	 * 
 	 * @return DMZ_DB_Constraint_Wrapper
 	 */
-    public function withoutSoftDeleted() {
+    public function without_softdeleted() {
         $this->soft_delete_scope = 'active';
         return $this;
     }
 
-    /**
-     * @deprecated Use withoutSoftDeleted() instead.
-     */
-    public function withoutDeleted() {
-        return $this->withoutSoftDeleted();
-    }
-
-    /**
-     * @deprecated Use withoutSoftDeleted() instead.
-     */
-    public function without_softdeleted() {
-        return $this->withoutSoftDeleted();
-    }
-
-    /**
-     * @deprecated Use withoutSoftDeleted() instead.
-     */
-    public function without_deleted() {
-        return $this->withoutSoftDeleted();
-    }
     
     /**
      * Get ONLY soft-deleted records
@@ -2717,31 +2538,11 @@ class DMZ_DB_Constraint_Wrapper {
 	 * 
 	 * @return DMZ_DB_Constraint_Wrapper
 	 */
-    public function onlySoftDeleted() {
+    public function only_softdeleted() {
         $this->soft_delete_scope = 'only_softdeleted';
 		return $this;
 	}
 
-    /**
-     * @deprecated Use onlySoftDeleted() instead.
-     */
-    public function onlyDeleted() {
-        return $this->onlySoftDeleted();
-    }
-
-    /**
-     * @deprecated Use onlySoftDeleted() instead.
-     */
-    public function only_softdeleted() {
-        return $this->onlySoftDeleted();
-    }
-
-    /**
-     * @deprecated Use onlySoftDeleted() instead.
-     */
-    public function only_deleted() {
-        return $this->onlySoftDeleted();
-    }
 	
 	/**
 	 * Get the current soft delete scope state
@@ -2762,8 +2563,14 @@ class DMZ_DB_Constraint_Wrapper {
 	 * @param array $args Method arguments
 	 * @return mixed
 	 */
-	public function __call($method, $args) {
-		$result = call_user_func_array(array($this->db, $method), $args);
+    public function __call($method, $args) {
+        $snake_case_method = strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $method));
+
+        if ($snake_case_method !== $method && method_exists($this, $snake_case_method)) {
+            return call_user_func_array(array($this, $snake_case_method), $args);
+        }
+
+        $result = call_user_func_array(array($this->db, $method), $args);
 		
 		// Return self for chaining if DB returned itself
 		if ($result === $this->db) {

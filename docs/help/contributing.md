@@ -340,7 +340,7 @@ Examples:
 ```bash
 feat(query): Add support for JSON column queries
 
-- Implemented whereJson() method
+ - Implemented where_json_contains() helper
 - Added support for JSON path queries
 - Updated documentation
 

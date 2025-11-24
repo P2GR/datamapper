@@ -83,69 +83,6 @@ trait SoftDeletes
 		return parent::trashed();
 	}
 
-	/**
-	 * Provide camelCase alias for with_softdeleted().
-	 *
-	 * @return $this
-	 */
-	public function withSoftDeleted()
-	{
-		return $this->with_softdeleted();
-	}
-
-	/**
-	 * Provide camelCase alias for only_softdeleted().
-	 *
-	 * @return $this
-	 */
-	public function onlySoftDeleted()
-	{
-		return $this->only_softdeleted();
-	}
-
-	/**
-	 * Provide camelCase alias for without_softdeleted().
-	 *
-	 * @return $this
-	 */
-	public function withoutSoftDeleted()
-	{
-		return $this->without_softdeleted();
-	}
-
-	/**
-	 * @deprecated Use withSoftDeleted() instead.
-	 */
-	public function withDeleted()
-	{
-		return $this->withSoftDeleted();
-	}
-
-	/**
-	 * @deprecated Use onlySoftDeleted() instead.
-	 */
-	public function onlyDeleted()
-	{
-		return $this->onlySoftDeleted();
-	}
-
-	/**
-	 * @deprecated Use withoutSoftDeleted() instead.
-	 */
-	public function withoutDeleted()
-	{
-		return $this->withoutSoftDeleted();
-	}
-
-	/**
-	 * Provide camelCase alias for force_delete().
-	 *
-	 * @return bool
-	 */
-	public function forceDelete()
-	{
-		return $this->force_delete();
-	}
 }
 
 }
