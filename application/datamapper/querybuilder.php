@@ -1610,7 +1610,7 @@ class DMZ_QueryBuilder {
         }
         
         // Soft deletes now require the SoftDeletes trait explicitly
-        if (! DataMapper::usesTrait($model, array('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes'))) {
+        if (! DataMapper::uses_trait($model, array('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes'))) {
             return;
         }
 

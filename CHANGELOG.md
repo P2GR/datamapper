@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Laravel-style mass-assignment protection: `$fillable`, `$guarded`, `fill()`, `forceFill()`, `unguard()` helpers, and a static `create()` convenience method.
+- Laravel-style mass-assignment protection: `$fillable`, `$guarded`, `fill()`, `force_fill()`, `unguard()` helpers, and a static `create()` convenience method.
 
 ### Documentation
 - Documented mass-assignment workflow, updated the quick reference, model template, and added a dedicated guide page.

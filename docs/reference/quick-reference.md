@@ -105,7 +105,7 @@ $user = new User();
 $user->guarded = array('is_admin');
 
 $user->fill($_POST);       // Respects $fillable / $guarded
-$user->forceFill($seed);   // Skips guarding (trusted data only)
+$user->force_fill($seed);  // Skips guarding (trusted data only)
 
 DataMapper::unguarded(function () use ($user, $payload) {
     $user->fill($payload);

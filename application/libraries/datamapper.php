@@ -946,7 +946,7 @@ class DataMapper implements IteratorAggregate {
 	 * @param	array $trait_names Fully qualified trait names to match.
 	 * @return	bool
 	 */
-	public static function usesTrait($model, array $trait_names)
+	public static function uses_trait($model, array $trait_names)
 	{
 		$class = is_object($model) ? get_class($model) : $model;
 		$traits = array();
@@ -7909,27 +7909,6 @@ class DataMapper implements IteratorAggregate {
 		return (new DMZ_QueryBuilder($this))->value($field, $default);
 	}
 	
-	/**
-	 * Camel case alias for order_by()
-	 * 
-	 * @param string $field Field to order by
-	 * @param string $direction ASC or DESC
-	 * @return DMZ_QueryBuilder For query builder chaining
-	 */
-	public function orderBy($field, $direction = 'ASC')
-	{
-		// Auto-load QueryBuilder if not already loaded
-		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
-			require_once(APPPATH . 'datamapper/querybuilder.php');
-		}
-		
-		// Call order_by method first
-		$this->order_by($field, $direction);
-		
-		// Return QueryBuilder for query builder chaining
-		return new DMZ_QueryBuilder($this);
-	}
-	
 	// ============================================================================
 	// STREAMING & CHUNKING METHODS
 	// ============================================================================
@@ -8014,7 +7993,7 @@ class DataMapper implements IteratorAggregate {
 	 * Uses WHERE id > $lastId instead of OFFSET.
 	 * 
 	 * Example:
-	 *   (new User())->chunkById(100, function($users) {
+	*   (new User())->chunk_by_id(100, function($users) {
 	 *       // Process chunk
 	 *   }, 'id');
 	 * 
@@ -8024,10 +8003,10 @@ class DataMapper implements IteratorAggregate {
 	 * @param string|null $alias Column alias if needed
 	 * @return bool TRUE if all chunks processed, FALSE if stopped early
 	 */
-	public function chunkById($size, $callback, $column = NULL, $alias = null)
+	public function chunk_by_id($size, $callback, $column = NULL, $alias = null)
 	{
 		if (!is_callable($callback)) {
-			throw new Exception('ChunkById callback must be callable');
+			throw new Exception('chunk_by_id callback must be callable');
 		}
 		
 		$lastId = null;
@@ -9078,7 +9057,7 @@ class DataMapper implements IteratorAggregate {
 			return (bool) $this->softDelete;
 		}
 
-		return self::usesTrait($this, array('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes'));
+		return self::uses_trait($this, array('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes'));
 	}
 
 	/**
@@ -9089,7 +9068,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _timestamps_is_enabled()
 	{
-		return self::usesTrait($this, array('DataMapper\\Traits\\HasTimestamps', 'HasTimestamps'));
+		return self::uses_trait($this, array('DataMapper\\Traits\\HasTimestamps', 'HasTimestamps'));
 	}
 
 	/**
@@ -9146,7 +9125,7 @@ class DataMapper implements IteratorAggregate {
 	 * @param array $attributes
 	 * @return static
 	 */
-	public function forceFill(array $attributes)
+	public function force_fill(array $attributes)
 	{
 		return $this->_assign_fillable_attributes($attributes);
 	}

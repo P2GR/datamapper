@@ -37,7 +37,7 @@ Need to keep legacy code untouched? Call builder helpers only where you need the
 
 ## Core Concepts at a Glance
 - Every `DataMapper` model can hand back a `DMZ_QueryBuilder` pipeline.
-- CamelCase method names are converted to snake_case automatically (`orderBy` → `order_by`)
+- Stick to snake_case helpers such as `order_by`; camelCase calls are still auto-converted for legacy code paths.
 - Builder chains return the builder until `get()` or another terminal method executes the SQL.
 - Result helpers (`collect()`, `first()`, `value()`, etc.) decide how the record set comes back.
 

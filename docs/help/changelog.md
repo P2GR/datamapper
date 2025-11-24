@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Mass-assignment protection (`$fillable`, `$guarded`, `fill()`, `forceFill()`, `Model::create()`) with full documentation and examples.
+- Mass-assignment protection (`$fillable`, `$guarded`, `fill()`, `force_fill()`, `Model::create()`) with full documentation and examples.
 
 ## [2.0.0] - 2024-12-15
 

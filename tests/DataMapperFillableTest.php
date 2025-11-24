@@ -67,7 +67,7 @@ class DataMapperFillableTest extends TestCase
         $model = new FillableFakeModel();
         $model->guarded = array('*');
 
-        $model->forceFill(array(
+        $model->force_fill(array(
             'name' => 'Linus',
             'is_admin' => TRUE,
             'secret' => 'root',

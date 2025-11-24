@@ -49,7 +49,7 @@ $user->fill($payload)->save();
 
 - `$fillable` lists the attributes that may be mass-assigned.
 - `$guarded` lists attributes that must never be mass-assigned (use `array('*')` to block everything by default).
-- `forceFill()` ignores guarding and is intended for framework code, seeders, or carefully audited scripts.
+- `force_fill()` ignores guarding and is intended for framework code, seeders, or carefully audited scripts.
 - `DataMapper::unguard()` / `DataMapper::reguard()` toggle the protection globally; `DataMapper::unguarded(function () { ... })` disables it only within the supplied callback.
 - Static `Model::create($attributes)` now mirrors Laravel’s helper: it fills the model, saves it, and returns the instance on success.
 

@@ -39,16 +39,16 @@ $user->fill(array(
 ));
 ```
 
-Set `$guarded = array('*');` to block everything by default and selectively call `forceFill()` when you are certain the payload is safe.
+Set `$guarded = array('*');` to block everything by default and selectively call `force_fill()` when you are certain the payload is safe.
 
 ## Force Fill Trusted Data
 
-`forceFill()` skips both `$fillable` and `$guarded`. This is useful for seeders, factories, migrations, or other code paths where you fully control the input.
+`force_fill()` skips both `$fillable` and `$guarded`. This is useful for seeders, factories, migrations, or other code paths where you fully control the input.
 
 ```php
 $user = new User();
 $user->guarded = array('*');
-$user->forceFill(array(
+$user->force_fill(array(
     'name' => 'System',
     'is_admin' => TRUE,
 ))->save();
@@ -90,7 +90,7 @@ if ($post) {
 
 - Define `$fillable` (preferred) or `$guarded` on every model that handles user input.
 - Keep `$guarded = array('*')` on baseline models and opt in attributes with `fillable` for the least privilege stance.
-- Reach for `forceFill()` sparingly and only when you can guarantee the data source.
+- Reach for `force_fill()` sparingly and only when you can guarantee the data source.
 - Pair `fill()` with validation as usual—mass assignment does not bypass validation rules.
 
 ## See Also

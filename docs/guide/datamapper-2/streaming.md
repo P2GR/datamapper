@@ -7,7 +7,7 @@ Process large datasets efficiently without loading all records into memory. Perf
 Available Methods:
 
 - **chunk()** - Process results in configurable batches
-- **chunkById()** - ID-based chunking for better performance
+- **chunk_by_id()** - ID-based chunking for better performance
 - **cursor()** - Iterate one record at a time using PHP Generators
 - **lazy()** - Lazy collection with chainable operations
 
@@ -30,7 +30,6 @@ Behind the scenes each chunk is fetched using `get_clone(TRUE)`, so the original
 ### Basic Usage
 
 ```php
-
 $u = new User();
 $u->chunk(1000, function($users) {
     foreach ($users as $user) {
@@ -38,23 +37,20 @@ $u->chunk(1000, function($users) {
         $user->send_newsletter();
     }
 });
-
 ```
 
 ### With Query Constraints
 
 ```php
-
 $u = new User();
 $u->where('active', 1)
-  ->where('subscribed', 1)
-  ->chunk(500, function($users) {
-      foreach ($users as $user) {
-          $user->last_contacted = date('Y-m-d H:i:s');
-          $user->save();
-      }
-  });
-
+    ->where('subscribed', 1)
+    ->chunk(500, function($users) {
+        foreach ($users as $user) {
+            $user->last_contacted = date('Y-m-d H:i:s');
+            $user->save();
+        }
+    });
 ```
 
 ### Early Termination
@@ -62,7 +58,6 @@ $u->where('active', 1)
 Return FALSE from the callback to stop processing:
 
 ```php
-
 $u = new User();
 $u->chunk(100, function($users) {
     foreach ($users as $user) {
@@ -72,41 +67,36 @@ $u->chunk(100, function($users) {
     }
     return true; // Continue to next chunk
 });
-
 ```
 
-## chunkById() - Fast ID-Based Chunking
+## chunk_by_id() - Fast ID-Based Chunking
 
 More reliable and faster than offset-based chunking for large tables. Uses WHERE id > $lastId instead of OFFSET.
 
-By default DataMapper now uses your model's `primary_key` when no column is provided, which means `chunkById()` works out of the box for custom keys—just make sure the key is monotonically increasing.
+By default DataMapper now uses your model's `primary_key` when no column is provided, which means `chunk_by_id()` works out of the box for custom keys—just make sure the key is monotonically increasing.
 
 ### Basic Usage
 
 ```php
-
 $u = new User();
-$u->chunkById(5000, function($users) {
+$u->chunk_by_id(5000, function($users) {
     foreach ($users as $user) {
         $user->process();
     }
 });
-
 ```
 
 ### Custom ID Column
 
 ```php
-
 $o = new Order();
 $o->where('status', 'pending')
-  ->chunkById(1000, function($orders) {
-      foreach ($orders as $order) {
-          $order->status = 'processing';
-          $order->save();
-      }
-  }, 'order_id'); // Custom ID column
-
+    ->chunk_by_id(1000, function($orders) {
+        foreach ($orders as $order) {
+            $order->status = 'processing';
+            $order->save();
+        }
+    }, 'order_id'); // Custom ID column
 ```
 
 ### Performance Comparison
@@ -124,33 +114,28 @@ Like the chunk helpers, each batch the cursor streams is loaded through a cloned
 ### Basic Usage
 
 ```php
-
 $u = new User();
 foreach ($u->cursor() as $user) {
     // Only one user in memory at a time
     $user->process();
     $user->save();
 }
-
 ```
 
 ### With Filters
 
 ```php
-
 $u = new User();
 $u->where('last_login <', '2020-01-01');
 
 foreach ($u->cursor() as $user) {
     $user->delete(); // Clean up inactive users
 }
-
 ```
 
 ### Memory Comparison
 
 ```php
-
 // BAD - Loads all 1 million users (~500MB)
 $u = new User();
 $u->get();
@@ -163,7 +148,6 @@ $u = new User();
 foreach ($u->cursor() as $user) {
     $user->process();
 }
-
 ```
 
 ## lazy() - Lazy Collections
@@ -173,7 +157,6 @@ Returns a DMZ_LazyCollection with chainable operations. Combines the power of co
 ### Basic Usage
 
 ```php
-
 $u = new User();
 $lazy = $u->where('active', 1)->lazy();
 
@@ -187,7 +170,6 @@ $emails = $lazy
 foreach ($emails as $email) {
     send_email($email);
 }
-
 ```
 
 ### Available Operations
@@ -195,7 +177,6 @@ foreach ($emails as $email) {
 ### Complex Pipeline Example
 
 ```php
-
 $u = new User();
 $report = $u->where('created_at >', '2024-01-01')
     ->lazy(500)
@@ -216,7 +197,6 @@ $report = $u->where('created_at >', '2024-01-01')
 
 // Convert to array for final report
 $top_customers = $report->toArray();
-
 ```
 
 ## Best Practices
@@ -226,7 +206,6 @@ $top_customers = $report->toArray();
 ### Optimal Chunk Sizes
 
 ```php
-
 // Too small - too many queries
 $u->chunk(10, $callback); // BAD
 
@@ -235,15 +214,13 @@ $u->chunk(100000, $callback); // BAD
 
 // Just right
 $u->chunk(1000, $callback);     // GOOD: Most cases
-$u->chunkById(5000, $callback); // GOOD: Large tables
+$u->chunk_by_id(5000, $callback); // GOOD: Large tables
 $u->lazy(2000);                 // GOOD: Pipelines
-
 ```
 
 ### Error Handling
 
 ```php
-
 $u = new User();
 $u->chunk(1000, function($users) {
     try {
@@ -255,7 +232,6 @@ $u->chunk(1000, function($users) {
         return false; // Stop processing
     }
 });
-
 ```
 
 ## Function Reference
@@ -266,7 +242,7 @@ Process results in batches of $size. Callback receives a DMZ_Collection.
 
 **Returns:**bool - TRUE if all chunks processed, FALSE if stopped early
 
-### $object->chunkById($size, $callback, $column, $alias)
+### $object->chunk_by_id($size, $callback, $column, $alias)
 
 Process results in batches using ID-based pagination. More efficient for large tables.
 
