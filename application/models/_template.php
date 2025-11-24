@@ -1,5 +1,9 @@
 <?php
 
+// Optional behaviour traits:
+// use DataMapper\Traits\HasTimestamps;
+// use DataMapper\Traits\SoftDeletes;
+
 /**
  * Template DataMapper Model
  *
@@ -21,10 +25,18 @@
  */
 class Template extends DataMapper {
 
+	// Uncomment inside the class body to enable behaviour traits:
+	// use HasTimestamps;
+	// use SoftDeletes;
+
 	// Uncomment and edit these two if the class has a model name that
 	//   doesn't convert properly using the inflector_helper.
 	// var $model = 'template';
 	// var $table = 'templates';
+
+	// Mass-assignment options: whitelist fields or guard specific columns.
+	// var $fillable = array('name', 'email');
+	// var $guarded = array('id', 'is_admin');
 
 	// You can override the database connections with this option
 	// var $db_params = 'db_config_name';

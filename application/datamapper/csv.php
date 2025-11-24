@@ -1,5 +1,27 @@
 <?php
 
+if (!function_exists('dmz_log_message')) {
+	function dmz_log_message($level, $message, array $context = array())
+	{
+		if (!function_exists('log_message')) {
+			return;
+		}
+
+		if (!is_string($message)) {
+			$message = print_r($message, TRUE);
+		}
+
+		if (!empty($context)) {
+			$context_json = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if ($context_json !== FALSE) {
+				$message .= ' | context=' . $context_json;
+			}
+		}
+
+		call_user_func('log_message', $level, '[DataMapper] ' . $message);
+	}
+}
+
 /**
  * CSV Extension for DataMapper classes.
  *
@@ -48,7 +70,7 @@ class DMZ_CSV {
 			$fp = fopen($filename, 'w');
 			if($fp === FALSE)
 			{
-				log_message('error', 'CSV Extension: Unable to open file ' . $filename);
+				dmz_log_message('error', "CSV Extension: Unable to open file '{$filename}'");
 				return FALSE;
 			}
 		}
@@ -121,7 +143,7 @@ class DMZ_CSV {
 			$fp = fopen($filename, 'r');
 			if($fp === FALSE)
 			{
-				log_message('error', 'CSV Extension: Unable to open file ' . $filename);
+				dmz_log_message('error', "CSV Extension: Unable to open file '{$filename}'");
 				return FALSE;
 			}
 		}
