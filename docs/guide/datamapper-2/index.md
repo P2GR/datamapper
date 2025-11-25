@@ -247,7 +247,7 @@ $users = (new User())
 $users = (new User())
     ->select('users.*, COUNT(posts.id) as post_count')
     ->join('posts', 'posts.user_id = users.id', 'left')
-    ->groupBy('users.id')
+    ->group_by('users.id')
     ->having('post_count >', 10)
     ->get();
 

@@ -8998,13 +8998,11 @@ class DataMapper implements IteratorAggregate {
 		}
 		
 		// Get column names from trait properties or fall back to config
-		$created_col = property_exists($this, 'createdAtColumn') && !empty($this->createdAtColumn) ? 
-			$this->createdAtColumn : 
-			(isset(DataMapper::$config['created_at_column']) ? DataMapper::$config['created_at_column'] : 'created_at');
-		
-		$updated_col = property_exists($this, 'updatedAtColumn') && !empty($this->updatedAtColumn) ? 
-			$this->updatedAtColumn : 
-			(isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
+		$created_col = $this->_resolve_model_property(array('created_at_column', 'createdAtColumn'),
+			isset(DataMapper::$config['created_at_column']) ? DataMapper::$config['created_at_column'] : 'created_at');
+
+		$updated_col = $this->_resolve_model_property(array('updated_at_column', 'updatedAtColumn'),
+			isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
 		
 		// Generate fresh timestamp
 		$timestamp = $this->_fresh_timestamp();
@@ -9052,6 +9050,11 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _soft_delete_is_enabled()
 	{
+		if (property_exists($this, 'soft_delete') && $this->soft_delete !== NULL)
+		{
+			return (bool) $this->soft_delete;
+		}
+
 		if (property_exists($this, 'softDelete') && $this->softDelete !== NULL)
 		{
 			return (bool) $this->softDelete;
@@ -9079,10 +9082,23 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _get_deleted_at_column()
 	{
-		// If model uses SoftDeletes trait, get column from trait property
-		if (property_exists($this, 'deletedAtColumn') && !empty($this->deletedAtColumn))
+		// Allow the trait to resolve column precedence first (snake_case preferred)
+		if (method_exists($this, 'get_deleted_at_column'))
 		{
-			return $this->deletedAtColumn;
+			return $this->get_deleted_at_column();
+		}
+
+		if (method_exists($this, 'getDeletedAtColumn'))
+		{
+			return $this->getDeletedAtColumn();
+		}
+
+		// If model uses SoftDeletes trait, get column from trait property
+		$column = $this->_resolve_model_property(array('deleted_at_column', 'deletedAtColumn'), NULL);
+
+		if ($column !== NULL)
+		{
+			return $column;
 		}
 
 		// Fall back to global config
@@ -9097,9 +9113,29 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _soft_delete_settings()
 	{
-		$explicit = property_exists($this, 'softDelete') && $this->softDelete !== NULL;
+		$explicit = $this->_resolve_model_property(array('soft_delete', 'softDelete')) !== NULL;
 		$enabled = $this->_soft_delete_is_enabled();
 		return array($enabled, $explicit);
+	}
+
+	/**
+	 * Resolve a model property from a list of candidates, favouring the first non-empty value.
+	 *
+	 * @param array<int, string> $properties Ordered list of property names to probe
+	 * @param mixed $default Default value when no property is found
+	 * @return mixed
+	 */
+	protected function _resolve_model_property(array $properties, $default = NULL)
+	{
+		foreach ($properties as $property)
+		{
+			if (property_exists($this, $property) && isset($this->{$property}) && $this->{$property} !== '')
+			{
+				return $this->{$property};
+			}
+		}
+
+		return $default;
 	}
 	
 	// --------------------------------------------------------------------

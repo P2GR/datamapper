@@ -26,7 +26,7 @@ class SoftDeleteBehaviorTest extends TestCase
         parent::tearDown();
     }
 
-    public function testCamelCasePropertiesEnableSoftDelete(): void
+    public function testSnakeCasePropertyEnablesSoftDelete(): void
     {
         $model = new SoftDeleteModelStub();
         $model->id = 42;
@@ -36,18 +36,31 @@ class SoftDeleteBehaviorTest extends TestCase
         $model->delete();
 
         $this->assertSame('fake-timestamp', $model->archived_at);
-        $this->assertTrue($model->saveCalled);
+        $this->assertTrue($model->save_called);
+    }
+
+    public function testLegacyCamelCasePropertyStillSupported(): void
+    {
+        $model = new SoftDeleteModelStub();
+        $model->id = 42;
+        $model->set_deleted_at_column(NULL);
+        $model->deletedAtColumn = 'archived_at';
+
+        $model->delete();
+
+        $this->assertSame('fake-timestamp', $model->archived_at);
+        $this->assertTrue($model->save_called);
     }
 
     public function testApplyScopeAddsPredicateForCustomColumn(): void
     {
         $model = new SoftDeleteModelStub();
 
-        $model->applySoftDeleteScope();
+        $model->apply_soft_delete_scope();
 
-        $this->assertCount(1, $model->whereLog);
-        $this->assertSame('archived_at', $model->whereLog[0][0]);
-        $this->assertNull($model->whereLog[0][1]);
+        $this->assertCount(1, $model->where_log);
+        $this->assertSame('archived_at', $model->where_log[0][0]);
+        $this->assertNull($model->where_log[0][1]);
     }
 
     public function testIncludeDeletedSkipsScope(): void
@@ -55,9 +68,9 @@ class SoftDeleteBehaviorTest extends TestCase
         $model = new SoftDeleteModelStub();
 
         $model->with_softdeleted();
-        $model->applySoftDeleteScope();
+        $model->apply_soft_delete_scope();
 
-        $this->assertSame(array(), $model->whereLog);
+        $this->assertSame(array(), $model->where_log);
     }
 
     public function testCamelCaseHelperStillWorks(): void
@@ -65,9 +78,9 @@ class SoftDeleteBehaviorTest extends TestCase
         $model = new SoftDeleteModelStub();
 
         $model->withSoftDeleted();
-        $model->applySoftDeleteScope();
+        $model->apply_soft_delete_scope();
 
-        $this->assertSame(array(), $model->whereLog);
+        $this->assertSame(array(), $model->where_log);
     }
 
     public function testTrashedRecognisesCamelCaseColumn(): void
@@ -82,9 +95,9 @@ class SoftDeleteBehaviorTest extends TestCase
     {
         $model = new SoftDeleteDisabledModelStub();
 
-        $model->applySoftDeleteScope();
+        $model->apply_soft_delete_scope();
 
-        $this->assertSame(array(), $model->whereLog);
+        $this->assertSame(array(), $model->where_log);
     }
 }
 
@@ -107,21 +120,24 @@ class SoftDeleteModelStub extends DataMapper
     public $updated_at = NULL;
 
     /** @var bool */
-    public $saveCalled = FALSE;
+    public $save_called = FALSE;
 
     /** @var array<int, array<int, mixed>> */
-    public $whereLog = array();
+    public $where_log = array();
+
+    /** @var string|null */
+    public $deletedAtColumn = NULL;
 
     public function __construct()
     {
         $this->db = new SoftDeleteDbStub();
         $this->all = array();
-        $this->deletedAtColumn = 'archived_at';
+        $this->deleted_at_column = 'archived_at';
     }
 
     public function save($object = '', $related_field = '')
     {
-        $this->saveCalled = TRUE;
+        $this->save_called = TRUE;
         return TRUE;
     }
 
@@ -133,12 +149,17 @@ class SoftDeleteModelStub extends DataMapper
     public function where($field, $value = NULL, $escape_or_operator = TRUE)
     {
         $entry = array($field, $value, $escape_or_operator);
-        $this->whereLog[] = $entry;
+        $this->where_log[] = $entry;
         $this->db->qb_where[] = $entry;
         return $this;
     }
 
-    public function applySoftDeleteScope(): void
+    public function set_deleted_at_column($column): void
+    {
+        $this->deleted_at_column = $column;
+    }
+
+    public function apply_soft_delete_scope(): void
     {
         $this->_apply_soft_delete_scope();
     }
@@ -147,7 +168,7 @@ class SoftDeleteModelStub extends DataMapper
 class SoftDeleteDisabledModelStub extends SoftDeleteModelStub
 {
     /** @var bool|null */
-    protected $softDelete = FALSE;
+    protected $soft_delete = FALSE;
 }
 
 class SoftDeleteDbStub

@@ -43,7 +43,7 @@ That's it! The trait automatically:
 class Project extends DataMapper {
     use SoftDeletes;
     
-    protected $deletedAtColumn = 'archived_at'; // custom column name
+    protected $deleted_at_column = 'archived_at'; // custom column name
 }
 ```
 
@@ -168,7 +168,7 @@ $user->include_related('post', 'title', NULL, array(
 class Company extends DataMapper {
     use SoftDeletes;
     
-    protected $deletedAtColumn = 'removed_on';
+    protected $deleted_at_column = 'removed_on';
 }
 ```
 

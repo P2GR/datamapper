@@ -299,29 +299,29 @@ $random = $users->collect()->shuffle();
 
 ### Grouping Methods
 
-#### groupBy()
+#### group_by()
 
 ```php
-$byRole = $users->collect()->groupBy('role');
+$byRole = $users->collect()->group_by('role');
 // Result: ['admin' => [...], 'user' => [...]]
 
-$byCountry = $users->collect()->groupBy('country_id');
+$byCountry = $users->collect()->group_by('country_id');
 
 // With callback
-$byAgeGroup = $users->collect()->groupBy(function($user) {
+$byAgeGroup = $users->collect()->group_by(function($user) {
     return $user->age < 18 ? 'minor' : 'adult';
 });
 ```
 
-#### keyBy()
+#### key_by()
 
 Key collection by field:
 
 ```php
-$byId = $users->collect()->keyBy('id');
+$byId = $users->collect()->key_by('id');
 // Result: [1 => User, 2 => User, ...]
 
-$byEmail = $users->collect()->keyBy('email');
+$byEmail = $users->collect()->key_by('email');
 ```
 
 #### partition()
@@ -515,7 +515,7 @@ $summary = [
     'total_spent' => $orders->sum('total'),
     'average_order' => $orders->avg('total'),
     'largest_order' => $orders->max('total'),
-    'by_month' => $orders->groupBy(function($order) {
+    'by_month' => $orders->group_by(function($order) {
         return $order->created_at->format('Y-m');
     })->map(fn($group) => $group->sum('total'))
 ];
@@ -529,8 +529,8 @@ $users = User::all()->collect();
 $analytics = [
     'total' => $users->count(),
     'active' => $users->where('active', 1)->count(),
-    'by_role' => $users->groupBy('role')->map->count(),
-    'by_country' => $users->groupBy('country')->map->count(),
+    'by_role' => $users->group_by('role')->map->count(),
+    'by_country' => $users->group_by('country')->map->count(),
     'average_age' => $users->avg('age'),
     'top_contributors' => $users->sortByDesc('contribution_score')->take(10)
 ];
@@ -542,7 +542,7 @@ $analytics = [
 $products = Product::where('active', 1)->collect();
 
 $catalog = $products
-    ->groupBy('category_id')
+    ->group_by('category_id')
     ->map(function($categoryProducts) {
         return [
             'count' => $categoryProducts->count(),

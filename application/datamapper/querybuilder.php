@@ -815,7 +815,7 @@ class DMZ_QueryBuilder {
      *
      * @return DataMapper|DMZ_Collection|NULL
      */
-    public function getSmart() {
+    public function get_smart() {
         // If limit is 1, return single model
         if ($this->_limit === 1) {
             return $this->first();
@@ -1570,7 +1570,7 @@ class DMZ_QueryBuilder {
     protected function _apply_soft_delete_scope_to_db($db, $model, $table_prefix = '', $wrapper = NULL) {
         // Check if user explicitly set soft delete scope in constraint callback
         if ($wrapper !== NULL) {
-            $scope = $wrapper->getSoftDeleteScope();
+            $scope = $wrapper->get_soft_delete_scope();
 			
             // If user called with_softdeleted(), don't apply any deleted_at filter
             if ($scope === 'with_softdeleted' || $scope === 'with_deleted') {
@@ -1640,6 +1640,8 @@ class DMZ_QueryBuilder {
         // Get custom column name if specified
         if (property_exists($model, 'deleted_at_column') && !empty($model->deleted_at_column)) {
             $deleted_col = $model->deleted_at_column;
+        } elseif (method_exists($model, 'get_deleted_at_column')) {
+            $deleted_col = $model->get_deleted_at_column();
         } elseif (property_exists($model, 'deletedAtColumn') && !empty($model->deletedAtColumn)) {
             $deleted_col = $model->deletedAtColumn;
         } elseif (method_exists($model, 'getDeletedAtColumn')) {
@@ -1706,6 +1708,12 @@ class DMZ_QueryBuilder {
      * @return mixed
      */
     public function __call($method, $args) {
+        $snake_case = $this->camel_to_snake($method);
+
+        if ($snake_case !== $method && method_exists($this, $snake_case)) {
+            return call_user_func_array(array($this, $snake_case), $args);
+        }
+
         $result = call_user_func_array(array($this->model, $method), $args);
         
         // If result is the model, return this for chaining
@@ -1714,6 +1722,20 @@ class DMZ_QueryBuilder {
         }
         
         return $result;
+    }
+
+    /**
+     * Convert camelCase method names to snake_case for internal delegation.
+     *
+     * @param string $method
+     * @return string
+     */
+    protected function camel_to_snake($method)
+    {
+        $snake = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $method));
+
+        // Historical methods used "softdeleted" without an underscore
+        return str_replace('soft_deleted', 'softdeleted', $snake);
     }
 }
 
@@ -2084,7 +2106,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @param string $key Key to index by
      * @return array
      */
-    public function keyBy($key) {
+    public function key_by($key) {
         $result = array();
         foreach ($this->items as $item) {
             $key_value = is_object($item) ? $item->{$key} : $item[$key];
@@ -2099,7 +2121,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @param string $key Key to group by
      * @return array
      */
-    public function groupBy($key) {
+    public function group_by($key) {
         $result = array();
         foreach ($this->items as $item) {
             $key_value = is_object($item) ? $item->{$key} : $item[$key];
@@ -2128,6 +2150,12 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @throws BadMethodCallException
      */
     public function __call($method, $args) {
+        $snake_case = $this->camel_to_snake($method);
+
+        if ($snake_case !== $method && method_exists($this, $snake_case)) {
+            return call_user_func_array(array($this, $snake_case), $args);
+        }
+
         // If collection has exactly one item, proxy to it
         if ($this->count() === 1) {
             $item = $this->first();
@@ -2151,6 +2179,19 @@ class DMZ_Collection implements IteratorAggregate, Countable {
         throw new BadMethodCallException(
             "Method '{$method}' does not exist on DMZ_Collection. {$suggestion}"
         );
+    }
+
+    /**
+     * Convert camelCase method names to snake_case for internal delegation.
+     *
+     * @param string $method
+     * @return string
+     */
+    protected function camel_to_snake($method)
+    {
+        $snake = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $method));
+
+        return str_replace('soft_deleted', 'softdeleted', $snake);
     }
     
     /**
@@ -2550,9 +2591,9 @@ class DMZ_DB_Constraint_Wrapper {
 	 * 
      * @return string 'active'|'with_softdeleted'|'only_softdeleted'
 	 */
-	public function getSoftDeleteScope() {
-		return $this->soft_delete_scope;
-	}
+    public function get_soft_delete_scope() {
+        return $this->soft_delete_scope;
+    }
 	
 	/**
 	 * Magic method to proxy other methods to the DB instance

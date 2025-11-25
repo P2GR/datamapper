@@ -24,9 +24,9 @@ namespace DataMapper\Traits {
  * class User extends DataMapper {
  *     use HasTimestamps;
  *     
- *     protected $createdAtColumn = 'created'; // Customize column name
- *     protected $updatedAtColumn = 'modified'; // Customize column name
- *     protected $timestampFormat = 'U';       // Unix timestamp format
+ *     protected $created_at_column = 'created'; // Customize column name
+ *     protected $updated_at_column = 'modified'; // Customize column name
+ *     protected $timestamp_format = 'U';       // Unix timestamp format
  * }
  * ```
  * 
@@ -40,20 +40,20 @@ trait HasTimestamps
      * The name of the "created at" column
      * @var string
      */
-    protected $createdAtColumn = 'created_at';
+    protected $created_at_column = 'created_at';
     
     /**
      * The name of the "updated at" column
      * @var string
      */
-    protected $updatedAtColumn = 'updated_at';
+    protected $updated_at_column = 'updated_at';
     
     /**
      * The format for timestamp values
      * Options: 'Y-m-d H:i:s' (MySQL), 'U' (Unix timestamp), 'c' (ISO 8601)
      * @var string
      */
-    protected $timestampFormat = 'Y-m-d H:i:s';
+    protected $timestamp_format = 'Y-m-d H:i:s';
     
     /**
      * Hook into DataMapper's save process to add timestamps
@@ -64,17 +64,18 @@ trait HasTimestamps
     protected function _timestamp_before_save()
     {
         $timestamp = $this->_fresh_timestamp();
-        
+
+        $created_column = $this->get_created_at_column();
+        $updated_column = $this->get_updated_at_column();
+
         // If this is a new record (no ID), set created_at
         if (!$this->exists()) {
-            $created_column = $this->createdAtColumn;
             if (!isset($this->{$created_column}) || empty($this->{$created_column})) {
                 $this->{$created_column} = $timestamp;
             }
         }
-        
+
         // Always update updated_at on save
-        $updated_column = $this->updatedAtColumn;
         $this->{$updated_column} = $timestamp;
     }
     
@@ -85,9 +86,7 @@ trait HasTimestamps
      */
     protected function _fresh_timestamp()
     {
-        $format = property_exists($this, 'timestampFormat') ? 
-                  $this->timestampFormat : 
-                  'Y-m-d H:i:s';
+        $format = $this->resolve_timestamp_format();
         
         if ($format === 'U') {
             return time(); // Unix timestamp
@@ -107,7 +106,7 @@ trait HasTimestamps
             return FALSE;
         }
         
-        $updated_column = $this->updatedAtColumn;
+        $updated_column = $this->get_updated_at_column();
         $this->{$updated_column} = $this->_fresh_timestamp();
         
         // Update only the timestamp column
@@ -122,11 +121,9 @@ trait HasTimestamps
      * 
      * @return string
      */
-    public function getCreatedAtColumn(): string
+    public function get_created_at_column(): string
     {
-        return property_exists($this, 'createdAtColumn') ? 
-               $this->createdAtColumn : 
-               'created_at';
+        return $this->resolve_timestamp_column('created_at_column', 'createdAtColumn', 'created_at');
     }
     
     /**
@@ -134,11 +131,48 @@ trait HasTimestamps
      * 
      * @return string
      */
-    public function getUpdatedAtColumn(): string
+    public function get_updated_at_column(): string
     {
-        return property_exists($this, 'updatedAtColumn') ? 
-               $this->updatedAtColumn : 
-               'updated_at';
+        return $this->resolve_timestamp_column('updated_at_column', 'updatedAtColumn', 'updated_at');
+    }
+
+    /**
+     * Resolve timestamp column names while supporting legacy camelCase overrides.
+     *
+     * @param string $snake Property name expected in new snake_case style
+     * @param string $legacy Legacy camelCase property name
+     * @param string $default Default column value
+     * @return string
+     */
+    protected function resolve_timestamp_column($snake, $legacy, $default)
+    {
+        if (property_exists($this, $snake) && !empty($this->{$snake})) {
+            return $this->{$snake};
+        }
+
+        if (property_exists($this, $legacy) && !empty($this->{$legacy})) {
+            return $this->{$legacy};
+        }
+
+        return $default;
+    }
+
+    /**
+     * Resolve the timestamp format, honoring both snake_case and legacy camelCase properties.
+     *
+     * @return string
+     */
+    protected function resolve_timestamp_format()
+    {
+        if (property_exists($this, 'timestamp_format') && !empty($this->timestamp_format)) {
+            return $this->timestamp_format;
+        }
+
+        if (property_exists($this, 'timestampFormat') && !empty($this->timestampFormat)) {
+            return $this->timestampFormat;
+        }
+
+        return 'Y-m-d H:i:s';
     }
 }
 

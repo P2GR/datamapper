@@ -24,7 +24,7 @@ namespace DataMapper\Traits {
  * class User extends DataMapper {
  *     use SoftDeletes;
  *     
- *     protected $deletedAtColumn = 'archived_at';
+ *     protected $deleted_at_column = 'archived_at';
  * }
  * ```
  *
@@ -40,15 +40,23 @@ trait SoftDeletes
 	 *
 	 * @var string
 	 */
-	protected $deletedAtColumn = 'deleted_at';
+	protected $deleted_at_column = 'deleted_at';
 	/**
 	 * Get the name of the "deleted at" column.
 	 *
 	 * @return string
 	 */
-	public function getDeletedAtColumn()
+	public function get_deleted_at_column()
 	{
-		return $this->deletedAtColumn;
+		if (property_exists($this, 'deleted_at_column') && !empty($this->deleted_at_column)) {
+			return $this->deleted_at_column;
+		}
+
+		if (property_exists($this, 'deletedAtColumn') && !empty($this->deletedAtColumn)) {
+			return $this->deletedAtColumn;
+		}
+
+		return 'deleted_at';
 	}
 
 	/**

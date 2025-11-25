@@ -134,8 +134,8 @@ $post->delete();
 class User extends DataMapper {
     use HasTimestamps;
     
-    protected $createdAtColumn = 'date_created';
-    protected $updatedAtColumn = 'date_modified';
+    protected $created_at_column = 'date_created';
+    protected $updated_at_column = 'date_modified';
 }
 ```
 
@@ -145,9 +145,9 @@ class User extends DataMapper {
 class User extends DataMapper {
     use HasTimestamps;
     
-    protected $timestampFormat = 'U'; // Unix timestamp
+    protected $timestamp_format = 'U'; // Unix timestamp
     // or
-    protected $timestampFormat = 'c'; // ISO 8601
+    protected $timestamp_format = 'c'; // ISO 8601
     // Default: 'Y-m-d H:i:s'
 }
 ```

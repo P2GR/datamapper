@@ -86,7 +86,7 @@ $users = (new User())
 ```php
 $installations = (new Installation())
     ->select('building_id, COUNT(*) AS total')
-    ->groupBy('building_id')
+    ->group_by('building_id')
     ->having('total', 5, '>')
     ->order_by('total', 'DESC')
     ->get();
