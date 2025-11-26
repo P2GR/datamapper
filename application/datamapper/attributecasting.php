@@ -86,16 +86,16 @@ trait DMZ_AttributeCasting
     public function __get($key)
     {
         // Check for accessor method first (highest priority)
-        if ($this->hasGetAccessor($key)) {
-            return $this->getAttributeValue($key);
+        if ($this->has_get_accessor($key)) {
+            return $this->get_attribute_value($key);
         }
         
         // Get the raw value from parent DataMapper
         $value = parent::__get($key);
         
         // Apply casting if defined
-        if ($this->hasCast($key)) {
-            return $this->castAttribute($key, $value);
+        if ($this->has_cast($key)) {
+            return $this->cast_attribute($key, $value);
         }
         
         // Return raw value (backward compatible)
@@ -116,14 +116,14 @@ trait DMZ_AttributeCasting
     public function __set($key, $value)
     {
         // Check for mutator method first (highest priority)
-        if ($this->hasSetMutator($key)) {
-            $this->setAttributeValue($key, $value);
+        if ($this->has_set_mutator($key)) {
+            $this->set_attribute_value($key, $value);
             return;
         }
         
         // Apply reverse casting if defined
-        if ($this->hasCast($key)) {
-            $value = $this->reverseCastAttribute($key, $value);
+        if ($this->has_cast($key)) {
+            $value = $this->reverse_cast_attribute($key, $value);
         }
         
         // Set via parent DataMapper (backward compatible)
@@ -136,7 +136,7 @@ trait DMZ_AttributeCasting
      * @param string $key Attribute name
      * @return bool
      */
-    protected function hasCast(string $key): bool
+    protected function has_cast(string $key): bool
     {
         return isset($this->casts[$key]);
     }
@@ -147,7 +147,7 @@ trait DMZ_AttributeCasting
      * @param string $key Attribute name
      * @return string|null
      */
-    protected function getCastType(string $key): ?string
+    protected function get_cast_type(string $key): ?string
     {
         return $this->casts[$key] ?? null;
     }
@@ -158,13 +158,13 @@ trait DMZ_AttributeCasting
      * @param string $key Attribute name
      * @return bool
      */
-    protected function hasGetAccessor(string $key): bool
+    protected function has_get_accessor(string $key): bool
     {
         $class = get_class($this);
         $cacheKey = $class . '::' . $key;
         
         if (!isset(self::$_accessor_cache[$cacheKey])) {
-            $method = 'get' . $this->studlyCase($key) . 'Attribute';
+            $method = 'get' . $this->studly_case($key) . 'Attribute';
             self::$_accessor_cache[$cacheKey] = method_exists($this, $method);
         }
         
@@ -177,13 +177,13 @@ trait DMZ_AttributeCasting
      * @param string $key Attribute name
      * @return bool
      */
-    protected function hasSetMutator(string $key): bool
+    protected function has_set_mutator(string $key): bool
     {
         $class = get_class($this);
         $cacheKey = $class . '::' . $key;
         
         if (!isset(self::$_mutator_cache[$cacheKey])) {
-            $method = 'set' . $this->studlyCase($key) . 'Attribute';
+            $method = 'set' . $this->studly_case($key) . 'Attribute';
             self::$_mutator_cache[$cacheKey] = method_exists($this, $method);
         }
         
@@ -196,9 +196,9 @@ trait DMZ_AttributeCasting
      * @param string $key Attribute name
      * @return mixed
      */
-    protected function getAttributeValue(string $key): mixed
+    protected function get_attribute_value(string $key): mixed
     {
-        $method = 'get' . $this->studlyCase($key) . 'Attribute';
+        $method = 'get' . $this->studly_case($key) . 'Attribute';
         return $this->{$method}();
     }
     
@@ -208,9 +208,9 @@ trait DMZ_AttributeCasting
      * @param string $key Attribute name
      * @param mixed $value Value to set
      */
-    protected function setAttributeValue(string $key, mixed $value): void
+    protected function set_attribute_value(string $key, mixed $value): void
     {
-        $method = 'set' . $this->studlyCase($key) . 'Attribute';
+        $method = 'set' . $this->studly_case($key) . 'Attribute';
         $this->{$method}($value);
     }
     
@@ -221,23 +221,23 @@ trait DMZ_AttributeCasting
      * @param mixed $value Raw value
      * @return mixed Casted value
      */
-    protected function castAttribute(string $key, mixed $value): mixed
+    protected function cast_attribute(string $key, mixed $value): mixed
     {
         if ($value === null) {
             return null;
         }
         
-        $castType = $this->getCastType($key);
+        $castType = $this->get_cast_type($key);
         
         return match($castType) {
             'int', 'integer' => (int) $value,
             'float', 'double', 'real' => (float) $value,
             'bool', 'boolean' => (bool) $value,
             'string' => (string) $value,
-            'array', 'json' => $this->fromJson($value),
-            'datetime' => $this->asDateTime($value),
-            'date' => $this->asDate($value),
-            'timestamp' => $this->asDateTime($value),
+            'array', 'json' => $this->from_json($value),
+            'datetime' => $this->as_date_time($value),
+            'date' => $this->as_date($value),
+            'timestamp' => $this->as_date_time($value),
             default => $value
         };
     }
@@ -249,18 +249,18 @@ trait DMZ_AttributeCasting
      * @param mixed $value Value to reverse cast
      * @return mixed
      */
-    protected function reverseCastAttribute(string $key, mixed $value): mixed
+    protected function reverse_cast_attribute(string $key, mixed $value): mixed
     {
         if ($value === null) {
             return null;
         }
         
-        $castType = $this->getCastType($key);
+        $castType = $this->get_cast_type($key);
         
         return match($castType) {
-            'array', 'json' => $this->asJson($value),
-            'datetime', 'date' => $this->fromDateTime($value),
-            'timestamp' => $this->fromDateTime($value),
+            'array', 'json' => $this->as_json($value),
+            'datetime', 'date' => $this->from_date_time($value),
+            'timestamp' => $this->from_date_time($value),
             default => $value
         };
     }
@@ -271,7 +271,7 @@ trait DMZ_AttributeCasting
      * @param mixed $value
      * @return array
      */
-    protected function fromJson(mixed $value): array
+    protected function from_json(mixed $value): array
     {
         if (is_array($value)) {
             return $value;
@@ -291,7 +291,7 @@ trait DMZ_AttributeCasting
      * @param mixed $value
      * @return string
      */
-    protected function asJson(mixed $value): string
+    protected function as_json(mixed $value): string
     {
         if (is_string($value)) {
             return $value;
@@ -306,7 +306,7 @@ trait DMZ_AttributeCasting
      * @param mixed $value
      * @return DateTime|null
      */
-    protected function asDateTime(mixed $value): ?DateTime
+    protected function as_date_time(mixed $value): ?DateTime
     {
         if ($value instanceof DateTime) {
             return $value;
@@ -330,38 +330,28 @@ trait DMZ_AttributeCasting
         return null;
     }
 
-            protected function as_date_time(mixed $value): ?DateTime
-            {
-                return $this->asDateTime($value);
-            }
-    
     /**
      * Convert a value to date-only DateTime object
      * 
      * @param mixed $value
      * @return DateTime|null
      */
-    protected function asDate(mixed $value): ?DateTime
+    protected function as_date(mixed $value): ?DateTime
     {
-        $dt = $this->asDateTime($value);
+        $dt = $this->as_date_time($value);
         if ($dt) {
             $dt->setTime(0, 0, 0);
         }
         return $dt;
     }
 
-    protected function as_date(mixed $value): ?DateTime
-    {
-        return $this->asDate($value);
-    }
-    
     /**
      * Convert a DateTime object to string for storage
      * 
      * @param mixed $value
      * @return string|null
      */
-    protected function fromDateTime(mixed $value): ?string
+    protected function from_date_time(mixed $value): ?string
     {
         if ($value instanceof DateTime) {
             return $value->format('Y-m-d H:i:s');
@@ -374,27 +364,17 @@ trait DMZ_AttributeCasting
         return null;
     }
 
-            protected function from_date_time(mixed $value): ?string
-            {
-                return $this->fromDateTime($value);
-            }
-    
     /**
      * Convert snake_case to StudlyCase
      * 
      * @param string $value
      * @return string
      */
-    protected function studlyCase(string $value): string
+    protected function studly_case(string $value): string
     {
         $value = str_replace('_', ' ', $value);
         $value = ucwords($value);
         return str_replace(' ', '', $value);
-    }
-
-    protected function studly_case(string $value): string
-    {
-        return $this->studlyCase($value);
     }
     
     /**
@@ -413,16 +393,16 @@ trait DMZ_AttributeCasting
         // Apply casts to all attributes
         foreach ($this->casts as $key => $type) {
             if (isset($attributes[$key])) {
-                $attributes[$key] = $this->castAttribute($key, $attributes[$key]);
+                $attributes[$key] = $this->cast_attribute($key, $attributes[$key]);
             }
         }
         
         // Apply accessors
         foreach (get_class_methods($this) as $method) {
             if (preg_match('/^get(.+)Attribute$/', $method, $matches)) {
-                $key = $this->snakeCase($matches[1]);
+                $key = $this->snake_case($matches[1]);
                 if (!array_key_exists($key, $attributes)) {
-                    $attributes[$key] = $this->getAttributeValue($key);
+                    $attributes[$key] = $this->get_attribute_value($key);
                 }
             }
         }
@@ -441,14 +421,9 @@ trait DMZ_AttributeCasting
      * @param string $value
      * @return string
      */
-    protected function snakeCase(string $value): string
+    protected function snake_case(string $value): string
     {
         $value = preg_replace('/([A-Z])/', '_$1', $value);
         return strtolower(ltrim($value, '_'));
-    }
-
-    protected function snake_case(string $value): string
-    {
-        return $this->snakeCase($value);
     }
 }

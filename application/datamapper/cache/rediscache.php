@@ -201,11 +201,6 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		return $deleted;
 	}
 
-	public function deletePattern($pattern)
-	{
-		return $this->delete_pattern($pattern);
-	}
-	
 	/**
 	 * Get cache statistics
 	 *
@@ -232,11 +227,6 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		]);
 	}
 
-	public function getStats()
-	{
-		return $this->get_stats();
-	}
-	
 	/**
 	 * Increment a numeric cache value
 	 *
@@ -288,11 +278,6 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		return $result;
 	}
 
-	public function getMultiple(array $keys)
-	{
-		return $this->get_multiple($keys);
-	}
-	
 	/**
 	 * Set multiple cache items at once
 	 *
@@ -318,11 +303,6 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		return !in_array(false, $results, true);
 	}
 
-	public function setMultiple(array $items, $ttl = 3600)
-	{
-		return $this->set_multiple($items, $ttl);
-	}
-	
 	/**
 	 * Close Redis connection
 	 */

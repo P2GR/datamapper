@@ -220,11 +220,6 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		return 0;
 	}
 
-	public function deletePattern($pattern)
-	{
-		return $this->delete_pattern($pattern);
-	}
-	
 	/**
 	 * Get cache statistics
 	 *
@@ -262,11 +257,6 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		]);
 	}
 
-	public function getStats()
-	{
-		return $this->get_stats();
-	}
-	
 	/**
 	 * Increment a numeric cache value
 	 *
@@ -324,11 +314,6 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		return $result;
 	}
 
-	public function getMultiple(array $keys)
-	{
-		return $this->get_multiple($keys);
-	}
-	
 	/**
 	 * Set multiple cache items at once
 	 *
@@ -352,11 +337,6 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		return $result;
 	}
 
-	public function setMultiple(array $items, $ttl = 3600)
-	{
-		return $this->set_multiple($items, $ttl);
-	}
-	
 	/**
 	 * Format bytes to human-readable format
 	 *
@@ -374,10 +354,6 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		return round($bytes, 2) . ' ' . $units[$pow];
 	}
 
-	protected function formatBytes($bytes)
-	{
-		return $this->format_bytes($bytes);
-	}
 }
 
 /* End of file memcachedcache.php */

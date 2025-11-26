@@ -204,11 +204,6 @@ class DMZ_FileCache implements DMZ_CacheInterface
 		return $deleted;
 	}
 
-	public function deletePattern($pattern)
-	{
-		return $this->delete_pattern($pattern);
-	}
-	
 	/**
 	 * Get cache statistics
 	 *
@@ -238,11 +233,6 @@ class DMZ_FileCache implements DMZ_CacheInterface
 		]);
 	}
 
-	public function getStats()
-	{
-		return $this->get_stats();
-	}
-	
 	/**
 	 * Clean up expired cache entries
 	 *
@@ -282,11 +272,6 @@ class DMZ_FileCache implements DMZ_CacheInterface
 		return $deleted;
 	}
 
-	public function cleanExpired()
-	{
-		return $this->clean_expired();
-	}
-	
 	/**
 	 * Get file path for cache key
 	 *
@@ -300,11 +285,6 @@ class DMZ_FileCache implements DMZ_CacheInterface
 		return $this->cache_dir . '/' . $safe_key;
 	}
 
-	protected function getFilePath($key)
-	{
-		return $this->get_file_path($key);
-	}
-	
 	/**
 	 * Format bytes to human-readable format
 	 *
@@ -322,10 +302,6 @@ class DMZ_FileCache implements DMZ_CacheInterface
 		return round($bytes, 2) . ' ' . $units[$pow];
 	}
 
-	protected function formatBytes($bytes)
-	{
-		return $this->format_bytes($bytes);
-	}
 }
 
 /* End of file filecache.php */

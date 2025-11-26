@@ -8279,12 +8279,15 @@ class DataMapper implements IteratorAggregate {
 			$pattern = 'query:' . strtolower($this->model) . ':*';
 		}
 		
-		if (method_exists($driver, 'delete_pattern'))
+		if (!method_exists($driver, 'delete_pattern'))
 		{
-			return $driver->delete_pattern($pattern);
+			dmz_log_message('error', 'Configured cache driver is missing delete_pattern()', array(
+				'driver' => get_class($driver)
+			));
+			return 0;
 		}
 
-		return $driver->deletePattern($pattern);
+		return $driver->delete_pattern($pattern);
 	}
 	
 	/**
@@ -8501,14 +8504,15 @@ class DataMapper implements IteratorAggregate {
 
 		// Clear all cache for this model
 		$pattern = 'query:' . strtolower($this->model) . ':*';
-		if (method_exists($driver, 'delete_pattern'))
+		if (!method_exists($driver, 'delete_pattern'))
 		{
-			$driver->delete_pattern($pattern);
+			dmz_log_message('error', 'Cache driver missing delete_pattern() during invalidation.', array(
+				'driver' => get_class($driver)
+			));
+			return;
 		}
-		else
-		{
-			$driver->deletePattern($pattern);
-		}
+
+		$driver->delete_pattern($pattern);
 	}
 
 	/**
