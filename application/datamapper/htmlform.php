@@ -639,7 +639,7 @@ class DMZ_HTMLForm {
 		{
 			if(is_array($label))
 			{
-				$l .= '<optgroup label="' . htmlspecialchars($key) . '">';
+				$l .= '<optgroup label="' . htmlspecialchars($opt) . '">';
 				$l .= $this->_options($label, $sel);
 				$l .= '</optgroup>';
 			}
