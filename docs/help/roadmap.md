@@ -17,11 +17,11 @@ Built-in query profiler to identify performance bottlenecks:
 ```php
 $user = new User();
 $user->with('posts')
-     ->enableProfiler()
-     ->get();
+    ->enable_profiler()
+    ->get();
 
 // View query performance
-print_r($user->getProfilerStats());
+print_r($user->get_profiler_stats());
 ```
 
 **Benefits:**
@@ -36,7 +36,7 @@ DataMapper will analyze your queries and suggest missing indexes:
 
 ```php
 // After running queries
-$suggestions = DataMapper::getIndexSuggestions();
+$suggestions = DataMapper::get_index_suggestions();
 // [
 //   "users table: Add index on 'status' column (used in 50 queries)",
 //   "posts table: Add composite index on 'user_id, published_at'"
@@ -56,7 +56,7 @@ User::insert([
 ]); // Single query!
 
 // Batch update
-User::whereIn('id', [1,2,3,4,5])
+User::where_in('id', [1,2,3,4,5])
     ->update(['status' => 'active']); // Single query!
 ```
 

@@ -267,7 +267,7 @@ class BaseController extends CI_Controller {
         
         // Set for DataMapper models
         if (class_exists('DataMapper')) {
-            DataMapper::setDefaultLanguage($language);
+            DataMapper::set_default_language($language);
         }
     }
     

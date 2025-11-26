@@ -690,7 +690,7 @@ $user->get(); // Loads all fields (including large TEXT columns)
 echo $user->check_last_query();
 
 // Enable query profiling
-$user->enableProfiler()->get();
+$user->enable_profiler()->get();
 
 // Print all SQL queries
 echo $this->db->last_query();

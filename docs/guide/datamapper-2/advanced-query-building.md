@@ -208,13 +208,13 @@ class User extends DataMapper {
         parent::boot();
         
         // Apply to all queries
-        $this->addGlobalScope('active', function($query) {
+        $this->add_global_scope('active', function($query) {
             $query->where('deleted_at', NULL);
         });
     }
     
-    public function withInactive() {
-        $this->removeGlobalScope('active');
+    public function with_inactive() {
+        $this->remove_global_scope('active');
         return $this;
     }
 }
@@ -224,7 +224,7 @@ $users = new User();
 $users->get(); // Only active users
 
 $users = new User();
-$users->withInactive()->get(); // All users
+$users->with_inactive()->get(); // All users
 ```
 
 ## Dynamic Conditions
@@ -289,14 +289,14 @@ class UserQueryBuilder {
         $this->query = new User();
     }
     
-    public function filterByRole($role) {
+    public function filter_by_role($role) {
         if ($role) {
             $this->query->where('role', $role);
         }
         return $this;
     }
     
-    public function filterByStatus($status) {
+    public function filter_by_status($status) {
         if ($status) {
             $this->query->where('status', $status);
         }
@@ -313,7 +313,7 @@ class UserQueryBuilder {
         return $this;
     }
     
-    public function sortBy($field, $direction = 'asc') {
+    public function sort_by($field, $direction = 'asc') {
         $this->query->order_by($field, $direction);
         return $this;
     }
@@ -332,10 +332,10 @@ class UserQueryBuilder {
 // Usage
 $builder = new UserQueryBuilder();
 $users = $builder
-    ->filterByRole($request->role)
-    ->filterByStatus($request->status)
+    ->filter_by_role($request->role)
+    ->filter_by_status($request->status)
     ->search($request->search)
-    ->sortBy($request->sort_by, $request->sort_dir)
+    ->sort_by($request->sort_by, $request->sort_dir)
     ->paginate($request->page, 20)
     ->get();
 ```

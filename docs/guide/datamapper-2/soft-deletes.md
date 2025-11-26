@@ -48,8 +48,7 @@ class Project extends DataMapper {
 ```
 
 ::: tip Naming
-Prefer snake_case helpers (`with_softdeleted()`, `only_softdeleted()`, `without_softdeleted()`, `force_delete()`).
-CamelCase calls are still routed through DataMapper's magic method support, but snake_case is the canonical API.
+Use the snake_case helpers (`with_softdeleted()`, `only_softdeleted()`, `without_softdeleted()`, `force_delete()`); camelCase variants are not available in 2.0.
 :::
 
 ## Querying Patterns

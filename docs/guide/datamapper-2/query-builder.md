@@ -37,7 +37,7 @@ Need to keep legacy code untouched? Call builder helpers only where you need the
 
 ## Core Concepts at a Glance
 - Every `DataMapper` model can hand back a `DMZ_QueryBuilder` pipeline.
-- Stick to snake_case helpers such as `order_by`; camelCase calls are still auto-converted for legacy code paths.
+- Use snake_case helpers such as `order_by`; camelCase variants are no longer supported.
 - Builder chains return the builder until `get()` or another terminal method executes the SQL.
 - Result helpers (`collect()`, `first()`, `value()`, etc.) decide how the record set comes back.
 
@@ -49,10 +49,10 @@ $users = (new User())
     ->where('status', 'active')
     ->where('age', 18, '>')
     ->where('name', 'John%', 'LIKE')
-    ->whereIn('id', [1, 2, 3])
-    ->whereBetween('age', 18, 65)
-    ->whereNull('deleted_at')
-    ->whereNotNull('email_verified_at');
+    ->where_in('id', [1, 2, 3])
+    ->where_between('age', 18, 65)
+    ->where_null('deleted_at')
+    ->where_not_null('email_verified_at');
 ```
 
 ### Relation-aware filters
@@ -74,10 +74,10 @@ $users = (new User())
     ->order_by('name')
     ->limit(20)
     ->offset(40)
-    ->groupStart()
+    ->group_start()
         ->like('company_name', 'North%')
-        ->orLike('email', 'north@example.com')
-    ->groupEnd()
+        ->or_like('email', 'north@example.com')
+    ->group_end()
     ->get();
 // `take()` and `skip()` are aliases for `limit()` and `offset()`.
 ```
@@ -96,10 +96,10 @@ $installations = (new Installation())
 ```php
 $report = (new Installation())
     ->select('id, title, created_date')
-    ->selectMin('temperature')
-    ->selectMax('pressure')
-    ->selectAvg('uptime')
-    ->selectSum('energy_usage')
+    ->select_min('temperature')
+    ->select_max('pressure')
+    ->select_avg('uptime')
+    ->select_sum('energy_usage')
     ->get();
 ```
 
@@ -186,13 +186,13 @@ $posts = (new Post())
 ## Finding Individual Records
 ```php
 $user = (new User())->find(42);            // by primary key
-$user = (new User())->findOrFail(42);      // throws if missing
+$user = (new User())->find_or_fail(42);    // throws if missing
 $post = (new Post())
     ->where('featured', 1)
     ->first();                             // first match
 
 $invoice = (new Invoice())
-    ->firstOrCreate(
+    ->first_or_create(
         ['reference' => 'INV-2025-001'],
         ['status' => 'draft', 'currency' => 'EUR']
     );

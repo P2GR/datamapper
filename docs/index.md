@@ -182,7 +182,7 @@ $customers = (new Customer())
     ])
     ->where('status', 'premium')
     ->where('credits >', 100)
-    ->whereNotNull('email_verified_at')
+    ->where_not_null('email_verified_at')
     ->order_by('total_spent', 'DESC')
     ->cache(3600)  // Cache for 1 hour
     ->get();

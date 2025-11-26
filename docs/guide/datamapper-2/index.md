@@ -103,7 +103,7 @@ $users = (new User())
     ->get();
 
 // Clear cache
-(new User())->clearCache('premium_users');
+(new User())->clear_cache('premium_users');
 ```
 
 [Learn More →](/guide/datamapper-2/caching)
@@ -236,7 +236,7 @@ Build complex queries with ease:
 ```php
 // Subqueries
 $users = (new User())
-    ->whereIn('id', function($subquery) {
+    ->where_in('id', function($subquery) {
         $subquery->select('user_id')
                  ->from('orders')
                  ->where('total >', 1000);
