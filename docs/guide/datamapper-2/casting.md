@@ -214,9 +214,9 @@ echo $user->username;  // "johndoe2024" (cleaned)
 
 ## Complete Examples
 
-### toArray() - Export with Casting and Accessors
+### to_array() - Export with Casting and Accessors
 
-The toArray() method exports all attributes with casting applied AND includes computed accessor values:
+The to_array() method exports all attributes with casting applied AND includes computed accessor values:
 
 ```php
 
@@ -237,7 +237,7 @@ $user = new User();
 $user->get_by_id(1);
 
 // Export to array with casts and accessors
-$data = $user->toArray();
+$data = $user->to_array();
 
 // Output:
 // [
@@ -250,11 +250,11 @@ $data = $user->toArray();
 // ]
 
 // Perfect for JSON APIs
-echo json_encode($user->toArray());
+echo json_encode($user->to_array());
 
 ```
 
-**Note:**toArray() automatically includes all computed accessor properties that don't exist in the database. This is perfect for API responses!
+**Note:** to_array() automatically includes all computed accessor properties that don't exist in the database. This is perfect for API responses!
 
 ### JSON/Array Casting
 

@@ -20,7 +20,7 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	/**
 	 * @var string FQCN for the Redis client
 	 */
-	protected $redisClass = 'Redis';
+	protected $redis_class = 'Redis';
 
 	/**
 	 * @var string Key prefix
@@ -57,7 +57,7 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		}
 		
 		// Create Redis instance
-		$this->redis = new $this->redisClass();
+		$this->redis = new $this->redis_class();
 		
 		// Set defaults
 		$host = isset($config['host']) ? $config['host'] : '127.0.0.1';
@@ -161,7 +161,7 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	{
 		// Only flush keys with our prefix
 		$pattern = $this->prefix . '*';
-		$deleted = $this->deletePattern($pattern);
+		$deleted = $this->delete_pattern($pattern);
 		
 		return true;
 	}
@@ -185,7 +185,7 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	 * @param string $pattern Pattern to match (e.g., 'user:*')
 	 * @return int Number of keys deleted
 	 */
-	public function deletePattern($pattern)
+	public function delete_pattern($pattern)
 	{
 		$deleted = 0;
 		$iterator = null;
@@ -200,13 +200,18 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		
 		return $deleted;
 	}
+
+	public function deletePattern($pattern)
+	{
+		return $this->delete_pattern($pattern);
+	}
 	
 	/**
 	 * Get cache statistics
 	 *
 	 * @return array Cache stats (hits, misses, memory, etc.)
 	 */
-	public function getStats()
+	public function get_stats()
 	{
 		$info = $this->redis->info();
 		
@@ -225,6 +230,11 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 			'version' => isset($info['redis_version']) ? $info['redis_version'] : 'unknown',
 			'connected_clients' => isset($info['connected_clients']) ? $info['connected_clients'] : 0
 		]);
+	}
+
+	public function getStats()
+	{
+		return $this->get_stats();
 	}
 	
 	/**
@@ -257,7 +267,7 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	 * @param array $keys Array of cache keys
 	 * @return array Associative array of key => value pairs
 	 */
-	public function getMultiple(array $keys)
+	public function get_multiple(array $keys)
 	{
 		$prefixed = array_map(function($key) {
 			return $this->prefix . $key;
@@ -277,6 +287,11 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		
 		return $result;
 	}
+
+	public function getMultiple(array $keys)
+	{
+		return $this->get_multiple($keys);
+	}
 	
 	/**
 	 * Set multiple cache items at once
@@ -285,9 +300,9 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	 * @param int $ttl Time to live in seconds
 	 * @return bool TRUE on success
 	 */
-	public function setMultiple(array $items, $ttl = 3600)
+	public function set_multiple(array $items, $ttl = 3600)
 	{
-		$pipe = $this->redis->multi(constant($this->redisClass . '::PIPELINE'));
+		$pipe = $this->redis->multi(constant($this->redis_class . '::PIPELINE'));
 		
 		foreach ($items as $key => $value) {
 			$pipe->setex(
@@ -301,6 +316,11 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		$this->stats['writes'] += count($items);
 		
 		return !in_array(false, $results, true);
+	}
+
+	public function setMultiple(array $items, $ttl = 3600)
+	{
+		return $this->set_multiple($items, $ttl);
 	}
 	
 	/**

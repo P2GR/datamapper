@@ -42,7 +42,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	/**
 	 * @var string FQCN for the Memcached client
 	 */
-	protected $memcachedClass = 'Memcached';
+	protected $memcached_class = 'Memcached';
 
 	/**
 	 * @var string Key prefix
@@ -78,7 +78,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		
 		// Create Memcached instance
 		$persistent_id = isset($config['persistent_id']) ? $config['persistent_id'] : null;
-		$this->memcached = new $this->memcachedClass($persistent_id);
+		$this->memcached = new $this->memcached_class($persistent_id);
 		
 		// Set prefix
 		if (isset($config['prefix'])) {
@@ -86,12 +86,12 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		}
 		
 		// Set options
-		$this->memcached->setOption(constant($this->memcachedClass . '::OPT_BINARY_PROTOCOL'), true);
-		$this->memcached->setOption(constant($this->memcachedClass . '::OPT_LIBKETAMA_COMPATIBLE'), true);
+		$this->memcached->setOption(constant($this->memcached_class . '::OPT_BINARY_PROTOCOL'), true);
+		$this->memcached->setOption(constant($this->memcached_class . '::OPT_LIBKETAMA_COMPATIBLE'), true);
 		
 		// Enable compression by default
 		$compression = isset($config['compression']) ? $config['compression'] : true;
-		$this->memcached->setOption(constant($this->memcachedClass . '::OPT_COMPRESSION'), $compression);
+		$this->memcached->setOption(constant($this->memcached_class . '::OPT_COMPRESSION'), $compression);
 		
 		// Add servers
 		$servers = isset($config['servers']) ? $config['servers'] : [
@@ -120,12 +120,12 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	{
 		$value = $this->memcached->get($this->prefix . $key);
 		
-		if ($this->memcached->getResultCode() === constant($this->memcachedClass . '::RES_NOTFOUND')) {
+		if ($this->memcached->getResultCode() === constant($this->memcached_class . '::RES_NOTFOUND')) {
 			$this->stats['misses']++;
 			return null;
 		}
 		
-		if ($this->memcached->getResultCode() !== constant($this->memcachedClass . '::RES_SUCCESS')) {
+		if ($this->memcached->getResultCode() !== constant($this->memcached_class . '::RES_SUCCESS')) {
 			$this->stats['misses']++;
 			return null;
 		}
@@ -167,7 +167,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	{
 		$result = $this->memcached->delete($this->prefix . $key);
 		
-		if ($result || $this->memcached->getResultCode() === constant($this->memcachedClass . '::RES_NOTFOUND')) {
+		if ($result || $this->memcached->getResultCode() === constant($this->memcached_class . '::RES_NOTFOUND')) {
 			$this->stats['deletes']++;
 			return true;
 		}
@@ -197,7 +197,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	public function has($key)
 	{
 		$this->memcached->get($this->prefix . $key);
-		return $this->memcached->getResultCode() === constant($this->memcachedClass . '::RES_SUCCESS');
+		return $this->memcached->getResultCode() === constant($this->memcached_class . '::RES_SUCCESS');
 	}
 	
 	/**
@@ -209,7 +209,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 * @param string $pattern Pattern to match (e.g., 'user:*')
 	 * @return int Number of keys deleted
 	 */
-	public function deletePattern($pattern)
+	public function delete_pattern($pattern)
 	{
 		// Memcached doesn't support pattern deletion natively
 		// We would need to maintain a separate index of keys
@@ -219,13 +219,18 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		
 		return 0;
 	}
+
+	public function deletePattern($pattern)
+	{
+		return $this->delete_pattern($pattern);
+	}
 	
 	/**
 	 * Get cache statistics
 	 *
 	 * @return array Cache stats (hits, misses, memory, etc.)
 	 */
-	public function getStats()
+	public function get_stats()
 	{
 		$server_stats = $this->memcached->getStats();
 		
@@ -249,12 +254,17 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		return array_merge($this->stats, [
 			'entries' => $total_items,
 			'memory_used' => $total_size,
-			'memory_human' => $this->formatBytes($total_size),
+			'memory_human' => $this->format_bytes($total_size),
 			'driver' => 'memcached',
 			'version' => $this->memcached->getVersion(),
 			'servers' => count($server_stats),
 			'uptime' => $uptime
 		]);
+	}
+
+	public function getStats()
+	{
+		return $this->get_stats();
 	}
 	
 	/**
@@ -287,7 +297,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 * @param array $keys Array of cache keys
 	 * @return array Associative array of key => value pairs
 	 */
-	public function getMultiple(array $keys)
+	public function get_multiple(array $keys)
 	{
 		$prefixed = array_map(function($key) {
 			return $this->prefix . $key;
@@ -313,6 +323,11 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		
 		return $result;
 	}
+
+	public function getMultiple(array $keys)
+	{
+		return $this->get_multiple($keys);
+	}
 	
 	/**
 	 * Set multiple cache items at once
@@ -321,7 +336,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 * @param int $ttl Time to live in seconds
 	 * @return bool TRUE on success
 	 */
-	public function setMultiple(array $items, $ttl = 3600)
+	public function set_multiple(array $items, $ttl = 3600)
 	{
 		$prefixed = [];
 		foreach ($items as $key => $value) {
@@ -336,6 +351,11 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		
 		return $result;
 	}
+
+	public function setMultiple(array $items, $ttl = 3600)
+	{
+		return $this->set_multiple($items, $ttl);
+	}
 	
 	/**
 	 * Format bytes to human-readable format
@@ -343,7 +363,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 * @param int $bytes Bytes
 	 * @return string Formatted size
 	 */
-	protected function formatBytes($bytes)
+	protected function format_bytes($bytes)
 	{
 		$units = ['B', 'KB', 'MB', 'GB'];
 		$bytes = max($bytes, 0);
@@ -352,6 +372,11 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		$bytes /= pow(1024, $pow);
 		
 		return round($bytes, 2) . ' ' . $units[$pow];
+	}
+
+	protected function formatBytes($bytes)
+	{
+		return $this->format_bytes($bytes);
 	}
 }
 

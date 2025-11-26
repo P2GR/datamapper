@@ -75,7 +75,7 @@ class DataMapperIterationTest extends TestCase
             })
             ->take(3);
 
-        $results = $lazy->toArray();
+        $results = $lazy->to_array();
 
         $this->assertSame(array(
             'ALPHA@EXAMPLE.COM',

@@ -56,12 +56,22 @@ interface DMZ_CacheInterface
 	 * @param string $pattern Pattern to match (e.g., 'user:*')
 	 * @return int Number of keys deleted
 	 */
+	public function delete_pattern($pattern);
+
+	/**
+	 * @deprecated Temporary camelCase alias for backward compatibility.
+	 */
 	public function deletePattern($pattern);
 	
 	/**
 	 * Get cache statistics.
 	 *
 	 * @return array Cache stats (hits, misses, size, etc.)
+	 */
+	public function get_stats();
+
+	/**
+	 * @deprecated Temporary camelCase alias for backward compatibility.
 	 */
 	public function getStats();
 }

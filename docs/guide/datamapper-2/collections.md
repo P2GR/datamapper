@@ -124,24 +124,24 @@ $expensive = $products->collect()->where('price', '>', 100);
 $recent = $posts->collect()->where('created_at', '>=', '2024-01-01');
 ```
 
-#### whereIn() / whereNotIn()
+#### where_in() / where_not_in()
 
 ```php
-$selected = $users->collect()->whereIn('id', [1, 5, 10, 15]);
-$excluded = $users->collect()->whereNotIn('status', ['banned', 'deleted']);
+$selected = $users->collect()->where_in('id', [1, 5, 10, 15]);
+$excluded = $users->collect()->where_not_in('status', ['banned', 'deleted']);
 ```
 
-#### whereNull() / whereNotNull()
+#### where_null() / where_not_null()
 
 ```php
-$pending = $orders->collect()->whereNull('shipped_at');
-$completed = $orders->collect()->whereNotNull('completed_at');
+$pending = $orders->collect()->where_null('shipped_at');
+$completed = $orders->collect()->where_not_null('completed_at');
 ```
 
-#### whereBetween()
+#### where_between()
 
 ```php
-$midRange = $products->collect()->whereBetween('price', [10, 50]);
+$midRange = $products->collect()->where_between('price', [10, 50]);
 ```
 
 #### first() / last()
@@ -185,7 +185,7 @@ $formatted = $products->collect()->map(function($product) {
 });
 ```
 
-#### pluck()
+    $allTags = $posts->collect()->flat_map(function($post) {
 
 Extract single column:
 
@@ -209,12 +209,12 @@ $collection->transform(function($user) {
 });
 ```
 
-#### flatMap()
+#### flat_map()
 
 Map and flatten results:
 
 ```php
-$allTags = $posts->collect()->flatMap(function($post) {
+$allTags = $posts->collect()->flat_map(function($post) {
     return $post->tags; // Returns array of tags
 });
 // Single flat array of all tags
@@ -266,23 +266,23 @@ $commonRole = $users->collect()->mode('role');
 
 ### Sorting Methods
 
-#### sortBy() / sortByDesc()
+#### sort_by() / sort_by_desc()
 
 ```php
-$byName = $users->collect()->sortBy('username');
-$byAge = $users->collect()->sortByDesc('age');
+$byName = $users->collect()->sort_by('username');
+$byAge = $users->collect()->sort_by_desc('age');
 
 // With callback
-$sorted = $users->collect()->sortBy(function($user) {
+$sorted = $users->collect()->sort_by(function($user) {
     return $user->last_name . ' ' . $user->first_name;
 });
 ```
 
-#### sort() / sortDesc()
+#### sort() / sort_desc()
 
 ```php
 $numbers->collect()->sort();        // Ascending
-$numbers->collect()->sortDesc();    // Descending
+$numbers->collect()->sort_desc();    // Descending
 ```
 
 #### reverse()
@@ -396,14 +396,14 @@ $hasUser = $users->collect()->contains(function($user) {
 });
 ```
 
-#### isEmpty() / isNotEmpty()
+#### is_empty() / is_not_empty()
 
 ```php
-if ($users->collect()->isEmpty()) {
+if ($users->collect()->is_empty()) {
     echo "No users found";
 }
 
-if ($products->collect()->isNotEmpty()) {
+if ($products->collect()->is_not_empty()) {
     // Process products
 }
 ```
@@ -491,14 +491,14 @@ Collections excel at chaining:
 $result = Post::where('status', 'published')
     ->collect()
     ->filter(fn($p) => $p->view_count > 1000)
-    ->sortByDesc('created_at')
+    ->sort_by_desc('created_at')
     ->take(10)
     ->map(fn($p) => [
         'title' => $p->title,
         'url' => site_url('posts/' . $p->slug),
         'views' => number_format($p->view_count)
     ])
-    ->toArray();
+    ->to_array();
 ```
 
 ## Real-World Examples
@@ -532,7 +532,7 @@ $analytics = [
     'by_role' => $users->group_by('role')->map->count(),
     'by_country' => $users->group_by('country')->map->count(),
     'average_age' => $users->avg('age'),
-    'top_contributors' => $users->sortByDesc('contribution_score')->take(10)
+    'top_contributors' => $users->sort_by_desc('contribution_score')->take(10)
 ];
 ```
 
@@ -551,7 +551,7 @@ $catalog = $products
                 'max' => $categoryProducts->max('price'),
                 'avg' => $categoryProducts->avg('price')
             ],
-            'products' => $categoryProducts->sortBy('name')->values()
+            'products' => $categoryProducts->sort_by('name')->values()
         ];
     });
 ```
@@ -585,22 +585,22 @@ foreach ($users as $user) {
 ### To Array
 
 ```php
-$array = $collection->toArray();
+$array = $collection->to_array();
 $array = $collection->all();
 ```
 
 ### To JSON
 
 ```php
-$json = $collection->toJson();
-$json = $collection->toJson(JSON_PRETTY_PRINT);
+$json = $collection->to_json();
+$json = $collection->to_json(JSON_PRETTY_PRINT);
 ```
 
 ### To Query Result
 
 ```php
 // Get back to DataMapper result
-$result = $collection->toDataMapper();
+$result = $collection->to_data_mapper();
 ```
 
 ## Custom Collections

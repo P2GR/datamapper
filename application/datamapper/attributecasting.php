@@ -329,6 +329,11 @@ trait DMZ_AttributeCasting
         
         return null;
     }
+
+            protected function as_date_time(mixed $value): ?DateTime
+            {
+                return $this->asDateTime($value);
+            }
     
     /**
      * Convert a value to date-only DateTime object
@@ -343,6 +348,11 @@ trait DMZ_AttributeCasting
             $dt->setTime(0, 0, 0);
         }
         return $dt;
+    }
+
+    protected function as_date(mixed $value): ?DateTime
+    {
+        return $this->asDate($value);
     }
     
     /**
@@ -363,6 +373,11 @@ trait DMZ_AttributeCasting
         
         return null;
     }
+
+            protected function from_date_time(mixed $value): ?string
+            {
+                return $this->fromDateTime($value);
+            }
     
     /**
      * Convert snake_case to StudlyCase
@@ -376,13 +391,18 @@ trait DMZ_AttributeCasting
         $value = ucwords($value);
         return str_replace(' ', '', $value);
     }
+
+    protected function studly_case(string $value): string
+    {
+        return $this->studlyCase($value);
+    }
     
     /**
      * Get all attributes with casting applied
      * 
      * @return array
      */
-    public function toArray(): array
+    public function to_array(): array
     {
         $attributes = parent::__call('all_to_array', []);
         
@@ -409,6 +429,11 @@ trait DMZ_AttributeCasting
         
         return $attributes;
     }
+
+    public function toArray(): array
+    {
+        return $this->to_array();
+    }
     
     /**
      * Convert StudlyCase to snake_case
@@ -420,5 +445,10 @@ trait DMZ_AttributeCasting
     {
         $value = preg_replace('/([A-Z])/', '_$1', $value);
         return strtolower(ltrim($value, '_'));
+    }
+
+    protected function snake_case(string $value): string
+    {
+        return $this->snakeCase($value);
     }
 }

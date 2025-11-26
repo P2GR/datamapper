@@ -196,7 +196,7 @@ $report = $u->where('created_at >', '2024-01-01')
     ->take(100);
 
 // Convert to array for final report
-$top_customers = $report->toArray();
+$top_customers = $report->to_array();
 ```
 
 ## Best Practices

@@ -39,6 +39,8 @@ class FakeDataMapper extends DataMapper
         $this->fields = $this->detectFields($rows);
         $this->setRows($rows);
 
+        $this->_field_tracking = array('matches' => array());
+
         // Provide minimal database stub to satisfy DataMapper expectations
         $this->db = (object) array(
             'queries' => array(),

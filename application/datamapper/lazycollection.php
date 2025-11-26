@@ -19,6 +19,12 @@ class DMZ_LazyCollection implements IteratorAggregate
 	/**
 	 * @var int Chunk size for fetching
 	 */
+	protected $chunk_size;
+
+	/**
+	 * @deprecated Temporary camelCase alias for backward compatibility.
+	 * @var int
+	 */
 	protected $chunkSize;
 	
 	/**
@@ -32,10 +38,11 @@ class DMZ_LazyCollection implements IteratorAggregate
 	 * @param DataMapper $query The DataMapper query object
 	 * @param int $chunkSize Chunk size for fetching (default: 1000)
 	 */
-	public function __construct($query, $chunkSize = 1000)
+	public function __construct($query, $chunk_size = 1000)
 	{
 		$this->query = $query;
-		$this->chunkSize = $chunkSize;
+		$this->chunk_size = $chunk_size;
+		$this->chunkSize =& $this->chunk_size;
 	}
 	
 	/**
@@ -138,24 +145,24 @@ class DMZ_LazyCollection implements IteratorAggregate
 		$offset = 0;
 		$taken = 0;
 		$skipped = 0;
-		$seenKeys = [];
+		$seen_keys = [];
 		
 		// Extract take/skip limits
-		$takeLimit = null;
-		$skipCount = 0;
+		$take_limit = null;
+		$skip_count = 0;
 		
 		foreach ($this->operations as $op) {
-			if ($op['type'] === 'take' && $takeLimit === null) {
-				$takeLimit = $op['limit'];
+			if ($op['type'] === 'take' && $take_limit === null) {
+				$take_limit = $op['limit'];
 			}
 			if ($op['type'] === 'skip') {
-				$skipCount += $op['count'];
+				$skip_count += $op['count'];
 			}
 		}
 		
 		while (true) {
 			// Stop if we've taken enough items
-			if ($takeLimit !== null && $taken >= $takeLimit) {
+			if ($take_limit !== null && $taken >= $take_limit) {
 				break;
 			}
 			
@@ -163,7 +170,7 @@ class DMZ_LazyCollection implements IteratorAggregate
 			$chunk_query = clone $this->query;
 			
 			// Fetch chunk
-			$chunk_query->limit($this->chunkSize, $offset)->get();
+			$chunk_query->limit($this->chunk_size, $offset)->get();
 			
 			// Stop if no results
 			if (empty($chunk_query->all)) {
@@ -173,12 +180,12 @@ class DMZ_LazyCollection implements IteratorAggregate
 			// Process each item in chunk
 			foreach ($chunk_query->all as $item) {
 				// Stop if we've taken enough
-				if ($takeLimit !== null && $taken >= $takeLimit) {
+				if ($take_limit !== null && $taken >= $take_limit) {
 					break 2;
 				}
 				
 				// Apply all operations
-				$processed = $this->applyOperations($item, $seenKeys);
+				$processed = $this->apply_operations($item, $seen_keys);
 				
 				// Skip if filtered out
 				if ($processed === null) {
@@ -186,7 +193,7 @@ class DMZ_LazyCollection implements IteratorAggregate
 				}
 				
 				// Handle skip operation
-				if ($skipped < $skipCount) {
+				if ($skipped < $skip_count) {
 					$skipped++;
 					continue;
 				}
@@ -197,16 +204,21 @@ class DMZ_LazyCollection implements IteratorAggregate
 			}
 			
 			// Stop if we got less than chunkSize (last chunk)
-			if (count($chunk_query->all) < $this->chunkSize) {
+			if (count($chunk_query->all) < $this->chunk_size) {
 				break;
 			}
 			
 			// Move to next chunk
-			$offset += $this->chunkSize;
+			$offset += $this->chunk_size;
 			
 			// Clear memory
 			$chunk_query = null;
 		}
+	}
+
+	public function get_iterator(): Traversable
+	{
+		return $this->getIterator();
 	}
 	
 	/**
@@ -216,7 +228,7 @@ class DMZ_LazyCollection implements IteratorAggregate
 	 * @param array &$seenKeys For tracking unique items
 	 * @return mixed|null Processed item or null if filtered out
 	 */
-	protected function applyOperations($item, &$seenKeys)
+	protected function apply_operations($item, &$seen_keys)
 	{
 		$result = $item;
 		
@@ -243,15 +255,15 @@ class DMZ_LazyCollection implements IteratorAggregate
 					
 				case 'unique':
 					$key = $op['key'];
-					$uniqueValue = $key === null ? serialize($result) : (
+					$unique_value = $key === null ? serialize($result) : (
 						is_object($result) ? (isset($result->{$key}) ? $result->{$key} : null) :
 						(is_array($result) ? (isset($result[$key]) ? $result[$key] : null) : null)
 					);
 					
-					if (isset($seenKeys[$uniqueValue])) {
+					if (isset($seen_keys[$unique_value])) {
 						return null; // Duplicate
 					}
-					$seenKeys[$uniqueValue] = true;
+					$seen_keys[$unique_value] = true;
 					break;
 					
 				// take and skip are handled in getIterator
@@ -263,6 +275,11 @@ class DMZ_LazyCollection implements IteratorAggregate
 		
 		return $result;
 	}
+
+		protected function applyOperations($item, &$seenKeys)
+		{
+			return $this->apply_operations($item, $seenKeys);
+		}
 	
 	/**
 	 * Convert lazy collection to array (forces evaluation)
@@ -271,9 +288,14 @@ class DMZ_LazyCollection implements IteratorAggregate
 	 *
 	 * @return array
 	 */
-	public function toArray()
+	public function to_array()
 	{
 		return iterator_to_array($this->getIterator(), false);
+	}
+
+	public function toArray()
+	{
+		return $this->to_array();
 	}
 	
 	/**

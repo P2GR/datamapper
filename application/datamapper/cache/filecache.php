@@ -70,7 +70,7 @@ class DMZ_FileCache implements DMZ_CacheInterface
 	 */
 	public function get($key)
 	{
-		$file = $this->getFilePath($key);
+		$file = $this->get_file_path($key);
 		
 		if (!file_exists($file)) {
 			$this->stats['misses']++;
@@ -107,7 +107,7 @@ class DMZ_FileCache implements DMZ_CacheInterface
 	 */
 	public function set($key, $value, $ttl = 3600)
 	{
-		$file = $this->getFilePath($key);
+		$file = $this->get_file_path($key);
 		
 		$data = [
 			'expires' => time() + $ttl,
@@ -133,7 +133,7 @@ class DMZ_FileCache implements DMZ_CacheInterface
 	 */
 	public function delete($key)
 	{
-		$file = $this->getFilePath($key);
+		$file = $this->get_file_path($key);
 		
 		if (file_exists($file)) {
 			$this->stats['deletes']++;
@@ -182,7 +182,7 @@ class DMZ_FileCache implements DMZ_CacheInterface
 	 * @param string $pattern Pattern to match (e.g., 'user:*')
 	 * @return int Number of keys deleted
 	 */
-	public function deletePattern($pattern)
+	public function delete_pattern($pattern)
 	{
 		// Convert pattern to filesystem glob
 		$pattern = str_replace(':', '_', $pattern);
@@ -203,13 +203,18 @@ class DMZ_FileCache implements DMZ_CacheInterface
 		
 		return $deleted;
 	}
+
+	public function deletePattern($pattern)
+	{
+		return $this->delete_pattern($pattern);
+	}
 	
 	/**
 	 * Get cache statistics
 	 *
 	 * @return array Cache stats (hits, misses, size, etc.)
 	 */
-	public function getStats()
+	public function get_stats()
 	{
 		$files = glob($this->cache_dir . '/*');
 		$size = 0;
@@ -227,10 +232,15 @@ class DMZ_FileCache implements DMZ_CacheInterface
 		return array_merge($this->stats, [
 			'entries' => $count,
 			'size' => $size,
-			'size_human' => $this->formatBytes($size),
+			'size_human' => $this->format_bytes($size),
 			'driver' => 'file',
 			'cache_dir' => $this->cache_dir
 		]);
+	}
+
+	public function getStats()
+	{
+		return $this->get_stats();
 	}
 	
 	/**
@@ -238,7 +248,7 @@ class DMZ_FileCache implements DMZ_CacheInterface
 	 *
 	 * @return int Number of entries deleted
 	 */
-	public function cleanExpired()
+	public function clean_expired()
 	{
 		$files = glob($this->cache_dir . '/*');
 		
@@ -271,6 +281,11 @@ class DMZ_FileCache implements DMZ_CacheInterface
 		
 		return $deleted;
 	}
+
+	public function cleanExpired()
+	{
+		return $this->clean_expired();
+	}
 	
 	/**
 	 * Get file path for cache key
@@ -278,11 +293,16 @@ class DMZ_FileCache implements DMZ_CacheInterface
 	 * @param string $key Cache key
 	 * @return string File path
 	 */
-	protected function getFilePath($key)
+	protected function get_file_path($key)
 	{
 		// Sanitize key for filename
 		$safe_key = preg_replace('/[^a-z0-9_\-]/i', '_', $key);
 		return $this->cache_dir . '/' . $safe_key;
+	}
+
+	protected function getFilePath($key)
+	{
+		return $this->get_file_path($key);
 	}
 	
 	/**
@@ -291,7 +311,7 @@ class DMZ_FileCache implements DMZ_CacheInterface
 	 * @param int $bytes Bytes
 	 * @return string Formatted size
 	 */
-	protected function formatBytes($bytes)
+	protected function format_bytes($bytes)
 	{
 		$units = ['B', 'KB', 'MB', 'GB'];
 		$bytes = max($bytes, 0);
@@ -300,6 +320,11 @@ class DMZ_FileCache implements DMZ_CacheInterface
 		$bytes /= pow(1024, $pow);
 		
 		return round($bytes, 2) . ' ' . $units[$pow];
+	}
+
+	protected function formatBytes($bytes)
+	{
+		return $this->format_bytes($bytes);
 	}
 }
 

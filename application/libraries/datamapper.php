@@ -7845,7 +7845,7 @@ class DataMapper implements IteratorAggregate {
 			$this->get($limit, $offset);
 		}
 		
-		return new DMZ_Collection($this->all ?? array());
+		return new DMZ_Collection($this->all ?? array(), $this);
 	}
 
 	/**
@@ -8279,6 +8279,11 @@ class DataMapper implements IteratorAggregate {
 			$pattern = 'query:' . strtolower($this->model) . ':*';
 		}
 		
+		if (method_exists($driver, 'delete_pattern'))
+		{
+			return $driver->delete_pattern($pattern);
+		}
+
 		return $driver->deletePattern($pattern);
 	}
 	
@@ -8496,7 +8501,14 @@ class DataMapper implements IteratorAggregate {
 
 		// Clear all cache for this model
 		$pattern = 'query:' . strtolower($this->model) . ':*';
-		$driver->deletePattern($pattern);
+		if (method_exists($driver, 'delete_pattern'))
+		{
+			$driver->delete_pattern($pattern);
+		}
+		else
+		{
+			$driver->deletePattern($pattern);
+		}
 	}
 
 	/**

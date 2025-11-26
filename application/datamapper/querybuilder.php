@@ -687,7 +687,7 @@ class DMZ_QueryBuilder {
         }
         
         // Create collection from results
-        $collection = new DMZ_Collection($this->model->all);
+        $collection = new DMZ_Collection($this->model->all, $this->model);
         
         // Apply eager loading if requested
         if (!empty($this->eager_loads)) {
@@ -1752,14 +1752,113 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @var array
      */
     protected $items = array();
+
+    /**
+     * Source model reference for rebuilding DataMapper instances.
+     * @var DataMapper|null
+     */
+    protected $source_model;
     
     /**
      * Constructor
      *
      * @param array $items Initial items
      */
-    public function __construct($items = array()) {
+    public function __construct($items = array(), $source_model = NULL) {
         $this->items = is_array($items) ? array_values($items) : array();
+        $this->source_model = ($source_model instanceof DataMapper) ? $source_model : NULL;
+    }
+
+    /**
+     * Create a new collection instance with shared source model.
+     */
+    protected function new_collection($items)
+    {
+        return new DMZ_Collection($items, $this->source_model);
+    }
+
+    /**
+     * Helper to retrieve an item property or array key.
+     */
+    protected function get_value($item, $key, $default = NULL)
+    {
+        if (is_null($key)) {
+            return $item;
+        }
+
+        if (is_array($item)) {
+            return array_key_exists($key, $item) ? $item[$key] : $default;
+        }
+
+        if (is_object($item) && isset($item->{$key})) {
+            return $item->{$key};
+        }
+
+        return $default;
+    }
+
+    /**
+     * Normalize incoming values to an array.
+     */
+    protected function normalize_to_array($value)
+    {
+        if ($value instanceof self) {
+            return $value->to_array();
+        }
+
+        if ($value instanceof Traversable) {
+            return iterator_to_array($value, FALSE);
+        }
+
+        return is_array($value) ? $value : array($value);
+    }
+
+    /**
+     * Build a value retriever callback for aggregations.
+     */
+    protected function value_retriever($value)
+    {
+        if (is_null($value)) {
+            return function($item) {
+                return $item;
+            };
+        }
+
+        if (is_callable($value)) {
+            return $value;
+        }
+
+        return function($item) use ($value) {
+            return $this->get_value($item, $value);
+        };
+    }
+
+    /**
+     * Compare two values using a supported operator.
+     */
+    protected function value_matches($actual, $operator, $expected): bool
+    {
+        switch ($operator) {
+            case '===':
+                return $actual === $expected;
+            case '!==':
+                return $actual !== $expected;
+            case '!=':
+            case '<>':
+                return $actual != $expected;
+            case '>':
+                return $actual > $expected;
+            case '<':
+                return $actual < $expected;
+            case '>=':
+                return $actual >= $expected;
+            case '<=':
+                return $actual <= $expected;
+            case '=':
+            case '==':
+            default:
+                return $actual == $expected;
+        }
     }
     
     /**
@@ -1767,8 +1866,18 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      *
      * @return mixed
      */
-    public function first() {
-        return isset($this->items[0]) ? $this->items[0] : NULL;
+    public function first($callback = NULL, $default = NULL) {
+        if ($callback === NULL) {
+            return isset($this->items[0]) ? $this->items[0] : $default;
+        }
+
+        foreach ($this->items as $key => $item) {
+            if (call_user_func($callback, $item, $key)) {
+                return $item;
+            }
+        }
+
+        return $default;
     }
     
     /**
@@ -1776,9 +1885,21 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      *
      * @return mixed
      */
-    public function last() {
+    public function last($callback = NULL, $default = NULL) {
         $count = count($this->items);
-        return $count > 0 ? $this->items[$count - 1] : NULL;
+
+        if ($callback === NULL) {
+            return $count > 0 ? $this->items[$count - 1] : $default;
+        }
+
+        for ($index = $count - 1; $index >= 0; $index--) {
+            $item = $this->items[$index];
+            if (call_user_func($callback, $item, $index)) {
+                return $item;
+            }
+        }
+
+        return $default;
     }
     
     /**
@@ -1788,6 +1909,13 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      */
     public function is_empty() {
         return empty($this->items);
+    }
+
+    /**
+     * Determine if collection has items.
+     */
+    public function is_not_empty() {
+        return !$this->is_empty();
     }
     
     /**
@@ -1874,7 +2002,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @return DMZ_Collection Collection of values for chaining
      */
     public function pluck_collection($field) {
-        return new DMZ_Collection($this->pluck($field));
+        return $this->new_collection($this->pluck($field));
     }
     
     /**
@@ -1903,6 +2031,105 @@ class DMZ_Collection implements IteratorAggregate, Countable {
     public function values() {
         return $this->items;
     }
+
+    /**
+     * Filter collection by key/value pairs or callback.
+     */
+    public function where($key, $operator = NULL, $value = NULL) {
+        if (is_callable($key)) {
+            return $this->filter($key);
+        }
+
+        if (is_array($key)) {
+            $filtered = $this;
+            foreach ($key as $k => $v) {
+                $filtered = $filtered->where($k, '=', $v);
+            }
+            return $filtered;
+        }
+
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        if ($operator === NULL) {
+            $operator = '=';
+        }
+
+        $operator = strtoupper($operator);
+
+        $items = array();
+        foreach ($this->items as $item) {
+            $actual = $this->get_value($item, $key);
+            if ($this->value_matches($actual, $operator, $value)) {
+                $items[] = $item;
+            }
+        }
+
+        return $this->new_collection($items);
+    }
+
+    /**
+     * Filter collection where key is in given values.
+     */
+    public function where_in($key, $values) {
+        $values = $this->normalize_to_array($values);
+
+        return $this->filter(function($item) use ($key, $values) {
+            $actual = $this->get_value($item, $key);
+            return in_array($actual, $values);
+        });
+    }
+
+    /**
+     * Filter collection where key is not in given values.
+     */
+    public function where_not_in($key, $values) {
+        $values = $this->normalize_to_array($values);
+
+        return $this->filter(function($item) use ($key, $values) {
+            $actual = $this->get_value($item, $key);
+            return !in_array($actual, $values);
+        });
+    }
+
+    /**
+     * Filter collection where key is NULL.
+     */
+    public function where_null($key) {
+        return $this->filter(function($item) use ($key) {
+            return $this->get_value($item, $key) === NULL;
+        });
+    }
+
+    /**
+     * Filter collection where key is not NULL.
+     */
+    public function where_not_null($key) {
+        return $this->filter(function($item) use ($key) {
+            return $this->get_value($item, $key) !== NULL;
+        });
+    }
+
+    /**
+     * Filter values within a range.
+     */
+    public function where_between($key, $start, $end = NULL) {
+        if (is_array($start)) {
+            $end = $start[1] ?? NULL;
+            $start = $start[0] ?? NULL;
+        }
+
+        if ($start === NULL || $end === NULL) {
+            return $this->new_collection(array());
+        }
+
+        return $this->filter(function($item) use ($key, $start, $end) {
+            $value = $this->get_value($item, $key);
+            return $value >= $start && $value <= $end;
+        });
+    }
     
     /**
      * Filter items using callback
@@ -1916,7 +2143,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
                 return !empty($item);
             };
         }
-        return new DMZ_Collection(array_filter($this->items, $callback));
+        return $this->new_collection(array_filter($this->items, $callback));
     }
     
     /**
@@ -1926,7 +2153,36 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @return DMZ_Collection
      */
     public function map($callback) {
-        return new DMZ_Collection(array_map($callback, $this->items));
+        return $this->new_collection(array_map($callback, $this->items));
+    }
+
+    /**
+     * Map and flatten the results into a single collection.
+     */
+    public function flat_map($callback) {
+        $results = array();
+
+        foreach ($this->items as $key => $item) {
+            $mapped = call_user_func($callback, $item, $key);
+            $values = $this->normalize_to_array($mapped);
+
+            foreach ($values as $value) {
+                $results[] = $value;
+            }
+        }
+
+        return $this->new_collection($results);
+    }
+
+    /**
+     * Transform items in-place.
+     */
+    public function transform($callback) {
+        foreach ($this->items as $key => $item) {
+            $this->items[$key] = call_user_func($callback, $item, $key);
+        }
+
+        return $this;
     }
     
     /**
@@ -1937,9 +2193,45 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      */
     public function each($callback) {
         foreach ($this->items as $key => $item) {
-            call_user_func($callback, $item, $key);
+            $result = call_user_func($callback, $item, $key);
+            if ($result === FALSE) {
+                break;
+            }
         }
         return $this;
+    }
+
+    /**
+     * Call a callback with the collection and return self.
+     */
+    public function tap($callback) {
+        call_user_func($callback, $this);
+        return $this;
+    }
+
+    /**
+     * Pass the collection to the callback and return the result.
+     */
+    public function pipe($callback) {
+        return call_user_func($callback, $this);
+    }
+
+    /**
+     * Partition items into truthy and falsy buckets.
+     */
+    public function partition($callback) {
+        $truthy = array();
+        $falsy = array();
+
+        foreach ($this->items as $key => $item) {
+            if (call_user_func($callback, $item, $key)) {
+                $truthy[] = $item;
+            } else {
+                $falsy[] = $item;
+            }
+        }
+
+        return array($this->new_collection($truthy), $this->new_collection($falsy));
     }
     
     /**
@@ -1952,7 +2244,211 @@ class DMZ_Collection implements IteratorAggregate, Countable {
         $items = $collection instanceof DMZ_Collection ? 
                 $collection->to_array() : 
                 (array) $collection;
-        return new DMZ_Collection(array_merge($this->items, $items));
+        return $this->new_collection(array_merge($this->items, $items));
+    }
+
+    /**
+     * Concatenate additional items onto the collection.
+     */
+    public function concat($items) {
+        $items = $this->normalize_to_array($items);
+        return $this->new_collection(array_merge($this->items, $items));
+    }
+
+    /**
+     * Merge items without duplicates.
+     */
+    public function union($items) {
+        $items = $this->normalize_to_array($items);
+        $existing = array_map('serialize', $this->items);
+        $results = $this->items;
+
+        foreach ($items as $item) {
+            $serialized = serialize($item);
+            if (!in_array($serialized, $existing, TRUE)) {
+                $results[] = $item;
+                $existing[] = $serialized;
+            }
+        }
+
+        return $this->new_collection($results);
+    }
+
+    /**
+     * Zip the collection with other iterables.
+     */
+    public function zip(...$items) {
+        $arrays = array_map(function($value) {
+            return $this->normalize_to_array($value);
+        }, $items);
+
+        $lengths = array_map('count', $arrays);
+        $lengths[] = count($this->items);
+        $max = empty($lengths) ? 0 : max($lengths);
+
+        $results = array();
+
+        for ($index = 0; $index < $max; $index++) {
+            $tuple = array();
+            $tuple[] = array_key_exists($index, $this->items) ? $this->items[$index] : NULL;
+
+            foreach ($arrays as $array) {
+                $tuple[] = array_key_exists($index, $array) ? $array[$index] : NULL;
+            }
+
+            $results[] = $tuple;
+        }
+
+        return $this->new_collection($results);
+    }
+
+    /**
+     * Sum values using key or callback.
+     */
+    public function sum($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $total = 0;
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result !== NULL) {
+                $total += $result;
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * Calculate average value.
+     */
+    public function avg($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $total = 0;
+        $count = 0;
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result !== NULL) {
+                $total += $result;
+                $count++;
+            }
+        }
+
+        return $count === 0 ? NULL : $total / $count;
+    }
+
+    /**
+     * Alias for avg().
+     */
+    public function average($value = NULL) {
+        return $this->avg($value);
+    }
+
+    /**
+     * Minimum value using key or callback.
+     */
+    public function min($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $min = NULL;
+        $initialized = FALSE;
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result === NULL) {
+                continue;
+            }
+
+            if (!$initialized || $result < $min) {
+                $min = $result;
+                $initialized = TRUE;
+            }
+        }
+
+        return $initialized ? $min : NULL;
+    }
+
+    /**
+     * Maximum value using key or callback.
+     */
+    public function max($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $max = NULL;
+        $initialized = FALSE;
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result === NULL) {
+                continue;
+            }
+
+            if (!$initialized || $result > $max) {
+                $max = $result;
+                $initialized = TRUE;
+            }
+        }
+
+        return $initialized ? $max : NULL;
+    }
+
+    /**
+     * Median value using key or callback.
+     */
+    public function median($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $values = array();
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result !== NULL) {
+                $values[] = $result;
+            }
+        }
+
+        $count = count($values);
+        if ($count === 0) {
+            return NULL;
+        }
+
+        sort($values);
+        $middle = (int) floor(($count - 1) / 2);
+
+        if ($count % 2) {
+            return $values[$middle];
+        }
+
+        return ($values[$middle] + $values[$middle + 1]) / 2;
+    }
+
+    /**
+     * Mode value using key or callback.
+     */
+    public function mode($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $frequency = array();
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result === NULL) {
+                continue;
+            }
+
+            $key = is_scalar($result) ? $result : serialize($result);
+            if (!isset($frequency[$key])) {
+                $frequency[$key] = array('value' => $result, 'count' => 0);
+            }
+            $frequency[$key]['count']++;
+        }
+
+        if (empty($frequency)) {
+            return NULL;
+        }
+
+        usort($frequency, function($a, $b) {
+            return $b['count'] <=> $a['count'];
+        });
+
+        return $frequency[0]['value'];
     }
     
     /**
@@ -1961,7 +2457,18 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @return string
      */
     public function to_json() {
-        return json_encode($this->items);
+        $options = 0;
+        $depth = 512;
+
+        $args = func_get_args();
+        if (isset($args[0])) {
+            $options = $args[0];
+        }
+        if (isset($args[1])) {
+            $depth = $args[1];
+        }
+
+        return json_encode($this->items, $options, $depth);
     }
     
     /**
@@ -1971,6 +2478,22 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      */
     public function getIterator(): \Traversable {
         return new ArrayIterator($this->items);
+    }
+
+    /**
+     * Dump collection items for debugging.
+     */
+    public function dump() {
+        var_dump($this->items);
+        return $this;
+    }
+
+    /**
+     * Dump collection items and terminate execution.
+     */
+    public function dd() {
+        $this->dump();
+        exit(1);
     }
     
     /**
@@ -1991,10 +2514,51 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @return bool
      */
     public function contains($value, $key = NULL) {
-        if ($key !== NULL) {
-            return in_array($value, $this->pluck($key));
+        if (is_callable($value)) {
+            foreach ($this->items as $index => $item) {
+                if (call_user_func($value, $item, $index)) {
+                    return TRUE;
+                }
+            }
+            return FALSE;
         }
-        return in_array($value, $this->items);
+
+        if ($key !== NULL) {
+            foreach ($this->items as $item) {
+                if ($this->get_value($item, $key) == $value) {
+                    return TRUE;
+                }
+            }
+            return FALSE;
+        }
+
+        return in_array($value, $this->items, TRUE) || in_array($value, $this->items);
+    }
+
+    /**
+     * Determine if all items pass the given test.
+     */
+    public function every($callback) {
+        foreach ($this->items as $index => $item) {
+            if (!call_user_func($callback, $item, $index)) {
+                return FALSE;
+            }
+        }
+
+        return TRUE;
+    }
+
+    /**
+     * Determine if any item passes the given test.
+     */
+    public function some($callback) {
+        foreach ($this->items as $index => $item) {
+            if (call_user_func($callback, $item, $index)) {
+                return TRUE;
+            }
+        }
+
+        return FALSE;
     }
     
     /**
@@ -2004,23 +2568,87 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @param string $direction ASC or DESC
      * @return DMZ_Collection
      */
-    public function sort($callback, $direction = 'ASC') {
+    public function sort($callback = NULL, $direction = 'ASC') {
         $items = $this->items;
-        
+
+        if ($callback === NULL) {
+            $items = $this->items;
+            sort($items);
+            if (strtoupper($direction) === 'DESC') {
+                $items = array_reverse($items);
+            }
+            return $this->new_collection($items);
+        }
+
         if (is_callable($callback)) {
             usort($items, $callback);
+            if (strtoupper($direction) === 'DESC') {
+                $items = array_reverse($items);
+            }
         } else {
-            // Sort by key
-            usort($items, function($a, $b) use ($callback, $direction) {
-                $val_a = is_object($a) ? $a->{$callback} : $a[$callback];
-                $val_b = is_object($b) ? $b->{$callback} : $b[$callback];
-                
+            $key = $callback;
+            usort($items, function($a, $b) use ($key, $direction) {
+                $val_a = NULL;
+                $val_b = NULL;
+
+                if (is_array($a)) {
+                    $val_a = array_key_exists($key, $a) ? $a[$key] : NULL;
+                } elseif (is_object($a) && isset($a->{$key})) {
+                    $val_a = $a->{$key};
+                }
+
+                if (is_array($b)) {
+                    $val_b = array_key_exists($key, $b) ? $b[$key] : NULL;
+                } elseif (is_object($b) && isset($b->{$key})) {
+                    $val_b = $b->{$key};
+                }
+
                 $result = $val_a <=> $val_b;
                 return strtoupper($direction) === 'DESC' ? -$result : $result;
             });
         }
-        
-        return new DMZ_Collection($items);
+
+        return $this->new_collection($items);
+    }
+
+    /**
+     * Sort collection by key or callback.
+     */
+    public function sort_by($value, $direction = 'ASC') {
+        $items = $this->items;
+        $callback = $this->value_retriever($value);
+
+        usort($items, function($a, $b) use ($callback, $direction) {
+            $val_a = call_user_func($callback, $a);
+            $val_b = call_user_func($callback, $b);
+            $result = $val_a <=> $val_b;
+            return strtoupper($direction) === 'DESC' ? -$result : $result;
+        });
+
+        return $this->new_collection($items);
+    }
+
+    /**
+     * Sort collection descending by value.
+     */
+    public function sort_by_desc($value) {
+        return $this->sort_by($value, 'DESC');
+    }
+
+    /**
+     * Sort collection descending while preserving natural key order.
+     */
+    public function sort_desc($callback = NULL) {
+        return $this->sort($callback, 'DESC');
+    }
+
+    /**
+     * Shuffle items in the collection.
+     */
+    public function shuffle() {
+        $items = $this->items;
+        shuffle($items);
+        return $this->new_collection($items);
     }
     
     /**
@@ -2031,7 +2659,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      */
     public function unique($key = NULL) {
         if ($key === NULL) {
-            return new DMZ_Collection(array_unique($this->items, SORT_REGULAR));
+            return $this->new_collection(array_unique($this->items, SORT_REGULAR));
         }
         
         $seen = array();
@@ -2045,7 +2673,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
             }
         }
         
-        return new DMZ_Collection($unique);
+        return $this->new_collection($unique);
     }
     
     /**
@@ -2056,9 +2684,30 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      */
     public function chunk($size) {
         $chunks = array_chunk($this->items, $size);
-        return new DMZ_Collection(array_map(function($chunk) {
-            return new DMZ_Collection($chunk);
+        return $this->new_collection(array_map(function($chunk) {
+            return $this->new_collection($chunk);
         }, $chunks));
+    }
+
+    /**
+     * Split the collection into a given number of chunks.
+     */
+    public function split($number) {
+        $number = (int) $number;
+
+        if ($number <= 0) {
+            return $this->new_collection(array());
+        }
+
+        $count = $this->count();
+        if ($count === 0) {
+            return $this->new_collection(array());
+        }
+
+        $size = (int) ceil($count / $number);
+        $size = max(1, $size);
+
+        return $this->chunk($size);
     }
     
     /**
@@ -2068,7 +2717,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @return DMZ_Collection
      */
     public function take($count) {
-        return new DMZ_Collection(array_slice($this->items, 0, $count));
+        return $this->new_collection(array_slice($this->items, 0, $count));
     }
     
     /**
@@ -2078,7 +2727,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @return DMZ_Collection
      */
     public function skip($count) {
-        return new DMZ_Collection(array_slice($this->items, $count));
+        return $this->new_collection(array_slice($this->items, $count));
     }
     
     /**
@@ -2087,7 +2736,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      * @return DMZ_Collection
      */
     public function reverse() {
-        return new DMZ_Collection(array_reverse($this->items));
+        return $this->new_collection(array_reverse($this->items));
     }
     
     /**
@@ -2290,14 +2939,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
 	 * @return DMZ_Collection New filtered collection
 	 */
 	public function where_in_collection($key, $value) {
-		return $this->filter(function($item) use ($key, $value) {
-			if (is_object($item) && isset($item->{$key})) {
-				return $item->{$key} === $value;
-			} elseif (is_array($item) && isset($item[$key])) {
-				return $item[$key] === $value;
-			}
-			return FALSE;
-		});
+        return $this->where($key, '=', $value);
 	}
 
 	/**
@@ -2335,6 +2977,62 @@ class DMZ_Collection implements IteratorAggregate, Countable {
 	public function ids($id_field = 'id') {
 		return $this->pluck($id_field);
 	}
+
+    /**
+     * Convert collection back into a DataMapper instance.
+     */
+    public function to_data_mapper() {
+        if ($this->is_empty()) {
+            if ($this->source_model instanceof DataMapper) {
+                $empty = $this->source_model->get_clone(TRUE);
+                $empty->clear();
+                return $empty;
+            }
+            return NULL;
+        }
+
+        $first = $this->first();
+
+        if ($this->source_model instanceof DataMapper) {
+            $template = $this->source_model->get_clone(TRUE);
+        } elseif ($first instanceof DataMapper) {
+            $template = $first->get_clone(TRUE);
+        } else {
+            return NULL;
+        }
+
+        $template->clear();
+
+        $container = clone $template;
+        $result_items = array();
+
+        foreach ($this->items as $item) {
+            if ($item instanceof DataMapper) {
+                $result_items[] = clone $item;
+                continue;
+            }
+
+            $model = clone $template;
+
+            if (is_object($item)) {
+                foreach (get_object_vars($item) as $property => $value) {
+                    $model->{$property} = $value;
+                }
+            } elseif (is_array($item)) {
+                foreach ($item as $property => $value) {
+                    $model->{$property} = $value;
+                }
+            } else {
+                return NULL;
+            }
+
+            $result_items[] = $model;
+        }
+
+        $container->all = $result_items;
+
+        return $container;
+    }
 
 	// -------------------------------------------------------------------------
 	// Soft Delete Methods (DataMapper 2.0)
