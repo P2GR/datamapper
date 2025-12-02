@@ -1,7 +1,7 @@
 {
   "name": "datamapper",
   "version": "1.0.0",
-  "description": "[![PHP Version](https://img.shields.io/badge/PHP-5.4--8.5%2B-blue)](https://php.net) [![CodeIgniter](https://img.shields.io/badge/CodeIgniter-3.x-orange)](https://codeigniter.com) [![License](https://img.shields.io/badge/License-MIT-green)](license.txt) [![GitHub](https://img.shields.io/badge/GitHub-P2GR%2Fdatamapper-blue)](https://github.com/P2GR/datamapper)",
+  "description": "[![PHP Version](https://img.shields.io/badge/PHP-7.4--8.5%2B-blue)](https://php.net) [![CodeIgniter](https://img.shields.io/badge/CodeIgniter-3.x-orange)](https://codeigniter.com) [![License](https://img.shields.io/badge/License-MIT-green)](license.txt) [![GitHub](https://img.shields.io/badge/GitHub-P2GR%2Fdatamapper-blue)](https://github.com/P2GR/datamapper)",
   "main": "index.js",
   "directories": {
     "example": "examples",

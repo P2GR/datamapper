@@ -36,11 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed - Breaking Changes
 
-- Minimum PHP version raised to **PHP 7.2** (was PHP 5.3)
+- Minimum PHP version raised to **PHP 7.4** (was PHP 5.3)
 - CodeIgniter 3.1.0+ required (was 2.x)
-- Query builder methods now return `$this` for better chaining
 - Default timestamp column names changed to `created_at`/`updated_at`
 - Validation errors now use associative array format
+- New `Model::create()` helper is static—replace instance calls like `$user->create()` with `User::create()`
 
 ### Improved - Performance
 

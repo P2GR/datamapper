@@ -194,9 +194,10 @@ The legacy APIs still work, but updating to the new patterns unlocks the biggest
 
 ## Breaking Changes
 
-::: danger None!
-DataMapper 2.0 has **ZERO breaking changes**. All 1.x code continues to work.
-:::
+While most 1.x projects continue to run unchanged, a few small breaking differences are worth calling out:
+
+- **`create()` is now static** – call `User::create([...])` instead of `$user->create([...])`. The new mass-assignment helper lives on the class so it can spin up a fresh instance internally.
+- **Minimum PHP & CI versions** – PHP 7.4+ and CodeIgniter 3.1+ are required to run 2.0.
 
 ### Deprecated Features
 

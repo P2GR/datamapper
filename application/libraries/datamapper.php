@@ -851,6 +851,29 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public static function autoload($class)
 	{
+		// Handle DataMapper namespaced traits (e.g. DataMapper\Traits\SoftDeletes)
+		if (strpos($class, 'DataMapper\\Traits\\') === 0)
+		{
+			$trait = substr($class, strlen('DataMapper\\Traits\\'));
+			$traitPath = APPPATH . 'datamapper/' . $trait . '.php';
+			if (file_exists($traitPath))
+			{
+				require_once($traitPath);
+			}
+			return;
+		}
+
+		// Support global trait aliases (e.g. use SoftDeletes;)
+		if (in_array($class, array('SoftDeletes', 'HasTimestamps'), TRUE))
+		{
+			$traitPath = APPPATH . 'datamapper/' . $class . '.php';
+			if (file_exists($traitPath))
+			{
+				require_once($traitPath);
+			}
+			return;
+		}
+
 		static $CI = NULL;
 
 		// get the CI instance
