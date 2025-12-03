@@ -1372,9 +1372,9 @@ class DMZ_QueryBuilder {
         // Assign to parent models
         foreach ($results->to_array() as $model) {
             if (isset($grouped[$model->id])) {
-                $model->{$relation} = new DMZ_Collection($grouped[$model->id]);
+                $this->_assign_eager_relation($model, $relation, new DMZ_Collection($grouped[$model->id]));
             } else {
-                $model->{$relation} = new DMZ_Collection(array());
+                $this->_assign_eager_relation($model, $relation, new DMZ_Collection(array()));
             }
         }
     }
@@ -1428,9 +1428,9 @@ class DMZ_QueryBuilder {
             // Assign to parent models
             foreach ($results->to_array() as $model) {
                 if (isset($grouped[$model->id])) {
-                    $model->{$relation} = new DMZ_Collection($grouped[$model->id]);
+                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection($grouped[$model->id]));
                 } else {
-                    $model->{$relation} = new DMZ_Collection(array());
+                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection(array()));
                 }
             }
             
@@ -1452,7 +1452,7 @@ class DMZ_QueryBuilder {
             if (empty($foreign_ids)) {
                 // No foreign keys set, set all to NULL
                 foreach ($results->to_array() as $model) {
-                    $model->{$relation} = NULL;
+                    $this->_assign_eager_relation($model, $relation, NULL);
                 }
                 return;
             }
@@ -1481,9 +1481,9 @@ class DMZ_QueryBuilder {
             // Assign to parent models
             foreach ($results->to_array() as $model) {
                 if (!empty($model->{$foreign_key_field}) && isset($indexed[$model->{$foreign_key_field}])) {
-                    $model->{$relation} = $indexed[$model->{$foreign_key_field}];
+                    $this->_assign_eager_relation($model, $relation, $indexed[$model->{$foreign_key_field}]);
                 } else {
-                    $model->{$relation} = NULL;
+                    $this->_assign_eager_relation($model, $relation, NULL);
                 }
             }
         }
@@ -1626,6 +1626,44 @@ class DMZ_QueryBuilder {
         }
 
         $db->where($deleted_col, NULL);
+    }
+
+    /**
+     * Assign an eager-loaded relation while guarding against attribute collisions.
+     *
+     * When an attribute already exists on the model with the same name as the
+     * relation and that value is a scalar (e.g., column "client" and relation
+     * "client"), we stash the original in `_dm_conflicted_attributes` so it can
+     * be inspected later instead of silently discarding it.
+     *
+     * @param DataMapper $model
+     * @param string $relation
+     * @param mixed $value
+     * @return void
+     */
+    protected function _assign_eager_relation($model, $relation, $value)
+    {
+        if (isset($model->{$relation})
+            && $model->{$relation} !== NULL
+            && !$model->{$relation} instanceof DataMapper
+            && !$model->{$relation} instanceof DMZ_Collection)
+        {
+            if (!isset($model->_dm_conflicted_attributes) || !is_array($model->_dm_conflicted_attributes)) {
+                $model->_dm_conflicted_attributes = array();
+            }
+
+            if (!array_key_exists($relation, $model->_dm_conflicted_attributes)) {
+                $model->_dm_conflicted_attributes[$relation] = $model->{$relation};
+
+                dmz_log_message('debug', 'DataMapper eager-load relation name collision detected', array(
+                    'model' => get_class($model),
+                    'relation' => $relation,
+                    'original_type' => gettype($model->{$relation})
+                ));
+            }
+        }
+
+        $model->{$relation} = $value;
     }
     
     /**
