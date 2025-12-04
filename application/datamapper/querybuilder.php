@@ -879,6 +879,182 @@ class DMZ_QueryBuilder {
     }
 
     /**
+     * Get debug information about the last executed query.
+     *
+     * Returns an associative array containing:
+     * - sql: The raw SQL query string
+     * - bindings: Query bindings/parameters (if available)
+     * - time: Execution time in seconds
+     * - model: The model class name
+     * - eager_loads: Relations that were eager loaded
+     *
+     * @param bool $return If TRUE, return the debug info; if FALSE, dump it
+     * @return array|void
+     */
+    public function debug($return = TRUE)
+    {
+        $db = $this->model->db;
+        
+        $info = array(
+            'model'       => get_class($this->model),
+            'table'       => $this->model->table,
+            'sql'         => $db->last_query(),
+            'eager_loads' => $this->eager_loads,
+            'result_count'=> isset($this->model->all) ? count($this->model->all) : 0,
+        );
+        
+        // Get timing for last query if available
+        if (isset($db->query_times) && is_array($db->query_times) && !empty($db->query_times)) {
+            $info['time'] = end($db->query_times);
+            $info['time_formatted'] = number_format($info['time'] * 1000, 2) . ' ms';
+        }
+        
+        if ($return) {
+            return $info;
+        }
+        
+        // Pretty print for debugging
+        echo '<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:5px;font-family:monospace;font-size:13px;overflow-x:auto;">';
+        echo '<span style="color:#569cd6;font-weight:bold;">Query Debug Information</span>' . "\n";
+        echo '<span style="color:#6a9955;">─────────────────────────</span>' . "\n\n";
+        
+        echo '<span style="color:#9cdcfe;">Model:</span>       <span style="color:#ce9178;">' . $info['model'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">Table:</span>       <span style="color:#ce9178;">' . $info['table'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">Results:</span>     <span style="color:#b5cea8;">' . $info['result_count'] . '</span> row(s)' . "\n";
+        
+        if (!empty($info['eager_loads'])) {
+            echo '<span style="color:#9cdcfe;">Eager Loads:</span> <span style="color:#ce9178;">' . implode(', ', $info['eager_loads']) . '</span>' . "\n";
+        }
+        
+        if (isset($info['time_formatted'])) {
+            echo '<span style="color:#9cdcfe;">Time:</span>        <span style="color:#b5cea8;">' . $info['time_formatted'] . '</span>' . "\n";
+        }
+        
+        echo "\n" . '<span style="color:#569cd6;">SQL:</span>' . "\n";
+        echo '<span style="color:#dcdcaa;">' . htmlspecialchars($info['sql']) . '</span>' . "\n";
+        echo '</pre>';
+    }
+
+    /**
+     * Get benchmark/profiling information for all queries executed.
+     *
+     * Returns detailed metrics including:
+     * - total_queries: Number of queries executed
+     * - total_time: Total execution time
+     * - queries: Array of individual query details
+     * - memory: Current memory usage
+     *
+     * @param bool $return If TRUE, return the benchmark info; if FALSE, dump it
+     * @param int $since_query_index Only include queries from this index onwards (useful for measuring just your query)
+     * @return array|void
+     */
+    public function benchmark($return = TRUE, $since_query_index = NULL)
+    {
+        $db = $this->model->db;
+        
+        $queries = isset($db->queries) ? $db->queries : array();
+        $times = isset($db->query_times) ? $db->query_times : array();
+        
+        // Filter to only queries since the specified index
+        if ($since_query_index !== NULL && $since_query_index > 0) {
+            $queries = array_slice($queries, $since_query_index, NULL, TRUE);
+            $times = array_slice($times, $since_query_index, NULL, TRUE);
+        }
+        
+        $query_details = array();
+        $total_time = 0;
+        
+        foreach ($queries as $i => $sql) {
+            $time = isset($times[$i]) ? $times[$i] : 0;
+            $total_time += $time;
+            
+            $query_details[] = array(
+                'index' => $i,
+                'sql'   => $sql,
+                'time'  => $time,
+                'time_formatted' => number_format($time * 1000, 2) . ' ms',
+            );
+        }
+        
+        $info = array(
+            'total_queries'   => count($queries),
+            'total_time'      => $total_time,
+            'total_time_formatted' => number_format($total_time * 1000, 2) . ' ms',
+            'average_time'    => count($queries) > 0 ? $total_time / count($queries) : 0,
+            'average_time_formatted' => count($queries) > 0 ? number_format(($total_time / count($queries)) * 1000, 2) . ' ms' : '0.00 ms',
+            'queries'         => $query_details,
+            'memory'          => memory_get_usage(TRUE),
+            'memory_formatted'=> $this->_format_bytes(memory_get_usage(TRUE)),
+            'peak_memory'     => memory_get_peak_usage(TRUE),
+            'peak_memory_formatted' => $this->_format_bytes(memory_get_peak_usage(TRUE)),
+            'model'           => get_class($this->model),
+            'eager_loads'     => $this->eager_loads,
+        );
+        
+        if ($return) {
+            return $info;
+        }
+        
+        // Pretty print for debugging
+        echo '<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:5px;font-family:monospace;font-size:13px;overflow-x:auto;">';
+        echo '<span style="color:#569cd6;font-weight:bold;">Query Benchmark Report</span>' . "\n";
+        echo '<span style="color:#6a9955;">─────────────────────────</span>' . "\n\n";
+        
+        echo '<span style="color:#c586c0;">Summary</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">  Total Queries:</span>  <span style="color:#b5cea8;">' . $info['total_queries'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">  Total Time:</span>     <span style="color:#b5cea8;">' . $info['total_time_formatted'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">  Average Time:</span>   <span style="color:#b5cea8;">' . $info['average_time_formatted'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">  Memory:</span>         <span style="color:#b5cea8;">' . $info['memory_formatted'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">  Peak Memory:</span>    <span style="color:#b5cea8;">' . $info['peak_memory_formatted'] . '</span>' . "\n";
+        
+        if (!empty($info['eager_loads'])) {
+            echo '<span style="color:#9cdcfe;">  Eager Loads:</span>    <span style="color:#ce9178;">' . implode(', ', $info['eager_loads']) . '</span>' . "\n";
+        }
+        
+        if (!empty($query_details)) {
+            echo "\n" . '<span style="color:#c586c0;">Queries</span>' . "\n";
+            foreach ($query_details as $q) {
+                $color = $q['time'] > 0.1 ? '#f14c4c' : ($q['time'] > 0.01 ? '#cca700' : '#4ec9b0');
+                echo '<span style="color:#6a9955;">  [' . $q['index'] . ']</span> ';
+                echo '<span style="color:' . $color . ';">' . $q['time_formatted'] . '</span> ';
+                echo '<span style="color:#dcdcaa;">' . htmlspecialchars(substr($q['sql'], 0, 100)) . (strlen($q['sql']) > 100 ? '...' : '') . '</span>' . "\n";
+            }
+        }
+        
+        echo '</pre>';
+    }
+
+    /**
+     * Get the current query index for use with benchmark().
+     *
+     * Call this before executing your query, then pass the result to benchmark()
+     * to measure only the queries from your operation.
+     *
+     * @return int
+     */
+    public function get_query_index()
+    {
+        $db = $this->model->db;
+        return isset($db->queries) ? count($db->queries) : 0;
+    }
+
+    /**
+     * Format bytes to human readable string.
+     *
+     * @param int $bytes
+     * @return string
+     */
+    protected function _format_bytes($bytes)
+    {
+        $units = array('B', 'KB', 'MB', 'GB');
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+        return round($bytes, 2) . ' ' . $units[$pow];
+    }
+
+    /**
      * Core handler for has/whereHas style constraints.
      *
      * @param string $boolean 'and' or 'or'

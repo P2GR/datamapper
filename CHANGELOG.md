@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Laravel-style mass-assignment protection: `$fillable`, `$guarded`, `fill()`, `force_fill()`, `unguard()` helpers, and a static `create()` convenience method.
+- New `debug()` method on both `DataMapper` and `DMZ_QueryBuilder` — returns query info including SQL, execution time, result count, and model details.
+- New `benchmark()` method on both `DataMapper` and `DMZ_QueryBuilder` — returns comprehensive profiling data: total queries, total/average time, memory usage, and per-query breakdown.
+- New `get_query_index()` helper to mark a starting point for benchmarking specific operations.
 
 ### Changed
 - `DMZ_QueryBuilder::get()` now returns the model instance instead of `DMZ_Collection` for backward compatibility with classic DataMapper patterns. Use `collect()` explicitly when a collection is needed.
