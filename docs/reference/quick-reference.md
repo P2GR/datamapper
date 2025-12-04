@@ -363,10 +363,10 @@ $latestSlug = (new Post())
     ->order_by('created_at', 'DESC')
     ->value('slug', 'draft');
 
-// Collections from plucked values
+// Pluck column as array
 $ids = (new Order())
     ->where('status', 'pending')
-    ->pluck_collection('id');
+    ->pluck('id');
 
 // First model shortcut
 $firstAdmin = (new User())

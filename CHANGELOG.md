@@ -10,8 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Laravel-style mass-assignment protection: `$fillable`, `$guarded`, `fill()`, `force_fill()`, `unguard()` helpers, and a static `create()` convenience method.
 
+### Changed
+- `DMZ_QueryBuilder::get()` now returns the model instance instead of `DMZ_Collection` for backward compatibility with classic DataMapper patterns. Use `collect()` explicitly when a collection is needed.
+
+### Removed
+- Removed `get_smart()` from `DMZ_QueryBuilder` — unused sugar method.
+- Removed `pluck_collection()` from `DMZ_QueryBuilder`, `DMZ_Collection`, and `DataMapper` — use `collect()->pluck()` instead.
+- Removed `pluck_values()` from `DMZ_QueryBuilder`, `DMZ_Collection`, and `DataMapper` — use `pluck()` which already returns a plain array.
+
 ### Documentation
 - Documented mass-assignment workflow, updated the quick reference, model template, and added a dedicated guide page.
+- Updated collection and quick-reference docs to reflect removed methods.
 
 ## [2.0.0-beta1] - 2025-10-14
 

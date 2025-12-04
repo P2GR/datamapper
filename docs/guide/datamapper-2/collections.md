@@ -63,12 +63,13 @@ $collection = collect([]);
 
 DataMapper 2.0 ships first-class helpers on the query builder so you can choose the return style that matches your workload without extra plumbing:
 
-- `collect()` — returns a `DMZ_Collection` for query builder chaining.
+- `get()` — executes the query and returns the **model** (for backward compatibility with classic DataMapper).
+- `collect()` — returns a `DMZ_Collection` for fluent collection chaining.
 - `pluck($column)` — returns a plain array of column values (ideal for IDs or emails).
-- `pluck_collection($column)` — returns a collection seeded with the plucked values when you still want collection methods.
-- `pluck_values($column)` — legacy-friendly alias that mirrors the classic DataMapper helper.
 - `value($column, $default = null)` — fetch a single scalar from the first row, optionally supplying a fallback when nothing matches.
 - `first()` — returns the first hydrated model while leaving existing limits/offsets intact.
+
+> **Note:** If you need a collection of plucked values, use `collect()->pluck($column)`.
 
 All helpers respect the active query, eager-load hints (`with()`), and caching directives:
 
