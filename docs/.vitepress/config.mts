@@ -16,6 +16,13 @@ export default defineConfig({
   // Last updated timestamp
   lastUpdated: true,
   
+  // Vite build options
+  vite: {
+    build: {
+      chunkSizeWarningLimit: 1000
+    }
+  },
+  
   // Markdown configuration
   markdown: {
     theme: {
