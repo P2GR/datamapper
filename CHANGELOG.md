@@ -12,11 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `DMZ_QueryBuilder::get()` now returns the model instance instead of `DMZ_Collection` for backward compatibility with classic DataMapper patterns. Use `collect()` explicitly when a collection is needed.
+- Consolidated duplicate `camel_to_snake()` implementations into shared `dmz_camel_to_snake()` helper function.
+- Updated all extension headers to version 2.0.0 with correct GitHub repository links.
 
 ### Removed
 - Removed `get_smart()` from `DMZ_QueryBuilder` — unused sugar method.
 - Removed `pluck_collection()` from `DMZ_QueryBuilder`, `DMZ_Collection`, and `DataMapper` — use `collect()->pluck()` instead.
 - Removed `pluck_values()` from `DMZ_QueryBuilder`, `DMZ_Collection`, and `DataMapper` — use `pluck()` which already returns a plain array.
+- Removed deprecated soft-delete aliases: `with_deleted()`, `only_deleted()`, `without_deleted()` — use `with_softdeleted()`, `only_softdeleted()`, `without_softdeleted()` instead.
+- Removed deprecated `_dm_with_deleted` and `_dm_only_deleted` compatibility properties.
+
+### Fixed
+- Fixed dead documentation links in extension headers (overzealous.com → github.com/P2GR/datamapper2).
+- Fixed typo in rowindex.php header (`worIndex` → `rowindex`).
+- Resolved FIXME comment in `get()` method — silent behavior when no constraints are provided is intentional.
 
 ### Documentation
 - Documented mass-assignment workflow, updated the quick reference, model template, and added a dedicated guide page.

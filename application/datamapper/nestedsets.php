@@ -11,7 +11,8 @@
  * @author  	WanWizard
  * @info		Based on nstrees by Rolf Brugger, edutech
  * 				http://www.edutech.ch/contribution/nstrees
- * @version 	1.0
+ * @link    	https://github.com/P2GR/datamapper2
+ * @version 	2.0.0
  */
 
 // --------------------------------------------------------------------------

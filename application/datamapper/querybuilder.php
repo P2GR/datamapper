@@ -37,6 +37,24 @@ if (!function_exists('dmz_log_message')) {
     }
 }
 
+if (!function_exists('dmz_camel_to_snake')) {
+    /**
+     * Convert camelCase to snake_case.
+     *
+     * Normalizes soft-delete method names so camelCase helpers resolve correctly.
+     *
+     * @param string $method CamelCase method name
+     * @return string snake_case method name
+     */
+    function dmz_camel_to_snake($method)
+    {
+        $snake = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $method));
+
+        // Historical methods used "softdeleted" without an underscore
+        return str_replace('soft_deleted', 'softdeleted', $snake);
+    }
+}
+
 /**
  * DataMapper Query Builder Class
  *
@@ -1545,15 +1563,13 @@ class DMZ_QueryBuilder {
         
         // IMPORTANT: Ignore LODataMapper custom implementation
         // Check for native DataMapper 2.0 flags first (NOT LODataMapper's _withoutSoftDeletedScope)
-        if ((property_exists($model, '_dm_with_softdeleted') && $model->_dm_with_softdeleted === TRUE)
-            || (property_exists($model, '_dm_with_deleted') && $model->_dm_with_deleted === TRUE)) {
-            // User explicitly called with_softdeleted() (or legacy with_deleted()) on main query - don't filter
+        if (property_exists($model, '_dm_with_softdeleted') && $model->_dm_with_softdeleted === TRUE) {
+            // User explicitly called with_softdeleted() - don't filter
             return;
         }
         
-        if ((property_exists($model, '_dm_only_softdeleted') && $model->_dm_only_softdeleted === TRUE)
-            || (property_exists($model, '_dm_only_deleted') && $model->_dm_only_deleted === TRUE)) {
-            // User explicitly called only_softdeleted() (or legacy only_deleted()) on main query
+        if (property_exists($model, '_dm_only_softdeleted') && $model->_dm_only_softdeleted === TRUE) {
+            // User explicitly called only_softdeleted()
             $deleted_col = $this->_get_deleted_at_column($model);
             if ($deleted_col) {
                 $column_name = !empty($table_prefix) ? $table_prefix . '.' . $deleted_col : $deleted_col;
@@ -1723,10 +1739,7 @@ class DMZ_QueryBuilder {
      */
     protected function camel_to_snake($method)
     {
-        $snake = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $method));
-
-        // Historical methods used "softdeleted" without an underscore
-        return str_replace('soft_deleted', 'softdeleted', $snake);
+        return dmz_camel_to_snake($method);
     }
 }
 
@@ -2798,9 +2811,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
      */
     protected function camel_to_snake($method)
     {
-        $snake = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $method));
-
-        return str_replace('soft_deleted', 'softdeleted', $snake);
+        return dmz_camel_to_snake($method);
     }
     
     /**

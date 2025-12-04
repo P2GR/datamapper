@@ -421,13 +421,6 @@ class DataMapper implements IteratorAggregate {
 	public $_dm_only_softdeleted = FALSE;
 
 	/**
-	 * @deprecated Back-compat shim for query builder helpers renamed to with_softdeleted()/only_softdeleted().
-	 * @var bool
-	 */
-	public $_dm_with_deleted = FALSE;
-	public $_dm_only_deleted = FALSE;
-
-	/**
 	 * Contains any errors that occur during validation, saving, or other
 	 * database access.
 	 * @var DM_Error_Object
@@ -1570,14 +1563,15 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _camel_to_snake($method)
 	{
-		// Convert camelCase to snake_case (with a few legacy adjustments)
-		// whereIn -> where_in
-		// orWhere -> or_where
-		// groupStart -> group_start
+		// Use shared helper if available (loaded via querybuilder.php)
+		if (function_exists('dmz_camel_to_snake')) {
+			return dmz_camel_to_snake($method);
+		}
+
+		// Fallback implementation for standalone use
 		$snake = strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $method));
 
 		// Historical methods used "softdeleted" rather than "soft_deleted"
-		// Normalize so camelCase helpers still resolve correctly.
 		if (strpos($snake, 'soft_deleted') !== FALSE) {
 			$snake = str_replace('soft_deleted', 'softdeleted', $snake);
 		}
@@ -1722,7 +1716,7 @@ class DataMapper implements IteratorAggregate {
 
 				// Get by objects properties
 				$query = $this->db->get_where($this->table, $data, $limit, $offset);
-			} // FIXME: notify user if nothing was set?
+			}
 		}
 		else
 		{
@@ -9533,9 +9527,6 @@ class DataMapper implements IteratorAggregate {
 		$this->_only_trashed = FALSE;
 		$this->_dm_with_softdeleted = TRUE;
 		$this->_dm_only_softdeleted = FALSE;
-		// Maintain legacy flags for compatibility with existing extensions.
-		$this->_dm_with_deleted = TRUE;
-		$this->_dm_only_deleted = FALSE;
 		return $this;
 	}
 
@@ -9550,8 +9541,6 @@ class DataMapper implements IteratorAggregate {
 		$this->_include_trashed = FALSE;
 		$this->_dm_only_softdeleted = TRUE;
 		$this->_dm_with_softdeleted = FALSE;
-		$this->_dm_only_deleted = TRUE;
-		$this->_dm_with_deleted = FALSE;
 		return $this;
 	}
 
@@ -9566,33 +9555,7 @@ class DataMapper implements IteratorAggregate {
 		$this->_only_trashed = FALSE;
 		$this->_dm_with_softdeleted = FALSE;
 		$this->_dm_only_softdeleted = FALSE;
-		$this->_dm_with_deleted = FALSE;
-		$this->_dm_only_deleted = FALSE;
 		return $this;
-	}
-
-	/**
-	 * @deprecated Use with_softdeleted() instead.
-	 */
-	public function with_deleted()
-	{
-		return $this->with_softdeleted();
-	}
-
-	/**
-	 * @deprecated Use only_softdeleted() instead.
-	 */
-	public function only_deleted()
-	{
-		return $this->only_softdeleted();
-	}
-
-	/**
-	 * @deprecated Use without_softdeleted() instead.
-	 */
-	public function without_deleted()
-	{
-		return $this->without_softdeleted();
 	}
 
 }

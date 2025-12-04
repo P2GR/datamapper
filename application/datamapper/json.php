@@ -9,8 +9,8 @@
  * @package		DMZ-Included-Extensions
  * @category	DMZ
  * @author  	Phil DeJarnett
- * @link    	http://www.overzealous.com/dmz/pages/extensions/json.html
- * @version 	1.1
+ * @link    	https://github.com/P2GR/datamapper2
+ * @version 	2.0.0
  */
 
 // --------------------------------------------------------------------------
