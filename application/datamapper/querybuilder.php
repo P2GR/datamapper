@@ -3473,6 +3473,15 @@ class DMZ_DB_Constraint_Wrapper {
             return call_user_func_array(array($this, $snake_case_method), $args);
         }
 
+        // Provide helpful error for common mistakes
+        if ($method === 'with' || $snake_case_method === 'with') {
+            throw new BadMethodCallException(
+                "Cannot call with() inside an eager loading constraint callback. " .
+                "Nested eager loading should use dot notation on the parent query: " .
+                "->with('parent.child') instead of ->with('parent', fn(\$q) => \$q->with('child'))"
+            );
+        }
+
         $result = call_user_func_array(array($this->db, $method), $args);
 		
 		// Return self for chaining if DB returned itself
