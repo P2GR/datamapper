@@ -130,6 +130,70 @@ $installations = (new Installation())
 
 ```
 
+## Nested Eager Loading
+
+Load deeply nested relationships using **dot notation**:
+
+```php
+
+// Load building AND the building's client
+$installations = (new Installation())
+    ->with('building.client')
+    ->get();
+
+// Access nested data
+foreach ($installations as $install) {
+    echo $install->building->client->name;
+}
+
+```
+
+### Multiple Nested Relations
+
+```php
+
+// Load multiple nested relations
+$installations = (new Installation())
+    ->with([
+        'building.client',
+        'building.address',
+        'installationtype'
+    ])
+    ->get();
+
+```
+
+### Constraints on Nested Relations
+
+Apply constraints to the **deepest** relation in the chain:
+
+```php
+
+// Constraint applies to 'client', not 'building'
+$installations = (new Installation())
+    ->with('building.client', function($q) {
+        $q->where('active', 1);  // Only active clients
+    })
+    ->get();
+
+```
+
+::: danger Common Mistake
+**Do NOT nest `with()` calls inside constraint callbacks!**
+
+```php
+// ❌ WRONG - This will throw an error
+->with('building', function($q) {
+    $q->with('client');  // Cannot call with() here!
+})
+
+// ✅ CORRECT - Use dot notation instead
+->with('building.client')
+```
+
+Constraint callbacks are for filtering (WHERE, ORDER BY, LIMIT), not for nesting relationships.
+:::
+
 ## Soft Delete Control
 
 **Automatic Soft Delete Filtering:** DataMapper 2.0 automatically excludes soft-deleted records from eager-loaded relationships!
@@ -238,7 +302,8 @@ $buildings = (new Building())
 
 - Constraints do NOT increase query count - still just 2 queries per relationship!
 - Soft delete filtering is automatic unless you explicitly use with_softdeleted()
-- Works with nested relationships: with('building.client', function($q) {...})
+- **Use dot notation for nested relationships:** `with('building.client')` not `with('building', fn($q) => $q->with('client'))`
+- Constraint callbacks are for filtering only (WHERE, ORDER BY, LIMIT) - not for nesting
 - Constraint callback receives a DMZ_DB_Constraint_Wrapper instance
 - All standard query methods available: where, or_where, like, order_by, limit, etc.
 

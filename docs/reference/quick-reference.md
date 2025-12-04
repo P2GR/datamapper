@@ -686,18 +686,34 @@ $user->get(); // Loads all fields (including large TEXT columns)
 ## Debugging
 
 ```php
-// Get last query
+// Debug last query (returns array with sql, time, result_count)
+$info = $user->debug();
+
+// Pretty-print debug info
+$user->debug(FALSE);
+
+// Benchmark all queries (total time, memory, per-query breakdown)
+$report = $user->benchmark();
+
+// Pretty-print benchmark with color-coded times
+$user->benchmark(FALSE);
+
+// Benchmark only your specific operation
+$start = $user->get_query_index();
+$user->with('posts')->get();
+$user->benchmark(FALSE, $start);
+
+// Get SQL without executing
+$sql = $user->get_sql();
+
+// Get last query (legacy)
 echo $user->check_last_query();
 
-// Enable query profiling
-$user->enable_profiler()->get();
-
-// Print all SQL queries
-echo $this->db->last_query();
-
 // Debug validation errors
-print_r($user->error);
+print_r($user->error->all);
 ```
+
+See [Debugging Guide](/guide/datamapper-2/debugging) for full documentation.
 
 ## See Also
 

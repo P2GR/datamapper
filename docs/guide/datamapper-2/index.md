@@ -282,6 +282,7 @@ $users = $query->get();
 | **Timestamps** | Manual | Trait |
 | **Type Casting** | Manual | Automatic |
 | **Streaming** | No | Yes |
+| **Debugging** | `check_last_query()` | `debug()`, `benchmark()`, `get_query_index()` |
 | **PHP Version** | 5.6 - 7.4 | 7.4 - 8.3+ |
 | **Performance** | Good | Excellent |
 
@@ -438,6 +439,12 @@ Ready to upgrade? Follow our guide:
     <h3>Streaming</h3>
   <p>Handle massive datasets efficiently</p>
   <a href="./streaming">Learn More →</a>
+</div>
+
+<div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
+    <h3>Debugging</h3>
+  <p>Query profiling and benchmarking</p>
+  <a href="./debugging">Learn More →</a>
 </div>
 
 </div>
