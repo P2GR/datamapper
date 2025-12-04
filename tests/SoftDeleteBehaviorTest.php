@@ -167,8 +167,16 @@ class SoftDeleteModelStub extends DataMapper
 
 class SoftDeleteDisabledModelStub extends SoftDeleteModelStub
 {
-    /** @var bool|null */
+    /**
+     * Explicitly disable soft deletes for this model
+     * @var bool
+     */
     protected $soft_delete = FALSE;
+    
+    public function __construct()
+    {
+        parent::__construct();
+    }
 }
 
 class SoftDeleteDbStub
