@@ -7910,36 +7910,6 @@ class DataMapper implements IteratorAggregate {
 	}
 
 	/**
-	 * Convenience wrapper for QueryBuilder pluck_collection()
-	 *
-	 * @param string $field Field name to extract
-	 * @return DMZ_Collection
-	 */
-	public function pluck_collection($field)
-	{
-		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
-			require_once(APPPATH . 'datamapper/querybuilder.php');
-		}
-
-		return (new DMZ_QueryBuilder($this))->pluck_collection($field);
-	}
-
-	/**
-	 * Convenience wrapper for QueryBuilder pluck_values()
-	 *
-	 * @param string $field Field name to extract
-	 * @return array
-	 */
-	public function pluck_values($field)
-	{
-		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
-			require_once(APPPATH . 'datamapper/querybuilder.php');
-		}
-
-		return (new DMZ_QueryBuilder($this))->pluck_values($field);
-	}
-
-	/**
 	 * Convenience wrapper for QueryBuilder value()
 	 *
 	 * @param string $field Field name to read

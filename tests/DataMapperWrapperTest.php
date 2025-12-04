@@ -52,33 +52,6 @@ class DataMapperWrapperTest extends TestCase
         $this->assertSame(array('first@example.com', 'second@example.com'), $emails);
     }
 
-    public function testPluckCollectionWrapperReturnsCollection(): void
-    {
-        $rows = array(
-            array('id' => 21, 'title' => 'Hello'),
-            array('id' => 22, 'title' => 'World'),
-        );
-
-        $mapper = new FakeDataMapper($rows);
-        $titles = $mapper->pluck_collection('title');
-
-        $this->assertInstanceOf(DMZ_Collection::class, $titles);
-        $this->assertSame(array('Hello', 'World'), $titles->to_array());
-    }
-
-    public function testPluckValuesWrapperReturnsArray(): void
-    {
-        $rows = array(
-            array('id' => 41, 'code' => 'AA'),
-            array('id' => 42, 'code' => 'BB'),
-        );
-
-        $mapper = new FakeDataMapper($rows);
-        $codes = $mapper->pluck_values('code');
-
-        $this->assertSame(array('AA', 'BB'), $codes);
-    }
-
     public function testValueWrapperDelegatesToBuilder(): void
     {
         $rows = array(

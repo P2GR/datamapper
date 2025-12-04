@@ -72,36 +72,6 @@ class QueryBuilderHelpersTest extends TestCase
         $this->assertSame(array('first@example.com', 'second@example.com'), $emails);
     }
 
-    public function testPluckCollectionReturnsCollection(): void
-    {
-        $rows = array(
-            array('id' => 3, 'name' => 'Alpha'),
-            array('id' => 4, 'name' => 'Beta'),
-        );
-
-        $mapper = new FakeDataMapper($rows);
-        $builder = new DMZ_QueryBuilder($mapper);
-
-        $names = $builder->pluck_collection('name');
-
-        $this->assertInstanceOf(DMZ_Collection::class, $names);
-        $this->assertSame(array('Alpha', 'Beta'), $names->to_array());
-    }
-
-    public function testPluckValuesReturnsPlainArray(): void
-    {
-        $rows = array(
-            array('id' => 20, 'code' => 'X'),
-            array('id' => 21, 'code' => 'Y'),
-        );
-
-        $mapper = new FakeDataMapper($rows);
-        $builder = new DMZ_QueryBuilder($mapper);
-
-        $codes = $builder->pluck_values('code');
-        $this->assertSame(array('X', 'Y'), $codes);
-    }
-
     public function testValueReturnsScalarAndDefault(): void
     {
         $rows = array(

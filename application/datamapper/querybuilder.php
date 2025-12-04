@@ -665,15 +665,11 @@ class DMZ_QueryBuilder {
     /**
      * Execute query and return results
      *
-     * @return DMZ_Collection
-     */
-    /**
-     * Execute query and return results as DMZ_Collection
-     * 
-     * Returns a DMZ_Collection for easy use of collection helpers.
-     * QueryBuilder always returns collections by default for consistency.
+     * Returns the DataMapper model instance for backward compatibility.
+     * Results are stored in $model->all as with the original DataMapper.
+     * Use collect() if you need a DMZ_Collection for collection helpers.
      *
-     * @return DMZ_Collection
+     * @return DataMapper Returns the model instance for method chaining
      */
     public function get() {
         // Store the model class before calling get()
@@ -686,14 +682,14 @@ class DMZ_QueryBuilder {
             $this->model->get();
         }
         
-        // Create collection from results
-        $collection = new DMZ_Collection($this->model->all, $this->model);
-        
         // Apply eager loading if requested
-        if (!empty($this->eager_loads)) {
+        if (!empty($this->eager_loads) && !empty($this->model->all)) {
             $queries_before = isset($this->model->db->queries) ? count($this->model->db->queries) : 0;
             
-            // Apply eager loading
+            // Create a temporary collection for eager loading (internal use only)
+            $collection = new DMZ_Collection($this->model->all, $this->model);
+            
+            // Apply eager loading to the models
             $this->_load_eager_relations($collection);
             
             $queries_after = isset($this->model->db->queries) ? count($this->model->db->queries) : 0;
@@ -702,29 +698,34 @@ class DMZ_QueryBuilder {
             // Log eager loading execution
             dmz_log_message('debug', "Eager loading for {$model_class}", array(
                 'relations' => $this->eager_loads,
-                'collection_size' => $collection->count(),
+                'result_count' => count($this->model->all),
                 'queries' => $eager_query_count
             ));
         }
         
-        return $collection;
+        // Return the model for backward compatibility (like DataMapper::get())
+        return $this->model;
     }
 
     /**
-     * Explicit collection accessor.
+     * Execute query and return results as a DMZ_Collection.
      *
-    * Useful when you want terser query builder chains without repeating `get()`,
-     * or when you need to highlight the transition from query constraints to
-     * collection helpers.
+     * Use this when you need collection helpers like filter(), map(), pluck().
+     * For standard DataMapper workflow, use get() which returns the model.
      *
      * Example:
      *   $ids = (new User())->where('active', 1)->collect()->pluck('id');
+     *   $emails = (new User())->with('profile')->collect()->map(fn($u) => $u->email);
      *
-     * @return DMZ_Collection Hydrated collection of models respecting the active query
+     * @return DMZ_Collection Hydrated collection of models
      */
     public function collect()
     {
-        return $this->get();
+        // Call get() to execute query and apply eager loading
+        $this->get();
+        
+        // Return a collection wrapping the results
+        return new DMZ_Collection($this->model->all, $this->model);
     }
 
     /**
@@ -739,35 +740,7 @@ class DMZ_QueryBuilder {
      */
     public function pluck($field)
     {
-        return $this->get()->pluck($field);
-    }
-
-    /**
-     * Pluck a field and keep collection chaining alive.
-     *
-     * Handy when you want the extracted values but still need collection
-     * helpers like `filter()`/`map()`.
-     *
-     * @param string $field Column or accessor name to extract
-     * @return DMZ_Collection Collection whose items are the extracted values
-     */
-    public function pluck_collection($field)
-    {
-        return $this->get()->pluck_collection($field);
-    }
-
-    /**
-     * Alias for {@see pluck()} when you want to emphasise the array return type.
-     *
-     * Reads nicely in legacy codebases where the original helper was called
-     * `pluck_values()`.
-     *
-     * @param string $field Column or accessor name to extract
-     * @return array<int, mixed> Ordered list of extracted values
-     */
-    public function pluck_values($field)
-    {
-        return $this->pluck($field);
+        return $this->collect()->pluck($field);
     }
 
     /**
@@ -804,28 +777,6 @@ class DMZ_QueryBuilder {
     }
     
     /**
-     * Execute query and return single model or collection based on limit
-     * 
-     * Smart method that returns:
-     * - Single DataMapper model if limit(1) was set
-     * - DMZ_Collection otherwise
-     * 
-     * This provides the best of both worlds - explicit when you want one result,
-     * collection when you want multiple.
-     *
-     * @return DataMapper|DMZ_Collection|NULL
-     */
-    public function get_smart() {
-        // If limit is 1, return single model
-        if ($this->_limit === 1) {
-            return $this->first();
-        }
-        
-        // Otherwise return collection
-        return $this->get();
-    }
-    
-    /**
      * Get first result
      *
      * @return DataMapper|NULL
@@ -834,13 +785,14 @@ class DMZ_QueryBuilder {
         $previousLimit = $this->_limit;
         $previousOffset = $this->_offset;
 
-        $results = $this->limit(1)->get();
+        $model = $this->limit(1)->get();
 
         // Restore original pagination settings for further chaining
         $this->_limit = $previousLimit;
         $this->_offset = $previousOffset;
 
-        return $results->count() > 0 ? $results->first() : NULL;
+        return (!empty($model->all) && isset($model->all[0])) ? $model->all[0] : 
+               (!empty($model->all) ? reset($model->all) : NULL);
     }
     
     /**
@@ -893,7 +845,8 @@ class DMZ_QueryBuilder {
      * @return array
      */
     public function get_array() {
-        return $this->get()->to_array();
+        $model = $this->get();
+        return $model->all;
     }
     
     /**
@@ -2004,16 +1957,14 @@ class DMZ_Collection implements IteratorAggregate, Countable {
     /**
      * Get specific field values from all items
      * 
-     * LEGACY COMPATIBILITY NOTE: Returns array by default to maintain backward compatibility.
-     * Use pluck_collection() if you need a DMZ_Collection for chaining.
+     * Returns a plain array of extracted values from each item in the collection.
      * 
      * Examples:
-     *   $ids = $collection->pluck('id');                    // Returns array [1, 2, 3]
-     *   $ids = $collection->pluck_collection('id');         // Returns DMZ_Collection for chaining
-     *   $ids = $collection->pluck_collection('id')->all();  // Chains and converts to array
+     *   $ids = $collection->pluck('id');      // Returns array [1, 2, 3]
+     *   $emails = $collection->pluck('email'); // Returns array of emails
      *
      * @param string $field Field name
-     * @return array Array of values (NOT a collection for backward compatibility)
+     * @return array Array of values
      */
     public function pluck($field) {
         $values = array();
@@ -2025,35 +1976,6 @@ class DMZ_Collection implements IteratorAggregate, Countable {
             }
         }
         return $values;
-    }
-    
-    /**
-     * Get specific field values as a DMZ_Collection (chainable version of pluck)
-     * 
-     * Use this when you need to chain collection methods after plucking.
-     * 
-     * Examples:
-     *   $collection->pluck_collection('id')->unique()->all()
-     *   $collection->pluck_collection('email')->filter(function($e) { ... })
-     *
-     * @param string $field Field name
-     * @return DMZ_Collection Collection of values for chaining
-     */
-    public function pluck_collection($field) {
-        return $this->new_collection($this->pluck($field));
-    }
-    
-    /**
-     * Alias for pluck() - returns array
-     * 
-     * Provides explicit naming when you want array output.
-     * Useful for clarity: makes it obvious you expect a plain array.
-     *
-     * @param string $field Field name
-     * @return array Array of values
-     */
-    public function pluck_values($field) {
-        return $this->pluck($field);
     }
     
     /**
@@ -2958,7 +2880,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
 	}
 
 	/**
-	 * Get all items as array (alias for to_array for Laravel compatibility)
+	 * Get all items as array
 	 * 
 	 * @return array
 	 */
