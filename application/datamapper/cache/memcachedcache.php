@@ -22,6 +22,10 @@ if (!function_exists('dmz_log_message')) {
 	}
 }
 
+if (!class_exists('DataMapper_Exception')) {
+	class DataMapper_Exception extends \RuntimeException {}
+}
+
 /**
  * DataMapper cache driver backed by Memcached.
  */
@@ -67,13 +71,13 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 *                      - prefix: Key prefix (default: 'dmz:')
 	 *                      - compression: Enable compression (default: true)
 	 *                      - persistent_id: Persistent connection ID (optional)
-	 * @throws Exception If Memcached extension not available or connection fails
+	 * @throws DataMapper_Exception If Memcached extension not available or connection fails
 	 */
 	public function __construct($config = [])
 	{
 		// Check if Memcached extension is available
 		if (!extension_loaded('memcached')) {
-			throw new Exception('Memcached extension not loaded');
+			throw new DataMapper_Exception('Memcached extension not loaded');
 		}
 		
 		// Create Memcached instance
@@ -106,7 +110,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 		// Test connection
 		$stats = $this->memcached->getStats();
 		if (empty($stats) || !is_array($stats)) {
-			throw new Exception('Failed to connect to Memcached servers');
+			throw new DataMapper_Exception('Failed to connect to Memcached servers');
 		}
 	}
 	

@@ -35,11 +35,32 @@ if (!defined('APPPATH')) {
 
 // Load DataMapper Exceptions if not already loaded
 if (!class_exists('DataMapper_Exception')) {
-    $exceptions_path = str_replace('libraries', 'datamapper', dirname(__FILE__)) . DIRECTORY_SEPARATOR . 'exceptions.php';
-    if (file_exists($exceptions_path)) {
-        require_once($exceptions_path);
-    }
+	$exceptions_path = str_replace('libraries', 'datamapper', dirname(__FILE__)) . DIRECTORY_SEPARATOR . 'exceptions.php';
+	if (file_exists($exceptions_path)) {
+		require_once($exceptions_path);
+	}
+
+	if (!class_exists('DataMapper_Exception')) {
+		class DataMapper_Exception extends \RuntimeException {}
+	}
 }
+
+if (!class_exists('DataMapper_Validation_Exception')) {
+	class DataMapper_Validation_Exception extends DataMapper_Exception {}
+}
+
+if (!class_exists('DataMapper_Relationship_Exception')) {
+	class DataMapper_Relationship_Exception extends DataMapper_Exception {}
+}
+
+if (!class_exists('DataMapper_File_Exception')) {
+	class DataMapper_File_Exception extends DataMapper_Exception {}
+}
+
+if (!class_exists('DataMapper_Database_Exception')) {
+	class DataMapper_Database_Exception extends DataMapper_Exception {}
+}
+
 
 if (!function_exists('dmz_log_message')) {
 	/**
@@ -70,6 +91,8 @@ if (!function_exists('dmz_log_message')) {
 		call_user_func('log_message', $level, '[DataMapper] ' . $message);
 	}
 }
+
+
 
 /**
  * Data Mapper Class
@@ -1107,7 +1130,7 @@ class DataMapper implements IteratorAggregate {
 
 				if(!file_exists($file))
 				{
-					throw new Exception('DataMapper Error: loading extension ' . $name . ': File not found.');
+					throw new DataMapper_Exception('DataMapper Error: loading extension ' . $name . ': File not found.');
 				}
 			}
 			else
@@ -1134,7 +1157,7 @@ class DataMapper implements IteratorAggregate {
 			}
 			if(!class_exists($ext))
 			{
-				throw new Exception("DataMapper Error: Unable to find a class for extension $name.");
+				throw new DataMapper_Exception("DataMapper Error: Unable to find a class for extension $name.");
 			}
 			// create class
 			if(is_null($options))
@@ -1511,7 +1534,7 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		// show an error, for debugging's sake.
-		throw new Exception("Unable to call the method \"$method\" on the class " . get_class($this));
+		throw new DataMapper_Exception("Unable to call the method \"$method\" on the class " . get_class($this));
 	}
 
 	// --------------------------------------------------------------------
@@ -3418,7 +3441,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		if(count($args) < 2)
 		{
-			throw new Exception("Invalid number of arguments to {$query}_func: must be at least 2 arguments.");
+			throw new DataMapper_Exception("Invalid number of arguments to {$query}_func: must be at least 2 arguments.");
 		}
 		if($query == 'select')
 		{
@@ -3453,7 +3476,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		if(count($args) < 2)
 		{
-			throw new Exception("Invalid number of arguments to {$query}_field_func: must be at least 2 arguments.");
+			throw new DataMapper_Exception("Invalid number of arguments to {$query}_field_func: must be at least 2 arguments.");
 		}
 		$field = array_shift($args);
 		$func = call_user_func_array(array($this, 'func'), $args);
@@ -3474,13 +3497,13 @@ class DataMapper implements IteratorAggregate {
 	{
 		if(count($args) < 1)
 		{
-			throw new Exception("Invalid arguments on {$query}_subquery: must be at least one argument.");
+			throw new DataMapper_Exception("Invalid arguments on {$query}_subquery: must be at least one argument.");
 		}
 		if($query == 'select')
 		{
 			if(count($args) < 2)
 			{
-				throw new Exception('Invalid number of arguments to select_subquery: must be exactly 2 arguments.');
+				throw new DataMapper_Exception('Invalid number of arguments to select_subquery: must be exactly 2 arguments.');
 			}
 			$sql = $this->_parse_subquery_object($args[0]);
 			$alias = $args[1];
@@ -4193,7 +4216,7 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		dmz_log_message('error', 'JSON helpers are not supported for driver: ' . ($this->db->dbdriver ?? 'unknown'));
-		throw new Exception('JSON where helpers are not supported for database driver: ' . ($this->db->dbdriver ?? 'unknown'));
+		throw new DataMapper_Exception('JSON where helpers are not supported for database driver: ' . ($this->db->dbdriver ?? 'unknown'));
 	}
 
 	// --------------------------------------------------------------------
@@ -7958,7 +7981,7 @@ class DataMapper implements IteratorAggregate {
 	public function chunk($size, $callback)
 	{
 		if (!is_callable($callback)) {
-			throw new Exception('Chunk callback must be callable');
+			throw new DataMapper_Exception('Chunk callback must be callable');
 		}
 		
 		$offset = 0;
@@ -8029,7 +8052,7 @@ class DataMapper implements IteratorAggregate {
 	public function chunk_by_id($size, $callback, $column = NULL, $alias = null)
 	{
 		if (!is_callable($callback)) {
-			throw new Exception('chunk_by_id callback must be callable');
+			throw new DataMapper_Exception('chunk_by_id callback must be callable');
 		}
 		
 		$lastId = null;

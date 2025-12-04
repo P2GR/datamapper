@@ -95,7 +95,7 @@ class DMZ_QueryBuilder {
      */
     public function __construct($model) {
         if (!($model instanceof DataMapper)) {
-            throw new Exception('QueryBuilder requires a DataMapper instance');
+              throw new DataMapper_Exception('QueryBuilder requires a DataMapper instance');
         }
         $this->model = $model->get_clone();
     }
@@ -861,8 +861,8 @@ class DMZ_QueryBuilder {
      */
     public function find_or_fail($id) {
         $result = $this->find($id);
-        if (!$result || !$result->exists()) {
-            throw new Exception('Model not found with ID: ' . $id);
+            if (!$result || !$result->exists()) {
+                throw new DataMapper_Exception('Model not found with ID: ' . $id);
         }
         return $result;
     }

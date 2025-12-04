@@ -7,6 +7,10 @@
 // Load interface
 require_once(dirname(__FILE__) . '/cacheinterface.php');
 
+if (!class_exists('DataMapper_Exception')) {
+	class DataMapper_Exception extends \RuntimeException {}
+}
+
 /**
  * Redis implementation of the DataMapper cache interface.
  */
@@ -47,13 +51,13 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	 *                      - database: Redis database number (default: 0)
 	 *                      - prefix: Key prefix (default: 'dmz:')
 	 *                      - timeout: Connection timeout (default: 2.5)
-	 * @throws Exception If Redis extension not available or connection fails
+	 * @throws DataMapper_Exception If Redis extension not available or connection fails
 	 */
 	public function __construct($config = [])
 	{
 		// Check if Redis extension is available
 		if (!extension_loaded('redis')) {
-			throw new Exception('Redis extension not loaded');
+			throw new DataMapper_Exception('Redis extension not loaded');
 		}
 		
 		// Create Redis instance
@@ -69,7 +73,7 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 			$connected = $this->redis->connect($host, $port, $timeout);
 			
 			if (!$connected) {
-				throw new Exception("Failed to connect to Redis at $host:$port");
+				throw new DataMapper_Exception("Failed to connect to Redis at $host:$port");
 			}
 			
 			// Authenticate if password provided
@@ -87,8 +91,11 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 				$this->prefix = $config['prefix'];
 			}
 			
-		} catch (Exception $e) {
-			throw new Exception('Redis connection error: ' . $e->getMessage());
+		} catch (\Exception $e) {
+			if ($e instanceof DataMapper_Exception) {
+				throw $e;
+			}
+			throw new DataMapper_Exception('Redis connection error: ' . $e->getMessage(), 0, $e);
 		}
 	}
 	
