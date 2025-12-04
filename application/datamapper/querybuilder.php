@@ -1102,10 +1102,13 @@ class DMZ_QueryBuilder {
         // Determine join table and foreign keys using DataMapper's naming convention
         // For many-to-many: uses join table like 'users_roles'
         // For one-to-many/one-to-one: uses foreign key in related table
+        // NOTE: has_one can ALSO use a join table (e.g., users->role via roles_users)
         
-        if ($is_has_many && $this->_is_many_to_many($first_model, $relation, $relation_config)) {
-            // Many-to-many relationship with join table
-            $this->_load_many_to_many($results, $relation, $relation_config, $parent_ids);
+        $uses_join_table = $this->_is_many_to_many($first_model, $relation, $relation_config);
+        
+        if ($uses_join_table) {
+            // Relationship uses join table (many-to-many OR has_one via join table)
+            $this->_load_many_to_many($results, $relation, $relation_config, $parent_ids, $is_has_one);
         } else {
             // One-to-many or one-to-one with foreign key
             $this->_load_with_foreign_key($results, $relation, $relation_config, $parent_ids, $is_has_many);
@@ -1248,13 +1251,15 @@ class DMZ_QueryBuilder {
     
     /**
      * Load many-to-many relationship using join table
+     * Also handles has_one relationships that use join tables
      * 
      * @param DMZ_Collection $results
      * @param string $relation
      * @param array $config
      * @param array $parent_ids
+     * @param bool $is_has_one If true, return single model instead of collection
      */
-    protected function _load_many_to_many($results, $relation, $config, $parent_ids) {
+    protected function _load_many_to_many($results, $relation, $config, $parent_ids, $is_has_one = FALSE) {
         $first_model = $results->first();
         $parent_table = $first_model->table;
         $parent_key = isset($config['join_self_as']) ? $config['join_self_as'] : rtrim($parent_table, 's');
@@ -1343,9 +1348,21 @@ class DMZ_QueryBuilder {
         // Assign to parent models
         foreach ($results->to_array() as $model) {
             if (isset($grouped[$model->id])) {
-                $this->_assign_eager_relation($model, $relation, new DMZ_Collection($grouped[$model->id]));
+                if ($is_has_one) {
+                    // has_one via join table - return first (and only) related model
+                    $this->_assign_eager_relation($model, $relation, $grouped[$model->id][0]);
+                } else {
+                    // has_many - return collection
+                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection($grouped[$model->id]));
+                }
             } else {
-                $this->_assign_eager_relation($model, $relation, new DMZ_Collection(array()));
+                if ($is_has_one) {
+                    // has_one - return null when no related record
+                    $this->_assign_eager_relation($model, $relation, NULL);
+                } else {
+                    // has_many - return empty collection
+                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection(array()));
+                }
             }
         }
     }
