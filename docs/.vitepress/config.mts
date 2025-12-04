@@ -60,7 +60,8 @@ export default defineConfig({
               { text: 'Query Builder', link: '/guide/datamapper-2/query-builder' },
               { text: 'Eager Loading', link: '/guide/datamapper-2/eager-loading' },
               { text: 'Collections', link: '/guide/datamapper-2/collections' },
-              { text: 'Advanced Queries', link: '/guide/datamapper-2/advanced-query-building' }
+              { text: 'Advanced Queries', link: '/guide/datamapper-2/advanced-query-building' },
+              { text: 'Debugging', link: '/guide/datamapper-2/debugging' }
             ]
           },
           {
@@ -157,7 +158,8 @@ export default defineConfig({
                 { text: 'Query Builder', link: '/guide/datamapper-2/query-builder' },
                 { text: 'Eager Loading', link: '/guide/datamapper-2/eager-loading' },
                 { text: 'Collections', link: '/guide/datamapper-2/collections' },
-                { text: 'Advanced Queries', link: '/guide/datamapper-2/advanced-query-building' }
+                { text: 'Advanced Queries', link: '/guide/datamapper-2/advanced-query-building' },
+                { text: 'Debugging', link: '/guide/datamapper-2/debugging' }
               ]
             },
             {
