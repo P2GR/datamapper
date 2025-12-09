@@ -7538,12 +7538,25 @@ class DataMapper implements IteratorAggregate {
 
 		foreach ($this->fields as $field)
 		{
-			if ($validate && ! isset($this->{$field}))
+			// Get the raw property value directly, bypassing __get accessor
+			// This is needed because __get applies casting (e.g., JSON string to array),
+			// but the database expects the raw storage format (e.g., JSON string)
+			$has_property = property_exists($this, $field);
+			
+			if ($validate && !$has_property)
 			{
 				continue;
 			}
 
-			$data[$field] = $this->{$field};
+			$value = $has_property ? $this->$field : null;
+			
+			// If the field has a cast defined and the raw value is still in cast format
+			// (e.g., an array that should be stored as JSON), reverse cast it for storage
+			if (isset($this->casts[$field]) && !is_null($value)) {
+				$value = $this->_reverse_cast_attribute($field, $value);
+			}
+			
+			$data[$field] = $value;
 		}
 
 		return $data;
