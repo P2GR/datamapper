@@ -911,8 +911,13 @@ class DataMapper implements IteratorAggregate {
 			return;
 		}
 
-		// Prepare class
-		$class = ucfirst(strtolower($class));
+		// Prepare class variants
+		$class_variants = array(
+			$class,
+			ucfirst($class),
+			ucfirst(strtolower($class))
+		);
+		$class_variants = array_unique($class_variants);
 
 		// Prepare path
 		$paths = array();
@@ -924,26 +929,32 @@ class DataMapper implements IteratorAggregate {
 
 		foreach (array_merge(array(APPPATH),$paths, self::$model_paths) as $path)
 		{
-			// Prepare file
-			$file = $path . 'models/' . $class . '.php';
-
-			// Check if file exists, require_once if it does
-			if (file_exists($file))
+			foreach ($class_variants as $candidate)
 			{
-				require_once($file);
-				break;
+				// Prepare file
+				$file = $path . 'models/' . $candidate . '.php';
+
+				// Check if file exists, require_once if it does
+				if (file_exists($file))
+				{
+					require_once($file);
+					break 2;
+				}
 			}
 		}
 
 		// if class not loaded, do a recursive search of model paths for the class
 		if (! class_exists($class))
 		{
-			foreach($paths as $path)
+			foreach(array_merge(array(APPPATH),$paths, self::$model_paths) as $path)
 			{
-				$found = DataMapper::recursive_require_once($class, $path . 'models');
-				if($found)
+				foreach ($class_variants as $candidate)
 				{
-					break;
+					$found = DataMapper::recursive_require_once($candidate, $path . 'models');
+					if($found)
+					{
+						break 2;
+					}
 				}
 			}
 		}
