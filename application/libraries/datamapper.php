@@ -2316,8 +2316,21 @@ class DataMapper implements IteratorAggregate {
 			return FALSE;
 		}
 
-		$this->where_in('id', $ids);
-		return $this->update($field, $value, $escape_values);
+		// Batch update in chunks to prevent "Regular expression is too large" errors
+		// or packet size limits when handling large datasets.
+		$chunks = array_chunk($ids, 1000);
+		$success = TRUE;
+
+		foreach ($chunks as $chunk)
+		{
+			$this->where_in('id', $chunk);
+			if ( ! $this->update($field, $value, $escape_values))
+			{
+				$success = FALSE;
+			}
+		}
+
+		return $success;
 	}
 
 	// --------------------------------------------------------------------
