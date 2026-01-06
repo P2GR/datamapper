@@ -911,13 +911,8 @@ class DataMapper implements IteratorAggregate {
 			return;
 		}
 
-		// Prepare class variants
-		$class_variants = array(
-			$class,
-			ucfirst($class),
-			ucfirst(strtolower($class))
-		);
-		$class_variants = array_unique($class_variants);
+		// Prepare class
+		$class = ucfirst(strtolower($class));
 
 		// Prepare path
 		$paths = array();
@@ -929,32 +924,26 @@ class DataMapper implements IteratorAggregate {
 
 		foreach (array_merge(array(APPPATH),$paths, self::$model_paths) as $path)
 		{
-			foreach ($class_variants as $candidate)
-			{
-				// Prepare file
-				$file = $path . 'models/' . $candidate . '.php';
+			// Prepare file
+			$file = $path . 'models/' . $class . '.php';
 
-				// Check if file exists, require_once if it does
-				if (file_exists($file))
-				{
-					require_once($file);
-					break 2;
-				}
+			// Check if file exists, require_once if it does
+			if (file_exists($file))
+			{
+				require_once($file);
+				break;
 			}
 		}
 
 		// if class not loaded, do a recursive search of model paths for the class
 		if (! class_exists($class))
 		{
-			foreach(array_merge(array(APPPATH),$paths, self::$model_paths) as $path)
+			foreach($paths as $path)
 			{
-				foreach ($class_variants as $candidate)
+				$found = DataMapper::recursive_require_once($class, $path . 'models');
+				if($found)
 				{
-					$found = DataMapper::recursive_require_once($candidate, $path . 'models');
-					if($found)
-					{
-						break 2;
-					}
+					break;
 				}
 			}
 		}
@@ -2174,7 +2163,7 @@ class DataMapper implements IteratorAggregate {
 				}
 				$related_properties = $this->_get_related_properties($rf);
 				$other_column = $related_properties['join_other_as'] . '_id';
-				if(isset($this->has_one[$rf]) && in_array($other_column, $this->fields))
+				if(isset($this->has_one[$rf]) && $this->_field_in_fields($other_column, $this->fields))
 				{
 					// unset, so that it doesn't get re-saved later.
 					unset($objects[$index]);
@@ -2190,6 +2179,39 @@ class DataMapper implements IteratorAggregate {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Case-insensitive field existence check.
+	 *
+	 * DataMapper historically assumes snake_case field names. On some environments the
+	 * database schema can contain differently-cased identifiers (or drivers can return
+	 * them with differing case), which would otherwise cause relationship detection to
+	 * incorrectly fall back to join tables.
+	 */
+	protected function _field_in_fields($field, $fields)
+	{
+		if (empty($field) || empty($fields) || !is_array($fields))
+		{
+			return FALSE;
+		}
+
+		// Fast path (exact match)
+		if (in_array($field, $fields, TRUE))
+		{
+			return TRUE;
+		}
+
+		$field_lower = strtolower($field);
+		foreach ($fields as $f)
+		{
+			if (strtolower($f) === $field_lower)
+			{
+				return TRUE;
+			}
+		}
+
+		return FALSE;
 	}
 
 	// --------------------------------------------------------------------
@@ -5718,7 +5740,7 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		// the extra in_array column check is for has_one self references
-		if ($relationship_table == $this->table && in_array($other_column, $this->fields))
+		if ($relationship_table == $this->table && $this->_field_in_fields($other_column, $this->fields))
 		{
 			// has_one relationship without a join table
 			if($id_only)
@@ -5733,7 +5755,7 @@ class DataMapper implements IteratorAggregate {
 			}
 		}
 		// the extra in_array column check is for has_one self references
-		else if ($relationship_table == $object->table && in_array($this_column, $object->fields))
+		else if ($relationship_table == $object->table && $this->_field_in_fields($this_column, $object->fields))
 		{
 			// has_one relationship without a join table
 			if ( ! in_array($object_as, $query_related))

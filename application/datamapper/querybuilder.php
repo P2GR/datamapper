@@ -1280,7 +1280,7 @@ class DMZ_QueryBuilder {
         // For one-to-many/one-to-one: uses foreign key in related table
         // NOTE: has_one can ALSO use a join table (e.g., users->role via roles_users)
         
-        $uses_join_table = $this->_is_many_to_many($first_model, $relation, $relation_config);
+        $uses_join_table = $this->_is_many_to_many($first_model, $relation, $relation_config, $is_has_one);
         
         if ($uses_join_table) {
             // Relationship uses join table (many-to-many OR has_one via join table)
@@ -1297,19 +1297,36 @@ class DMZ_QueryBuilder {
      * @param DataMapper $model
      * @param string $relation
      * @param array $config
+     * @param bool $is_has_one Optional flag indicating this is a has_one relationship
      * @return bool
      */
-    protected function _is_many_to_many($model, $relation, $config) {
+    protected function _is_many_to_many($model, $relation, $config, $is_has_one = FALSE) {
         // If join_table is explicitly set to a non-empty value, it's many-to-many
         if (isset($config['join_table']) && !empty($config['join_table'])) {
             dmz_log_message('debug', "Relation '{$relation}' is many-to-many (join_table explicitly set)");
             return TRUE;
         }
         
-        // If join_self_as and join_other_as are set, it's many-to-many
-        if (isset($config['join_self_as']) && isset($config['join_other_as'])) {
-            dmz_log_message('debug', "Relation '{$relation}' has join_self_as and join_other_as set - IS MANY-TO-MANY");
-            return TRUE;  // MUST return TRUE immediately - join table configuration is explicit
+        // NOTE: Do NOT check join_self_as / join_other_as here!
+        // DataMapper's _relationship() method sets these defaults for ALL relationships,
+        // not just many-to-many ones. They are just naming hints, not indicators of join table usage.
+        
+        // PRIORITY CHECK: For has_one relationships, check if FK column exists in parent table FIRST
+        // If the FK column exists, this is NOT a many-to-many relationship - use FK-based loading
+        // This check must happen BEFORE checking for join table existence to avoid false positives
+        if ($is_has_one || isset($model->has_one[$relation])) {
+            $fk_column = $relation . '_id';
+            
+            // Check if FK column exists in parent model's fields (case-insensitive)
+            if (!empty($model->fields) && is_array($model->fields)) {
+                $fk_column_lower = strtolower($fk_column);
+                foreach ($model->fields as $field) {
+                    if (strtolower($field) === $fk_column_lower) {
+                        dmz_log_message('debug', "Relation '{$relation}' has FK column '{$field}' in parent table - NOT many-to-many");
+                        return FALSE;
+                    }
+                }
+            }
         }
         
         // AUTO-DETECTION: Even if join table isn't explicitly configured,
