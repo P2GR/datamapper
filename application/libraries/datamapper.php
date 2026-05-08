@@ -666,7 +666,8 @@ class DataMapper implements IteratorAggregate {
 				$this->_field_tracking = array(
 					'get_rules' => array(),
 					'matches' => array(),
-					'intval' => array('id')
+					'intval' => array('id'),
+					'floatval' => array()
 				);
 
 				// Convert validation into associative array by field name
@@ -713,21 +714,6 @@ class DataMapper implements IteratorAggregate {
 
 				$this->validation = $associative_validation;
 
-				// Force all other has_one ITFKs to integers on get
-				foreach($this->has_one as $related => $rel_props)
-				{
-					$field = $related . '_id';
-					if(	in_array($field, $this->fields) &&
-						( ! isset($this->validation[$field]) || // does not have a validation key or...
-							! isset($this->validation[$field]['get_rules'])) &&  // a get_rules key...
-						( ! isset($this->validation[$related]) || // nor does the related have a validation key or...
-							! isset($this->validation[$related]['get_rules'])) ) // a get_rules key
-					{
-						// assume an int
-						$this->_field_tracking['intval'][] = $field;
-					}
-				}
-
 				// Get and store the table's field names and meta data
 				$fields = $this->db->field_data($this->table);
 
@@ -743,6 +729,16 @@ class DataMapper implements IteratorAggregate {
 						// label is set below, to prevent caching language-based labels
 						$this->validation[$field->name] = array('field' => $field->name, 'rules' => array());
 					}
+
+					$field_type = strtolower((string) $field->type);
+					if ($this->_is_integer_field_type($field_type))
+					{
+						$this->_field_tracking['intval'][] = $field->name;
+					}
+					else if ($this->_is_float_field_type($field_type))
+					{
+						$this->_field_tracking['floatval'][] = $field->name;
+					}
 				}
 
 				// convert simple has_one and has_many arrays into more advanced ones
@@ -754,6 +750,24 @@ class DataMapper implements IteratorAggregate {
 						$this->_relationship($arr, $rel_props, $related_field);
 					}
 				}
+
+				// Force all other has_one ITFKs to integers on get
+				foreach($this->has_one as $related => $rel_props)
+				{
+					$field = $related . '_id';
+					if(	in_array($field, $this->fields) &&
+						! in_array($field, $this->_field_tracking['intval']) &&
+						( ! isset($this->validation[$field]) || // does not have a validation key or...
+							! isset($this->validation[$field]['get_rules'])) &&  // a get_rules key...
+						( ! isset($this->validation[$related]) || // nor does the related have a validation key or...
+							! isset($this->validation[$related]['get_rules'])) ) // a get_rules key
+					{
+						$this->_field_tracking['intval'][] = $field;
+					}
+				}
+
+				$this->_field_tracking['intval'] = array_values(array_unique($this->_field_tracking['intval']));
+				$this->_field_tracking['floatval'] = array_values(array_unique($this->_field_tracking['floatval']));
 
 				// allow subclasses to add initializations
 				if(method_exists($this, 'post_model_init'))
@@ -4790,6 +4804,7 @@ class DataMapper implements IteratorAggregate {
 			}
 			$values = $arr;
 		}
+
 		
 		// Use the public where_in method instead of protected _where_in
 		// to maintain compatibility with newer CodeIgniter versions
@@ -7719,6 +7734,14 @@ class DataMapper implements IteratorAggregate {
 			}
 		}
 
+		foreach($this->_field_tracking['floatval'] as $field)
+		{
+			if(isset($item->{$field}))
+			{
+				$item->{$field} = floatval($item->{$field});
+			}
+		}
+
 		// === APPLY ATTRIBUTE CASTING (DataMapper 2.0) ===
 		// Apply casts to all properties defined in $casts array
 		if (!empty($item->casts)) {
@@ -9079,6 +9102,16 @@ class DataMapper implements IteratorAggregate {
 	 * @param mixed $value Value to reverse cast
 	 * @return mixed
 	 */
+	protected function _is_integer_field_type($type)
+	{
+		return in_array($type, array('tinyint', 'smallint', 'mediumint', 'int', 'integer', 'bigint', 'year'), TRUE);
+	}
+
+	protected function _is_float_field_type($type)
+	{
+		return in_array($type, array('decimal', 'numeric', 'float', 'double', 'real'), TRUE);
+	}
+
 	protected function _reverse_cast_attribute($key, $value)
 	{
 		if ($value === NULL) {
