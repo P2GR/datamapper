@@ -86,10 +86,33 @@ if ($post) {
 }
 ```
 
+## First-Or Helpers
+
+Use the first-or helpers when a row may already exist. The lookup attributes are used for the query; the second array seeds or updates the model.
+
+```php
+$draft = (new Post())->first_or_new(
+    array('slug' => 'hello-world'),
+    array('title' => 'Hello world')
+);
+
+$post = (new Post())->first_or_create(
+    array('slug' => 'hello-world'),
+    array('title' => 'Hello world')
+);
+
+$post = (new Post())->update_or_create(
+    array('slug' => 'hello-world'),
+    array('title' => 'Updated title')
+);
+```
+
+These helpers use `fill()` internally when it is available, so `$fillable` and `$guarded` still apply. Reach for `force_fill()` separately when you intentionally need trusted unguarded assignment.
+
 ## Tips
 
 - Define `$fillable` (preferred) or `$guarded` on every model that handles user input.
-- Keep `$guarded = array('*')` on baseline models and opt in attributes with `fillable` for the least privilege stance.
+- Keep `$guarded = array('*')` on baseline models and opt in attributes with `$fillable` for the least privilege stance.
 - Reach for `force_fill()` sparingly and only when you can guarantee the data source.
 - Pair `fill()` with validation as usual—mass assignment does not bypass validation rules.
 

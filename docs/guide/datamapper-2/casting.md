@@ -1,486 +1,212 @@
-# Attribute Casting, Accessors & Mutators (DataMapper 2.0)
+# Attribute Casting, Accessors and Mutators (DataMapper 2.0)
 
-DataMapper 2.0 introduces powerful attribute casting, accessors, and mutators that provide automatic type conversion and data transformation while maintaining **100% backward compatibility** with existing models.
-
-**âœ¨ New in DataMapper 2.0:** Modern attribute handling inspired by Laravel and other ORMs. **Built directly into DataMapper** - just define $casts property in your model. No traits, no configuration required!
-
-Key Features:
-
-- **Automatic Type Casting** - Database strings â†’ proper PHP types (int, bool, array, DateTime)
-- **Accessors** - Computed properties that don't exist in the database
-- **Mutators** - Transform values automatically when setting
-- **Opt-In Design** - Models without $casts defined work exactly as before
-- **Performance** - Method existence checks are cached for speed
+DataMapper 2.0 includes opt-in attribute casting, accessors and mutators directly in the core model. Existing models without `$casts`, accessors or mutators continue to behave as before.
 
 ## Table of Contents
 
-- [Overview](#Overview)
-- [Attribute Casting](#Casting)
-- [Accessors (Getters)](#Accessors)
-- [Mutators (Setters)](#Mutators)
-- [Supported Cast Types](#Types)
-- [Complete Examples](#Examples)
-- [Backward Compatibility](#Compatibility)
-
-## Overview
-
-The casting system provides three key features:
-
-**Opt-In Design:** Models without $casts defined continue to work exactly as before. **No breaking changes!**
+- [Basic Setup](#basic-setup)
+- [Supported Cast Types](#supported-cast-types)
+- [Reading and Writing Casted Values](#reading-and-writing-casted-values)
+- [Accessors](#accessors)
+- [Mutators](#mutators)
+- [Arrays and API Output](#arrays-and-api-output)
+- [Backward Compatibility](#backward-compatibility)
+- [Common Mistakes](#common-mistakes)
 
 ## Basic Setup
 
-Attribute casting is **built into DataMapper 2.0** - no trait required! Just define the $casts property in your model:
+Casting is built into `DataMapper`; no casting trait is required. Define `$casts` on the model using CodeIgniter 3 compatible property syntax.
 
 ```php
-
 class User extends DataMapper
 {
-    // That's it! Just define your casts
     protected $casts = array(
-        'id' => 'int',
-        'age' => 'int',
-        'salary' => 'float',
-        'is_active' => 'bool',
-        'settings' => 'array',
+        'id'         => 'int',
+        'age'        => 'int',
+        'salary'     => 'float',
+        'is_active'  => 'bool',
+        'settings'   => 'array',
+        'profile'    => 'object',
         'created_at' => 'datetime'
     );
 }
-
-// Use it immediately
-$user = new User();
-$user->get_by_id(1);
-
-echo $user->age;         // 25 (int, not string!)
-echo $user->is_active;   // true (bool, not "1"!)
-print_r($user->settings);  // Array (auto-decoded from JSON!)
-
 ```
 
-**No Trait Required!** Casting is built directly into DataMapper core. Just define $casts and it works automatically.
-
-## Attribute Casting
-
-Casting automatically converts values between database storage and PHP types:
-
-### Without Casting (Legacy Behavior)
+When the model is hydrated from the database, those fields are converted to PHP-friendly values.
 
 ```php
-
 $user = new User();
 $user->get_by_id(1);
 
-echo $user->age;         // "25" (string from database)
-echo $user->is_active;   // "1" (string)
-$settings = json_decode($user->settings, true); // Manual JSON decode
-
-```
-
-### With Casting (Modern Approach)
-
-```php
-
-$user = new User();
-$user->get_by_id(1);
-
-echo $user->age;         // 25 (int)
-echo $user->is_active;   // true (bool)
-echo $user->settings['theme'];  // Array automatically decoded!
-
+echo $user->age;                 // int
+var_dump($user->is_active);       // bool
+print_r($user->settings);         // array
+echo $user->created_at->format('Y-m-d');
 ```
 
 ## Supported Cast Types
 
-## Accessors (Computed Properties)
+| Cast | Runtime value |
+|------|---------------|
+| `int`, `integer` | Integer |
+| `float`, `double`, `real` | Float |
+| `bool`, `boolean` | Boolean |
+| `string` | String |
+| `array`, `json` | Associative array decoded from JSON |
+| `object` | `stdClass` decoded from JSON |
+| `datetime`, `timestamp` | `DateTime` |
+| `date` | `DateTime` normalized to a date value |
 
-Accessors let you define virtual attributes that don't exist in the database:
+## Reading and Writing Casted Values
+
+Casted values remain application-facing while you work with the model. DataMapper converts them back to database storage format when the model is saved.
 
 ```php
+$user = new User();
+$user->settings = array('theme' => 'dark', 'mail' => true);
+$user->is_active = '1';
+$user->created_at = '2026-05-26 10:30:00';
 
+var_dump($user->settings);   // array('theme' => 'dark', 'mail' => true)
+var_dump($user->is_active);  // bool(true)
+
+$user->save();               // settings is stored as JSON, created_at as a date string
+```
+
+This is different from the old pattern where applications often had to call `json_decode()` after reads and `json_encode()` before saves.
+
+## Accessors
+
+Accessors expose computed or transformed attributes. Name them `get{AttributeName}Attribute` using StudlyCase.
+
+```php
 class User extends DataMapper
 {
-    /**
-     * Accessor: full_name
-     * Combines first and last name
-     */
     public function getFullNameAttribute()
     {
-        return trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
-    }
-    
-    /**
-     * Accessor: age_group
-     * Categorizes user by age
-     */
-    public function getAgeGroupAttribute()
-    {
-        $age = $this->age ?? 0;
-        
-        if ($age < 18) {
-            return 'Minor';
-        } elseif ($age < 30) {
-            return 'Young Adult';
-        } elseif ($age < 50) {
-            return 'Adult';
-        } elseif ($age < 65) {
-            return 'Middle Age';
-        } else {
-            return 'Senior';
-        }
+        $first = isset($this->first_name) ? $this->first_name : '';
+        $last = isset($this->last_name) ? $this->last_name : '';
+
+        return trim($first . ' ' . $last);
     }
 }
 
-```
-
-Usage:
-
-```php
-
 $user = new User();
-$user->first_name = 'John';
-$user->last_name = 'Doe';
-$user->age = 45;
+$user->first_name = 'Ada';
+$user->last_name = 'Lovelace';
 
-echo $user->full_name;   // "John Doe" (computed on the fly)
-echo $user->age_group;   // "Adult"
-
+echo $user->full_name; // Ada Lovelace
 ```
 
-**Naming Convention:** Accessor methods must be named `get{AttributeName}Attribute` in StudlyCase (e.g., `full_name` â†’ `getFullNameAttribute`)
+Accessors can be used for virtual attributes or for transforming existing fields on read.
 
-## Mutators (Data Transformation)
+## Mutators
 
-Mutators transform data when setting attributes. **Important:** Use the stored field name directly to avoid infinite recursion.
+Mutators transform values when they are assigned from outside the model. Name them `set{AttributeName}Attribute` using StudlyCase.
 
 ```php
-
 class User extends DataMapper
 {
-    /**
-     * Mutator: email
-     * Automatically lowercase email addresses
-     */
     public function setEmailAttribute($value)
     {
-        // Direct assignment to avoid recursion
         $this->email = strtolower(trim($value));
     }
-    
-    /**
-     * Mutator: password
-     * Automatically hash passwords
-     */
+
     public function setPasswordAttribute($value)
     {
-        // Only hash if not already hashed
         if (!password_get_info($value)['algo']) {
             $value = password_hash($value, PASSWORD_DEFAULT);
         }
+
         $this->password = $value;
     }
-    
-    /**
-     * Mutator: username
-     * Normalize and validate username
-     */
-    public function setUsernameAttribute($value)
-    {
-        // Clean and validate
-        $clean = preg_replace('/[^a-z0-9_]/', '', strtolower($value));
-        $this->username = $clean;
-    }
 }
-
-```
-
-Usage:
-
-```php
 
 $user = new User();
-$user->email = 'ADMIN@COMPANY.COM';
-$user->password = 'secret123';
-$user->username = 'John.Doe-2024!';
+$user->email = 'ADMIN@EXAMPLE.COM';
+$user->password = 'secret';
 
-echo $user->email;     // "admin@company.com" (lowercased)
-echo $user->password;  // "$2y$10$..." (hashed)
-echo $user->username;  // "johndoe2024" (cleaned)
-
+echo $user->email; // admin@example.com
 ```
 
-**Naming Convention:** Mutator methods must be named `set{AttributeName}Attribute` in StudlyCase (e.g., `email` â†’ `setEmailAttribute`)
+Inside a mutator, assign the normalized value to the stored field name directly.
 
-**Important:** Inside mutators, assign directly to `$this->{property}`. DataMapper's `__set` method detects mutators and calls them, preventing infinite loops.
+## Arrays and API Output
 
-## Complete Examples
-
-### to_array() - Export with Casting and Accessors
-
-The to_array() method exports all attributes with casting applied AND includes computed accessor values:
+The Array extension's `to_array()` returns database fields by default. Because casted fields are stored on the model in their PHP-friendly form after hydration, those field values are included as casted values.
 
 ```php
-
-class User extends DataMapper
-{
-    protected $casts = array(
-        'age' => 'int',
-        'is_active' => 'bool'
-    );
-    
-    public function getFullNameAttribute()
-    {
-        return $this->first_name . ' ' . $this->last_name;
-    }
-}
-
 $user = new User();
 $user->get_by_id(1);
 
-// Export to array with casts and accessors
 $data = $user->to_array();
-
-// Output:
-// [
-//     'id' => 1,
-//     'first_name' => 'John',
-//     'last_name' => 'Doe',
-//     'age' => 30,              // Cast to int
-//     'is_active' => true,      // Cast to bool
-//     'full_name' => 'John Doe' // Accessor included!
-// ]
-
-// Perfect for JSON APIs
-echo json_encode($user->to_array());
-
 ```
 
-**Note:** to_array() automatically includes all computed accessor properties that don't exist in the database. This is perfect for API responses!
-
-### JSON/Array Casting
+Virtual accessors are included only when you explicitly request them in the field list.
 
 ```php
-
-class Post extends DataMapper
-{
-    protected $casts = array(
-        'tags' => 'array',
-        'meta' => 'array'
-    ];
-}
-
-$post = new Post();
-$post->tags = ['php', 'orm', 'datamapper'];
-$post->meta = ['views' => 1000, 'likes' => 50];
-$post->save();  // Stored as JSON in database
-
-// Later...
-$post->get_by_id(1);
-echo $post->tags[0];           // "php" (array automatically!)
-echo $post->meta['views'];     // 1000
-
+$data = $user->to_array(array('id', 'email', 'full_name', 'settings'));
 ```
 
-### DateTime Casting
-
-```php
-
-class User extends DataMapper
-{
-    protected $casts = array(
-        'created_at' => 'datetime',
-        'birth_date' => 'date'
-    );
-}
-
-$user = new User();
-$user->created_at = '2024-01-15 10:30:00';
-$user->birth_date = '1990-05-20';
-
-// Automatically converted to DateTime objects
-echo $user->created_at->format('F j, Y');  // "January 15, 2024"
-echo $user->birth_date->format('Y-m-d');    // "1990-05-20"
-
-// Calculate age
-$now = new DateTime();
-$age = $now->diff($user->birth_date)->y;
-echo $age;  // 34
-
-```
-
-### Computed Pricing Example
-
-```php
-
-class Product extends DataMapper
-{
-    protected $casts = array(
-        'price' => 'float',
-        'discount_price' => 'float'
-    ];
-    
-    public function getFinalPriceAttribute()
-    {
-        $price = $this->price ?? 0.0;
-        $discount = $this->discount_price ?? 0.0;
-        return $discount > 0 ? $discount : $price;
-    }
-    
-    public function getDiscountPercentageAttribute()
-    {
-        $price = $this->price ?? 0.0;
-        $discount = $this->discount_price ?? 0.0;
-        
-        if ($price <= 0 || $discount <= 0) return 0.0;
-        return round((($price - $discount) / $price) * 100, 2);
-    }
-}
-
-$product = new Product();
-$product->price = 1299.99;
-$product->discount_price = 999.99;
-
-echo $product->final_price;           // 999.99
-echo $product->discount_percentage;  // 23.08
-
-```
+For saves, DataMapper uses its internal database payload conversion and reverses JSON/date casts back to storage values.
 
 ## Backward Compatibility
 
-The casting system is **completely opt-in**. Models work in three ways:
-
-### 1. Legacy Model (No Changes)
+Casting is opt-in.
 
 ```php
-
-class OldUser extends DataMapper
+class LegacyUser extends DataMapper
 {
-    // No $casts defined
-    // Works exactly as before!
+    // No $casts defined; legacy values are unchanged.
 }
-
 ```
 
-### 2. Modern Model with Casting Only
+You can adopt features gradually:
+
+- Add `$casts` to models that need typed values.
+- Add accessors for computed read-only values.
+- Add mutators for normalization such as emails, slugs and password hashes.
+- Leave legacy models unchanged until you are ready to modernize them.
+
+## Common Mistakes
+
+### Using the Old AttributeCasting Trait
+
+Do not add `use AttributeCasting;` for new models. Casting is built into the core model.
 
 ```php
-
 class User extends DataMapper
 {
-    // Just add $casts 
-    protected $casts = array(
-        'age' => 'int'
-    );
+    protected $casts = array('settings' => 'json');
 }
-
 ```
 
-### 3. Full Modern Model
+### Using Typed Properties in CI3 Models
+
+Avoid typed property syntax in CodeIgniter 3 models because older CI loaders and supported PHP versions may not handle it consistently.
 
 ```php
-
 class User extends DataMapper
 {
-    // Casts, accessors, and mutators
     protected $casts = array('age' => 'int');
-    
-    public function getFullNameAttribute() {
-        return $this->first_name . ' ' . $this->last_name;
-    }
-    
-    public function setEmailAttribute($value) {
-        $this->email = strtolower($value);
-    }
 }
-
 ```
 
-### ðŸŽ¯ Migration Strategy
-
-- **Phase 1:** Leave existing models unchanged (they work perfectly)
-- **Phase 2:** Add `$casts` property to models you're actively working on
-- **Phase 3:** Add accessors/mutators as needed for new features
-- **Phase 4:** Gradually adopt across codebase (optional)
-
-**No pressure to change everything at once!** Old and new models work together perfectly.
-
-## Best Practices
-
-## Common Mistakes & Solutions
-
-### âŒ Mistake 1: Assigning to Wrong Property in Mutator
+### Using the Wrong Method Names
 
 ```php
+// Not detected
+public function full_name() {}
+public function setEmail($value) {}
 
-// CORRECT - Assign to actual property
-public function setEmailAttribute($value)
-{
-    $this->email = strtolower($value);  // Direct assignment works!
-}
-
-```
-
-**How it works:** DataMapper's `__set` method detects when a mutator exists for an attribute and calls it. Inside the mutator, assign directly to the property.
-
-### âŒ Mistake 2: Wrong Array Syntax for CodeIgniter 3
-
-```php
-
-// WRONG - PHP 7.4+ typed property syntax is not supported by CI3 loaders
-class User extends DataMapper
-{
-    protected array $casts = ['age' => 'int'];  // Requires CodeIgniter 4+
-}
-
-// CORRECT - CI3-compatible syntax
-class User extends DataMapper
-{
-    protected $casts = array('age' => 'int');  // Works with all supported versions (PHP 7.4+)
-}
-
-```
-
-### âŒ Mistake 3: Wrong Method Names
-
-```php
-
-// WRONG - Incorrect naming
-public function full_name() { /* Won't work */ }
-public function setEmail($value) { /* Won't work */ }
-
-// CORRECT - StudlyCase + Attribute suffix
-public function getFullNameAttribute() { /* Works! */ }
-public function setEmailAttribute($value) { /* Works! */ }
-
-```
-
-**Naming Rules:**
-
-- Accessors: `get + StudlyCase(attribute_name) + Attribute`
-- Mutators: `set + StudlyCase(attribute_name) + Attribute`
-- Example: `full_name` â†’ `getFullNameAttribute()`
-- Example: `is_active` â†’ `getIsActiveAttribute()`
-
-## Performance Considerations
-
-The casting system is highly optimized:
-
-### Benchmark Results
-
-```php
-
-// Test: 10,000 reads with/without casting
-
-Without casting (legacy):  12ms
-With casting (5 casts):    14ms  (+16% overhead)
-With casting + accessor:   16ms  (+33% overhead)
-
-Conclusion: Minimal performance impact for huge gains in code quality
-
+// Detected
+public function getFullNameAttribute() {}
+public function setEmailAttribute($value) {}
 ```
 
 ## See Also
 
 - [Query Builder](query-builder) - Modern query interface
-- [Get Methods](/guide/models/get) - Classic data retrieval
+- [Mass Assignment](/guide/models/mass-assignment) - `fill()`, `create()` and guarding
 - [Save & Update](/guide/models/save) - Persisting data
-- [Validation](/guide/advanced/validation) - Data validation rules
+- [Validation](/guide/advanced/validation) - Validation rules

@@ -172,11 +172,7 @@ DataMapper 2.0 supports automatic attribute casting:
 ::: code-group
 
 ```php [With Casting]
-use DataMapper\AttributeCasting;
-
 class User extends DataMapper {
-    use AttributeCasting;
-    
     protected $casts = array(
         'is_active'  => 'bool',
         'age'        => 'int',

@@ -70,6 +70,18 @@ $model->with('relationship', function($query) {
 
 ```
 
+Load several relationships by passing multiple strings or an array:
+
+```php
+$users = (new User())
+    ->with('profile', 'post', 'role')
+    ->get();
+
+$users = (new User())
+    ->with(array('profile', 'post', 'role'))
+    ->get();
+```
+
 ## Filtering Related Records
 
 ### WHERE Conditions
@@ -182,12 +194,12 @@ $installations = (new Installation())
 **Do NOT nest `with()` calls inside constraint callbacks!**
 
 ```php
-// ❌ WRONG - This will throw an error
+// WRONG - This will throw an error
 ->with('building', function($q) {
     $q->with('client');  // Cannot call with() here!
 })
 
-// ✅ CORRECT - Use dot notation instead
+// CORRECT - Use dot notation instead
 ->with('building.client')
 ```
 
@@ -258,13 +270,12 @@ $users = (new User())
 
 // Load user with their 10 most recent active installations
 $user = (new User())
-    ->find($user_id)
     ->with('installation', function($q) {
         $q->where('active', 1);
         $q->order_by('created_at', 'DESC');
         $q->limit(10);
     })
-    ->get();
+    ->find($user_id);
 
 ```
 

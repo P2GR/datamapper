@@ -175,18 +175,14 @@ $user->save();  // updated_at = now()
 Automatically cast database values to proper PHP types:
 
 ```php
-use AttributeCasting;
-
 class User extends DataMapper {
-    use AttributeCasting;
-    
-    protected $casts = [
-        'id' => 'int',
-        'active' => 'bool',
-        'credits' => 'float',
-        'settings' => 'json',
+    protected $casts = array(
+        'id'         => 'int',
+        'active'     => 'bool',
+        'credits'    => 'float',
+        'settings'   => 'json',
         'last_login' => 'datetime'
-    ];
+    );
 }
 
 $user = (new User())->find(1);
@@ -293,7 +289,7 @@ $users = $query->get();
 | `$user->include_related('company')` | `(new User())->with('company')` | Loads full related objects, supports constraints, fewer queries |
 | `$user->include_related('company', 'name')` | Access via accessor/attribute on eager-loaded relation (`$user->company->name`) | Keeps data normalized, no column collisions |
 | `$config['auto_populate_has_one'] = TRUE` | Keep auto-populate disabled and call `with()` only when needed | Prevents hidden N+1 queries, reduces memory usage |
-| Manual JSON decoding (`json_decode($user->settings)`) | `AttributeCasting` trait with `$casts = ['settings' => 'json']` | Automatic hydration + serialization |
+| Manual JSON decoding (`json_decode($user->settings)`) | Core `$casts = array('settings' => 'json')` | Automatic hydration + serialization |
 | Manual timestamp fields (`$user->created_at = date(...)`) | `HasTimestamps` trait | Ensures consistent timestamps |
 | Custom logger wrappers (`DMZ_Logger::debug`) | `dmz_log_message('debug', ...)` (delegates to CI `log_message`) | Single logging pipeline, respects CI thresholds |
 

@@ -37,7 +37,7 @@ Need to keep legacy code untouched? Call builder helpers only where you need the
 
 ## Core Concepts at a Glance
 - Every `DataMapper` model can hand back a `DMZ_QueryBuilder` pipeline.
-- Use snake_case helpers such as `order_by`; camelCase variants are no longer supported.
+- Use snake_case helpers such as `order_by`; keep new code in the legacy DataMapper naming style.
 - Builder chains return the builder until `get()` or another terminal method executes the SQL.
 - Result helpers (`collect()`, `first()`, `value()`, etc.) decide how the record set comes back.
 
@@ -192,9 +192,21 @@ $post = (new Post())
     ->first();                             // first match
 
 $invoice = (new Invoice())
+    ->first_or_new(
+        ['reference' => 'INV-2025-001'],
+        ['status' => 'draft', 'currency' => 'EUR']
+    );
+
+$invoice = (new Invoice())
     ->first_or_create(
         ['reference' => 'INV-2025-001'],
         ['status' => 'draft', 'currency' => 'EUR']
+    );
+
+$invoice = (new Invoice())
+    ->update_or_create(
+        ['reference' => 'INV-2025-001'],
+        ['status' => 'sent']
     );
 
 $allUsers = (new User())->all();           // convenience alias
@@ -292,7 +304,7 @@ $posts = (new Post())->with('user')->get();
 // 2. Select only needed columns
 $posts = (new Post())
     ->select('id, title, created_at')
-    ->with('user:id,name')
+    ->with('user')
     ->get();
 
 // 3. Paginate or limit large datasets

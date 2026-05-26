@@ -67,7 +67,7 @@ application/libraries/
 └── datamapper/                             # Extensions folder
     ├── HasTimestamps.php                   # New  
     ├── SoftDeletes.php                     # New
-    ├── attributecasting.php                # New
+    ├── attributecasting.php                # Legacy compatibility; core casting needs no trait
     └── ...
 
 application/config/
@@ -186,7 +186,7 @@ foreach ($users as $user) {
 | `$post->include_related('user', 'name')` to copy columns onto the base model | `(new Post())->with('user')` and read `$post->user->name` | Keeps models normalized, supports constraints, avoids column collisions |
 | Chaining `include_related()` multiple times to join through relationships | Nested eager loading: `with('user.company', fn($q) => ...)` | One round-trip per relation, can filter/limit at the DB level |
 | Setting `$config['auto_populate_has_one'] = TRUE` to always pull relations | Leave auto-populate disabled (default) and opt-in with `with()` | Eliminates hidden queries and memory spikes, makes loading explicit |
-| Manually decoding JSON attributes in accessors | Enable `AttributeCasting` with `$casts = ['settings' => 'json']` | Automatic hydration/serialization in both directions |
+| Manually decoding JSON attributes in accessors | Add core `$casts = array('settings' => 'json')` to the model | Automatic hydration/serialization in both directions |
 | Writing log wrappers and calling `DMZ_Logger::debug()` | Call `dmz_log_message()` which proxies to CodeIgniter’s `log_message()` | Honors CI thresholds/handlers and removes duplicate log pipelines |
 | Manually updating `created_at`/`updated_at` fields | Add the `HasTimestamps` trait | Consistent timestamp management without boilerplate |
 

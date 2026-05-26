@@ -64,9 +64,16 @@ $user = new User(5);
 $user = new User();
 $user->get_by_id(5);
 
+// Find helpers
+$user = (new User())->find(5);             // returns NULL when missing
+$user = (new User())->find_or_fail(5);     // throws DataMapper_Exception when missing
+
 // Get one
 $user = new User();
 $user->where('email', 'john@example.com')->get();
+
+$first = (new User())->first_where('email', 'john@example.com');
+$first = (new User())->where('active', 1)->first_or_fail();
 
 // Get many
 $user = new User();
@@ -112,6 +119,21 @@ DataMapper::unguarded(function () use ($user, $payload) {
 });
 
 $post = Post::create(array('title' => 'Hello', 'body' => '...'));
+
+$draft = (new Post())->first_or_new(
+    array('slug' => 'hello'),
+    array('title' => 'Hello')
+);
+
+$post = (new Post())->first_or_create(
+    array('slug' => 'hello'),
+    array('title' => 'Hello')
+);
+
+$post = (new Post())->update_or_create(
+    array('slug' => 'hello'),
+    array('title' => 'Updated title')
+);
 ```
 
 ### Delete
@@ -164,10 +186,10 @@ $user->like('name', 'john', 'before') // %john
 $user->not_like('email', '@spam.com')
 
 // IS NULL
-$user->where('deleted_at IS NULL')
+$user->where_null('deleted_at')
 
 // IS NOT NULL
-$user->where('email_verified_at IS NOT NULL')
+$user->where_not_null('email_verified_at')
 ```
 
 ### Query Grouping
@@ -201,6 +223,11 @@ $user->order_by('status', 'asc')
 
 // Random
 $user->order_by('id', 'random')
+
+// Eloquent-style aliases
+$user->order_by_desc('created_at')
+$user->latest()              // newest by created_at/custom created column
+$user->oldest('updated_at')  // oldest by explicit column
 ```
 
 ### Limiting
@@ -216,6 +243,9 @@ $user->limit(10, 20) // 10 records, skip first 20
 $page = 2;
 $per_page = 10;
 $user->limit($per_page, ($page - 1) * $per_page)
+
+// Aliases
+$user->take(10)->skip(20)
 ```
 
 ### Selection
@@ -235,6 +265,12 @@ $user->select_max('score')
 $user->select_min('age')
 $user->select_avg('rating')
 $user->select_sum('total_sales')
+
+// Scalar aggregate helpers
+$total = (new Order())->sum('total')
+$avg = (new Review())->avg('rating')
+$min = (new Product())->min('price')
+$max = (new Product())->max('price')
 ```
 
 ### Grouping & Having
@@ -324,12 +360,12 @@ $user->where_related_post('status', 'published')->get();
 
 // Include related fields
 $user->include_related('country', 'name')->get();
-
-::: info DataMapper 2.0
-Prefer `(new User())->with('country')` for new code—`with()` eager loads the relation, supports constraints, and avoids manually selecting/prefixing columns. Use `include_related()` only when you expressly need the flattened column output for legacy responses.
-:::
 // Access: $user->country_name
 ```
+
+::: info DataMapper 2.0
+Prefer `(new User())->with('country')` for new code. `with()` eager loads the relation, supports constraints, and avoids manually selecting/prefixing columns. Use `include_related()` only when you need flattened column output for legacy responses.
+:::
 
 ## DataMapper 2.0 Features
 
@@ -379,8 +415,7 @@ $firstAdmin = (new User())
 ```php
 // Prevent N+1 queries
 $user = new User();
-$user->with('post')
-     ->with('comment')
+$user->with('post', 'comment')
      ->get();
 
 // With constraints
@@ -448,7 +483,6 @@ $user->only_softdeleted()->get();
 $user->force_delete();
 
 // Restore
-// Restore
 $user->restore();
 ```
 
@@ -473,11 +507,7 @@ $user->save(); // Updates updated_at
 ### Attribute Casting
 
 ```php
-use DataMapper\AttributeCasting;
-
 class User extends DataMapper {
-    use AttributeCasting;
-    
     protected $casts = array(
         'is_active'  => 'bool',
         'age'        => 'int',
