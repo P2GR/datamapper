@@ -756,12 +756,12 @@ class DataMapper implements IteratorAggregate {
 				{
 					$field = $related . '_id';
 					if(	in_array($field, $this->fields) &&
-						! in_array($field, $this->_field_tracking['intval']) &&
 						( ! isset($this->validation[$field]) || // does not have a validation key or...
 							! isset($this->validation[$field]['get_rules'])) &&  // a get_rules key...
 						( ! isset($this->validation[$related]) || // nor does the related have a validation key or...
 							! isset($this->validation[$related]['get_rules'])) ) // a get_rules key
 					{
+						// assume an int
 						$this->_field_tracking['intval'][] = $field;
 					}
 				}
@@ -1402,7 +1402,7 @@ class DataMapper implements IteratorAggregate {
 	 * 
 	 * Priority:
 	 * 1. Check for setXAttribute() mutator method
-	 * 2. Apply reverse casting if defined in $casts
+	 * 2. Normalize casted values for application use
 	 * 3. Set raw value (backward compatible)
 	 * 
 	 * @param string $key Attribute name
@@ -1416,9 +1416,10 @@ class DataMapper implements IteratorAggregate {
 			return;
 		}
 		
-		// Apply reverse casting if defined for known fields
+		// Keep casted fields in their application-facing form.
+		// _to_array() converts them back to the database format when saving.
 		if (isset($this->casts[$key]) && in_array($key, $this->fields, TRUE)) {
-			$value = $this->_reverse_cast_attribute($key, $value);
+			$value = $this->_cast_attribute($key, $value);
 		}
 		
 		// Set the property directly (standard DataMapper behavior)
@@ -1538,6 +1539,13 @@ class DataMapper implements IteratorAggregate {
 			}
 			
 			return $result;
+		}
+
+		if ($this->_is_collection_method($snake_case_method))
+		{
+			dmz_log_message('debug', "DataMapper __call: proxying {$method} to collection helper {$snake_case_method}");
+			$collection = $this->collect();
+			return call_user_func_array(array($collection, $snake_case_method), $arguments);
 		}
 
 		// show an error, for debugging's sake.
@@ -4804,7 +4812,6 @@ class DataMapper implements IteratorAggregate {
 			}
 			$values = $arr;
 		}
-
 		
 		// Use the public where_in method instead of protected _where_in
 		// to maintain compatibility with newer CodeIgniter versions
@@ -7726,7 +7733,7 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		// Force IDs to integers
-		foreach($this->_field_tracking['intval'] as $field)
+		foreach((array) (isset($this->_field_tracking['intval']) ? $this->_field_tracking['intval'] : array()) as $field)
 		{
 			if(isset($item->{$field}))
 			{
@@ -7734,7 +7741,7 @@ class DataMapper implements IteratorAggregate {
 			}
 		}
 
-		foreach($this->_field_tracking['floatval'] as $field)
+		foreach((array) (isset($this->_field_tracking['floatval']) ? $this->_field_tracking['floatval'] : array()) as $field)
 		{
 			if(isset($item->{$field}))
 			{
@@ -8086,6 +8093,21 @@ class DataMapper implements IteratorAggregate {
 		
 		return (new DMZ_QueryBuilder($this))->find($id);
 	}
+
+	/**
+	 * Find a record by its primary key or throw a DataMapper exception.
+	 *
+	 * @param mixed $id Primary key value
+	 * @return DataMapper|object
+	 */
+	public function find_or_fail($id)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->find_or_fail($id);
+	}
 	
 	/**
 	 * Get the first result
@@ -8100,6 +8122,43 @@ class DataMapper implements IteratorAggregate {
 		}
 		
 		return (new DMZ_QueryBuilder($this))->first();
+	}
+
+	/**
+	 * Get the first result or throw a DataMapper exception.
+	 *
+	 * @param string|null $message Optional exception message
+	 * @return DataMapper|object
+	 */
+	public function first_or_fail($message = NULL)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->first_or_fail($message);
+	}
+
+	/**
+	 * Fetch all matching records as a collection.
+	 *
+	 * @param integer|NULL $limit Optional limit
+	 * @param integer|NULL $offset Optional offset
+	 * @return DMZ_Collection
+	 */
+	public function all($limit = NULL, $offset = NULL)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		$query = new DMZ_QueryBuilder($this);
+		if ($limit !== NULL)
+		{
+			$query->limit($limit, $offset);
+		}
+
+		return $query->collect();
 	}
 	
 	/**
@@ -8167,6 +8226,306 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		return (new DMZ_QueryBuilder($this))->value($field, $default);
+	}
+
+	/**
+	 * Limit results using collection/query-builder style naming.
+	 *
+	 * @param int $limit
+	 * @return DataMapper
+	 */
+	public function take($limit)
+	{
+		return $this->limit($limit);
+	}
+
+	/**
+	 * Offset results using collection/query-builder style naming.
+	 *
+	 * @param int $offset
+	 * @return DataMapper
+	 */
+	public function skip($offset)
+	{
+		return $this->offset($offset);
+	}
+
+	/**
+	 * Add a WHERE field IS NULL condition.
+	 *
+	 * @param string $field
+	 * @return DataMapper
+	 */
+	public function where_null($field)
+	{
+		return $this->where($field, NULL);
+	}
+
+	/**
+	 * Add a WHERE field IS NOT NULL condition.
+	 *
+	 * @param string $field
+	 * @return DataMapper
+	 */
+	public function where_not_null($field)
+	{
+		return $this->where($field . ' IS NOT NULL', NULL, FALSE);
+	}
+
+	/**
+	 * Conditionally apply query constraints.
+	 *
+	 * @param mixed $value Value used to decide whether to run the callback
+	 * @param callable $callback Callback receiving ($query, $value)
+	 * @param callable|null $default Optional callback when $value is falsy
+	 * @return DataMapper
+	 */
+	public function when($value, $callback, $default = NULL)
+	{
+		if ($value)
+		{
+			$result = call_user_func($callback, $this, $value);
+			return ($result instanceof DataMapper || $result instanceof DMZ_QueryBuilder) ? $result : $this;
+		}
+
+		if (is_callable($default))
+		{
+			$result = call_user_func($default, $this, $value);
+			return ($result instanceof DataMapper || $result instanceof DMZ_QueryBuilder) ? $result : $this;
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Inverse of when().
+	 *
+	 * @param mixed $value Value used to decide whether to run the callback
+	 * @param callable $callback Callback receiving ($query, $value)
+	 * @param callable|null $default Optional callback when $value is truthy
+	 * @return DataMapper
+	 */
+	public function unless($value, $callback, $default = NULL)
+	{
+		if (!$value)
+		{
+			$result = call_user_func($callback, $this, $value);
+			return ($result instanceof DataMapper || $result instanceof DMZ_QueryBuilder) ? $result : $this;
+		}
+
+		if (is_callable($default))
+		{
+			$result = call_user_func($default, $this, $value);
+			return ($result instanceof DataMapper || $result instanceof DMZ_QueryBuilder) ? $result : $this;
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Add a where clause and return the first result.
+	 *
+	 * @param string $field Field name
+	 * @param mixed $value Field value
+	 * @param string $operator Comparison operator
+	 * @return DataMapper|object|null
+	 */
+	public function first_where($field, $value = NULL, $operator = '=')
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->first_where($field, $value, $operator);
+	}
+
+	/**
+	 * Order descending by a field.
+	 *
+	 * @param string $field Field name
+	 * @return DataMapper
+	 */
+	public function order_by_desc($field)
+	{
+		return $this->order_by($field, 'desc');
+	}
+
+	/**
+	 * Order newest records first.
+	 *
+	 * @param string|null $field Optional field, defaults to created_at when available
+	 * @return DataMapper
+	 */
+	public function latest($field = NULL)
+	{
+		return $this->order_by($this->_default_timestamp_order_column($field), 'desc');
+	}
+
+	/**
+	 * Order oldest records first.
+	 *
+	 * @param string|null $field Optional field, defaults to created_at when available
+	 * @return DataMapper
+	 */
+	public function oldest($field = NULL)
+	{
+		return $this->order_by($this->_default_timestamp_order_column($field), 'asc');
+	}
+
+	/**
+	 * Resolve the default timestamp ordering column.
+	 *
+	 * @param string|null $field Explicit field override
+	 * @return string
+	 */
+	protected function _default_timestamp_order_column($field = NULL)
+	{
+		if ($field !== NULL && $field !== '')
+		{
+			return $field;
+		}
+
+		if (method_exists($this, 'get_created_at_column'))
+		{
+			$created_at_column = $this->get_created_at_column();
+			if (!empty($created_at_column))
+			{
+				return $created_at_column;
+			}
+		}
+
+		$created_at_column = $this->_resolve_model_property(array('created_at_column', 'createdAtColumn'), NULL);
+		if (!empty($created_at_column))
+		{
+			return $created_at_column;
+		}
+
+		if (!empty($this->fields) && in_array('created_at', $this->fields, TRUE))
+		{
+			return 'created_at';
+		}
+
+		$config = is_array(DataMapper::$config) ? DataMapper::$config : array();
+		return isset($config['created_at_column']) ? $config['created_at_column'] : 'created_at';
+	}
+
+	/**
+	 * Sum a column for the current query.
+	 *
+	 * @param string $field
+	 * @return int|float
+	 */
+	public function sum($field)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->sum($field);
+	}
+
+	/**
+	 * Average a column for the current query.
+	 *
+	 * @param string $field
+	 * @return int|float|null
+	 */
+	public function avg($field)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->avg($field);
+	}
+
+	/**
+	 * Alias for avg().
+	 *
+	 * @param string $field
+	 * @return int|float|null
+	 */
+	public function average($field)
+	{
+		return $this->avg($field);
+	}
+
+	/**
+	 * Minimum column value for the current query.
+	 *
+	 * @param string $field
+	 * @return mixed
+	 */
+	public function min($field)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->min($field);
+	}
+
+	/**
+	 * Maximum column value for the current query.
+	 *
+	 * @param string $field
+	 * @return mixed
+	 */
+	public function max($field)
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->max($field);
+	}
+
+	/**
+	 * Return the first matching model or a new unsaved model.
+	 *
+	 * @param array $attributes
+	 * @param array $values
+	 * @return DataMapper|object
+	 */
+	public function first_or_new(array $attributes = array(), array $values = array())
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->first_or_new($attributes, $values);
+	}
+
+	/**
+	 * Return the first matching model or create it.
+	 *
+	 * @param array $attributes
+	 * @param array $values
+	 * @return DataMapper|object|bool
+	 */
+	public function first_or_create(array $attributes = array(), array $values = array())
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->first_or_create($attributes, $values);
+	}
+
+	/**
+	 * Return the first matching model, update it, or create a new one.
+	 *
+	 * @param array $attributes
+	 * @param array $values
+	 * @return DataMapper|object|bool
+	 */
+	public function update_or_create(array $attributes = array(), array $values = array())
+	{
+		if (!class_exists('DMZ_QueryBuilder', FALSE)) {
+			require_once(APPPATH . 'datamapper/querybuilder.php');
+		}
+
+		return (new DMZ_QueryBuilder($this))->update_or_create($attributes, $values);
 	}
 	
 	// ============================================================================
@@ -9025,6 +9384,28 @@ class DataMapper implements IteratorAggregate {
 		$method = 'set' . $this->_studly_case($key) . 'Attribute';
 		$this->{$method}($value);
 	}
+
+	/**
+	 * Determine whether a database field type should hydrate as an integer.
+	 *
+	 * @param string $field_type Normalized database field type
+	 * @return bool
+	 */
+	protected function _is_integer_field_type($field_type)
+	{
+		return in_array($field_type, array('int', 'integer', 'tinyint', 'smallint', 'mediumint', 'bigint'), TRUE);
+	}
+
+	/**
+	 * Determine whether a database field type should hydrate as a float.
+	 *
+	 * @param string $field_type Normalized database field type
+	 * @return bool
+	 */
+	protected function _is_float_field_type($field_type)
+	{
+		return in_array($field_type, array('float', 'double', 'decimal', 'real', 'numeric'), TRUE);
+	}
 	
 	/**
 	 * Cast an attribute to its defined type
@@ -9102,16 +9483,6 @@ class DataMapper implements IteratorAggregate {
 	 * @param mixed $value Value to reverse cast
 	 * @return mixed
 	 */
-	protected function _is_integer_field_type($type)
-	{
-		return in_array($type, array('tinyint', 'smallint', 'mediumint', 'int', 'integer', 'bigint', 'year'), TRUE);
-	}
-
-	protected function _is_float_field_type($type)
-	{
-		return in_array($type, array('decimal', 'numeric', 'float', 'double', 'real'), TRUE);
-	}
-
 	protected function _reverse_cast_attribute($key, $value)
 	{
 		if ($value === NULL) {
@@ -9423,6 +9794,37 @@ class DataMapper implements IteratorAggregate {
 
 		return $default;
 	}
+
+	/**
+	 * Log DataMapper messages through the shared helper when available.
+	 *
+	 * @param string $level Log level
+	 * @param string $message Message to log
+	 * @param array $context Extra structured context
+	 * @return void
+	 */
+	protected static function _log_message($level, $message, array $context = array())
+	{
+		if (function_exists('dmz_log_message'))
+		{
+			dmz_log_message($level, $message, $context);
+			return;
+		}
+
+		if (function_exists('log_message'))
+		{
+			if (!empty($context))
+			{
+				$context_json = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+				if ($context_json !== FALSE)
+				{
+					$message .= ' | context=' . $context_json;
+				}
+			}
+
+			log_message($level, '[DataMapper] ' . $message);
+		}
+	}
 	
 	// --------------------------------------------------------------------
 
@@ -9469,6 +9871,7 @@ class DataMapper implements IteratorAggregate {
 			return $model;
 		}
 
+		self::_log_message('error', 'create failed to save model', array('model' => get_class($model), 'attributes' => $attributes));
 		return FALSE;
 	}
 
@@ -9976,4 +10379,4 @@ class DM_DatasetIterator implements Iterator, Countable
 spl_autoload_register('DataMapper::autoload');
 
 /* End of file datamapper.php */
-/* Location: ./application/models/datamapper.php */
+/* Location: ./application/libraries/datamapper.php */

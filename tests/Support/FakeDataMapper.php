@@ -116,6 +116,13 @@ class FakeDataMapper extends DataMapper
         return $this;
     }
 
+    public function offset($offset)
+    {
+        $this->lastOffset = $offset;
+        $this->queryLog[] = array('offset', $offset);
+        return $this;
+    }
+
     public function order_by($field, $direction = 'asc')
     {
         $this->queryLog[] = array('order_by', $field, $direction);

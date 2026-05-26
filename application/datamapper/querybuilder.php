@@ -137,6 +137,72 @@ class DMZ_QueryBuilder {
         }
         return $this;
     }
+
+    /**
+     * Add WHERE field IS NULL.
+     *
+     * @param string $field Field name
+     * @return DMZ_QueryBuilder
+     */
+    public function where_null($field) {
+        $this->model->where($field, NULL);
+        return $this;
+    }
+
+    /**
+     * Add WHERE field IS NOT NULL.
+     *
+     * @param string $field Field name
+     * @return DMZ_QueryBuilder
+     */
+    public function where_not_null($field) {
+        $this->model->where($field . ' IS NOT NULL', NULL, FALSE);
+        return $this;
+    }
+
+    /**
+     * Conditionally apply query constraints.
+     *
+     * @param mixed $value Value used to decide whether to run the callback
+     * @param callable $callback Callback receiving ($query, $value)
+     * @param callable|null $default Optional callback when $value is falsy
+     * @return DMZ_QueryBuilder
+     */
+    public function when($value, $callback, $default = NULL) {
+        if ($value) {
+            $result = call_user_func($callback, $this, $value);
+            return $result instanceof self ? $result : $this;
+        }
+
+        if (is_callable($default)) {
+            $result = call_user_func($default, $this, $value);
+            return $result instanceof self ? $result : $this;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Inverse of when().
+     *
+     * @param mixed $value Value used to decide whether to run the callback
+     * @param callable $callback Callback receiving ($query, $value)
+     * @param callable|null $default Optional callback when $value is truthy
+     * @return DMZ_QueryBuilder
+     */
+    public function unless($value, $callback, $default = NULL) {
+        if (!$value) {
+            $result = call_user_func($callback, $this, $value);
+            return $result instanceof self ? $result : $this;
+        }
+
+        if (is_callable($default)) {
+            $result = call_user_func($default, $this, $value);
+            return $result instanceof self ? $result : $this;
+        }
+
+        return $this;
+    }
     
     /**
      * Add OR WHERE clause
@@ -431,6 +497,62 @@ class DMZ_QueryBuilder {
         $this->model->order_by($field, $direction);
         return $this;
     }
+
+    /**
+     * Order descending by a field.
+     *
+     * @param string $field Field name
+     * @return DMZ_QueryBuilder
+     */
+    public function order_by_desc($field) {
+        return $this->order_by($field, 'desc');
+    }
+
+    /**
+     * Order newest records first.
+     *
+     * @param string|null $field Optional field, defaults to created_at when available
+     * @return DMZ_QueryBuilder
+     */
+    public function latest($field = NULL) {
+        return $this->order_by($this->_default_timestamp_order_column($field), 'desc');
+    }
+
+    /**
+     * Order oldest records first.
+     *
+     * @param string|null $field Optional field, defaults to created_at when available
+     * @return DMZ_QueryBuilder
+     */
+    public function oldest($field = NULL) {
+        return $this->order_by($this->_default_timestamp_order_column($field), 'asc');
+    }
+
+    /**
+     * Resolve the default timestamp ordering column.
+     *
+     * @param string|null $field Explicit field override
+     * @return string
+     */
+    protected function _default_timestamp_order_column($field = NULL) {
+        if ($field !== NULL && $field !== '') {
+            return $field;
+        }
+
+        if (method_exists($this->model, 'get_created_at_column')) {
+            $created_at_column = $this->model->get_created_at_column();
+            if (!empty($created_at_column)) {
+                return $created_at_column;
+            }
+        }
+
+        if (!empty($this->model->fields) && in_array('created_at', $this->model->fields, TRUE)) {
+            return 'created_at';
+        }
+
+        $config = is_array(DataMapper::$config) ? DataMapper::$config : array();
+        return isset($config['created_at_column']) ? $config['created_at_column'] : 'created_at';
+    }
     
     /**
      * Add offset to query
@@ -441,6 +563,16 @@ class DMZ_QueryBuilder {
     public function offset($offset) {
         $this->_offset = $offset;
         return $this;
+    }
+
+    /**
+     * Alias for offset().
+     *
+     * @param int $offset Number of records to skip
+     * @return DMZ_QueryBuilder
+     */
+    public function skip($offset) {
+        return $this->offset($offset);
     }
     
     /**
@@ -514,8 +646,20 @@ class DMZ_QueryBuilder {
     public function limit($limit, $offset = NULL) {
         // Store for later use in get()
         $this->_limit = $limit;
-        $this->_offset = $offset;
+        if ($offset !== NULL || !isset($this->_offset)) {
+            $this->_offset = $offset;
+        }
         return $this;
+    }
+
+    /**
+     * Alias for limit().
+     *
+     * @param int $limit Number of records to limit
+     * @return DMZ_QueryBuilder
+     */
+    public function take($limit) {
+        return $this->limit($limit);
     }
     
     /**
@@ -651,32 +795,77 @@ class DMZ_QueryBuilder {
      * @return DMZ_QueryBuilder
      */
     public function with($relations, $constraints = NULL) {
+        $arguments = func_get_args();
+
         // Handle: with('relation', function($q) {...})
-        if (is_string($relations) && is_callable($constraints)) {
-            $this->eager_loads[] = $relations;
-            $this->eager_constraints[$relations] = $constraints;
-            return $this;
+        if (count($arguments) === 2 && is_string($relations) && is_callable($constraints)) {
+            return $this->_add_eager_load($relations, $constraints);
         }
-        
-        // Handle: with('relation') - simple string
-        if (is_string($relations)) {
-            $relations = array($relations);
-        }
-        
-        // Handle: with(['relation1', 'relation2']) or with(['relation' => function($q) {...}])
-        foreach ($relations as $key => $relation) {
-            if (is_numeric($key)) {
-                // Simple relation name: ['relation1', 'relation2']
-                $this->eager_loads[] = $relation;
-            } else {
-                // Key-value pair: ['relation' => callback]
-                $this->eager_loads[] = $key;
-                if (is_callable($relation)) {
-                    $this->eager_constraints[$key] = $relation;
+
+        if (count($arguments) > 1) {
+            foreach ($arguments as $relation) {
+                if (is_array($relation)) {
+                    $this->_add_eager_loads($relation);
+                } else {
+                    $this->_add_eager_load($relation);
                 }
             }
+
+            return $this;
         }
-        
+
+        if (is_string($relations)) {
+            return $this->_add_eager_load($relations);
+        }
+
+        $this->_add_eager_loads($relations);
+        return $this;
+    }
+
+    /**
+     * Register one eager-loaded relation.
+     *
+     * @param string $relation Relation name
+     * @param callable|null $constraint Optional relation query constraint
+     * @return DMZ_QueryBuilder
+     */
+    protected function _add_eager_load($relation, $constraint = NULL)
+    {
+        if (!is_string($relation) || $relation === '') {
+            return $this;
+        }
+
+        if (!in_array($relation, $this->eager_loads, TRUE)) {
+            $this->eager_loads[] = $relation;
+        }
+
+        if (is_callable($constraint)) {
+            $this->eager_constraints[$relation] = $constraint;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Register a list or map of eager-loaded relations.
+     *
+     * @param array $relations Relation list or relation => callback map
+     * @return DMZ_QueryBuilder
+     */
+    protected function _add_eager_loads($relations)
+    {
+        if (!is_array($relations)) {
+            return $this;
+        }
+
+        foreach ($relations as $key => $relation) {
+            if (is_numeric($key)) {
+                $this->_add_eager_load($relation);
+            } else {
+                $this->_add_eager_load($key, $relation);
+            }
+        }
+
         return $this;
     }
     
@@ -697,6 +886,9 @@ class DMZ_QueryBuilder {
         if (isset($this->_limit)) {
             $this->model->get($this->_limit, $this->_offset);
         } else {
+            if (isset($this->_offset) && $this->_offset !== NULL) {
+                $this->model->offset($this->_offset);
+            }
             $this->model->get();
         }
         
@@ -777,11 +969,14 @@ class DMZ_QueryBuilder {
         $previousLimit = $this->_limit;
         $previousOffset = $this->_offset;
 
-        $first = $this->limit(1)->get()->first();
+        $model = $this->limit(1)->get();
 
         // Restore original pagination settings for further chaining
         $this->_limit = $previousLimit;
         $this->_offset = $previousOffset;
+
+        $first = (!empty($model->all) && isset($model->all[0])) ? $model->all[0] :
+                 (!empty($model->all) ? reset($model->all) : NULL);
 
         if (!$first) {
             return $default;
@@ -812,6 +1007,39 @@ class DMZ_QueryBuilder {
         return (!empty($model->all) && isset($model->all[0])) ? $model->all[0] : 
                (!empty($model->all) ? reset($model->all) : NULL);
     }
+
+    /**
+     * Add a where clause and return the first result.
+     *
+     * @param string $field Field name
+     * @param mixed $value Field value
+     * @param string $operator Comparison operator
+     * @return DataMapper|object|null
+     */
+    public function first_where($field, $value = NULL, $operator = '=') {
+        return $this->where($field, $value, $operator)->first();
+    }
+
+    /**
+     * Get first result or throw a DataMapper exception.
+     *
+     * @param string|null $message Optional exception message
+     * @return DataMapper|object
+     */
+    public function first_or_fail($message = NULL) {
+        $result = $this->first();
+
+        if (!$result || ($result instanceof DataMapper && !$result->exists())) {
+            if ($message === NULL) {
+                $message = 'No ' . get_class($this->model) . ' record was found for the current query.';
+            }
+
+            dmz_log_message('warning', $message);
+            throw new DataMapper_Exception($message);
+        }
+
+        return $result;
+    }
     
     /**
      * Find by primary key
@@ -820,21 +1048,253 @@ class DMZ_QueryBuilder {
      * @return DataMapper|NULL
      */
     public function find($id) {
-        return $this->where('id', $id)->first();
+        if ($id === NULL) {
+            return NULL;
+        }
+
+        $primary_key = isset($this->model->primary_key) && $this->model->primary_key ? $this->model->primary_key : 'id';
+        return $this->where($primary_key, $id)->first();
     }
     
     /**
-     * Find by primary key or show error
+     * Find by primary key or throw a DataMapper exception.
      *
      * @param int $id Primary key value
-     * @return DataMapper
+     * @return DataMapper|object
      */
     public function find_or_fail($id) {
         $result = $this->find($id);
-            if (!$result || !$result->exists()) {
-                throw new DataMapper_Exception('Model not found with ID: ' . $id);
+
+        if (!$result || ($result instanceof DataMapper && !$result->exists())) {
+            $primary_key = isset($this->model->primary_key) && $this->model->primary_key ? $this->model->primary_key : 'id';
+            $message = get_class($this->model) . ' record not found for ' . $primary_key . ': ' . $id;
+            dmz_log_message('warning', $message, array('model' => get_class($this->model), 'key' => $primary_key, 'value' => $id));
+            throw new DataMapper_Exception($message);
         }
+
         return $result;
+    }
+
+    /**
+     * Fetch all matching records as a collection.
+     *
+     * @return DMZ_Collection
+     */
+    public function all() {
+        return $this->collect();
+    }
+
+    /**
+     * Return the first matching model or a new unsaved model.
+     *
+     * @param array $attributes Attributes used to query and seed a new model
+     * @param array $values Additional values for new model instances
+     * @return DataMapper|object
+     */
+    public function first_or_new(array $attributes = array(), array $values = array()) {
+        $query = new self($this->model);
+        foreach ($attributes as $field => $value) {
+            if ($value === NULL) {
+                $query->where_null($field);
+            } else {
+                $query->where($field, $value);
+            }
+        }
+
+        $result = $query->first();
+        if ($result) {
+            return $result;
+        }
+
+        return $this->_new_model_instance(array_merge($attributes, $values));
+    }
+
+    /**
+     * Return the first matching model or create it.
+     *
+     * @param array $attributes Attributes used to query and seed a new model
+     * @param array $values Additional values for new model instances
+     * @return DataMapper|object|bool
+     */
+    public function first_or_create(array $attributes = array(), array $values = array()) {
+        $model = $this->first_or_new($attributes, $values);
+
+        if (!($model instanceof DataMapper) || $model->exists()) {
+            return $model;
+        }
+
+        if ($model->save()) {
+            return $model;
+        }
+
+        dmz_log_message('error', 'first_or_create failed to save model', array('model' => get_class($model), 'attributes' => $attributes));
+        return FALSE;
+    }
+
+    /**
+     * Return the first matching model, update it, or create a new one.
+     *
+     * @param array $attributes Attributes used to query and seed a new model
+     * @param array $values Values to assign before saving
+     * @return DataMapper|object|bool
+     */
+    public function update_or_create(array $attributes = array(), array $values = array()) {
+        $model = $this->first_or_new($attributes, $values);
+
+        if ($model instanceof DataMapper) {
+            $this->_fill_model($model, $values);
+
+            if ($model->save()) {
+                return $model;
+            }
+
+            dmz_log_message('error', 'update_or_create failed to save model', array('model' => get_class($model), 'attributes' => $attributes));
+            return FALSE;
+        }
+
+        return $model;
+    }
+
+    /**
+     * Sum a column for the current query.
+     *
+     * @param string $field Field name
+     * @return int|float
+     */
+    public function sum($field) {
+        return $this->_aggregate('sum', $field, 0);
+    }
+
+    /**
+     * Average a column for the current query.
+     *
+     * @param string $field Field name
+     * @return int|float|null
+     */
+    public function avg($field) {
+        return $this->_aggregate('avg', $field, NULL);
+    }
+
+    /**
+     * Alias for avg().
+     *
+     * @param string $field Field name
+     * @return int|float|null
+     */
+    public function average($field) {
+        return $this->avg($field);
+    }
+
+    /**
+     * Minimum column value for the current query.
+     *
+     * @param string $field Field name
+     * @return mixed
+     */
+    public function min($field) {
+        return $this->_aggregate('min', $field, NULL);
+    }
+
+    /**
+     * Maximum column value for the current query.
+     *
+     * @param string $field Field name
+     * @return mixed
+     */
+    public function max($field) {
+        return $this->_aggregate('max', $field, NULL);
+    }
+
+    /**
+     * Create a fresh model instance seeded with attributes.
+     *
+     * @param array $attributes Attributes to assign
+     * @return DataMapper
+     */
+    protected function _new_model_instance(array $attributes)
+    {
+        $class = get_class($this->model);
+        $model = new $class();
+        $this->_fill_model($model, $attributes);
+        return $model;
+    }
+
+    /**
+     * Assign attributes while respecting modern fill() when available.
+     *
+     * @param DataMapper $model Model to fill
+     * @param array $attributes Attributes to assign
+     * @return DataMapper
+     */
+    protected function _fill_model($model, array $attributes)
+    {
+        if (method_exists($model, 'fill')) {
+            $model->fill($attributes);
+            return $model;
+        }
+
+        foreach ($attributes as $field => $value) {
+            $model->{$field} = $value;
+        }
+
+        return $model;
+    }
+
+    /**
+     * Run an aggregate query, falling back to collection aggregation for test doubles.
+     *
+     * @param string $function sum, avg, min, or max
+     * @param string $field Field name
+     * @param mixed $default Default when no value exists
+     * @return mixed
+     */
+    protected function _aggregate($function, $field, $default)
+    {
+        $db_method = 'select_' . $function;
+        $alias = '_dmz_aggregate_value';
+
+        if (isset($this->model->db) && is_object($this->model->db) && method_exists($this->model->db, $db_method)) {
+            try {
+                $model = $this->model->get_clone();
+                $model->{$db_method}($field, $alias)->get();
+
+                $first = (!empty($model->all) && isset($model->all[0])) ? $model->all[0] :
+                         (!empty($model->all) ? reset($model->all) : NULL);
+
+                if ($first && isset($first->{$alias})) {
+                    if ($function === 'avg' && is_numeric($first->{$alias})) {
+                        return (float) $first->{$alias};
+                    }
+
+                    return is_numeric($first->{$alias}) ? $first->{$alias} + 0 : $first->{$alias};
+                }
+
+                return $default;
+            } catch (Exception $e) {
+                dmz_log_message('error', 'Aggregate query failed', array('function' => $function, 'field' => $field, 'error' => $e->getMessage()));
+                throw $e;
+            }
+        }
+
+        $collection = $this->collect();
+        if ($function === 'sum') {
+            return $collection->sum($field);
+        }
+
+        if ($function === 'avg') {
+            $value = $collection->avg($field);
+            return ($value === NULL) ? NULL : (float) $value;
+        }
+
+        if ($function === 'min') {
+            return $collection->min($field);
+        }
+
+        if ($function === 'max') {
+            return $collection->max($field);
+        }
+
+        return $default;
     }
     
     /**
