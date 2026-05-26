@@ -1,11 +1,11 @@
 # Query Builder & Collections (DataMapper 2.0)
 
-DataMapper 2.0 brings a modern, chainable query experience directly onto your models. You keep the classic API when you need it, but gain a flexible query builder, eager loading, and rich collection helpers whenever you opt in.
+DataMapper 2.0 adds chainable query helpers directly to your models. Classic DataMapper calls still work, and you can opt into eager loading, result helpers, and collections where they make the code clearer.
 
 ::: tip TL;DR
 - Keep your existing controllers intact while adding builder calls where you need them.
 - Reach for `with()` to prevent N+1 queries and `collect()` when you want collection helpers.
-- Tweak behaviour in `application/config/datamapper.php` if you need legacy array results or a custom collection class.
+- Keep new examples in snake_case; these helpers follow the existing DataMapper style.
 :::
 
 > **Backward compatible:** Every example here co-exists with legacy controllers. Switch to the builder gradually, call by call if you like.
@@ -160,10 +160,10 @@ foreach ($posts as $post) {
 }
 ```
 
-Attach a `with()` call and the same view renders with just two queries: one for the posts, one for every related author.
+Attach a `with()` call and this one-relation view renders with one query for posts and one query for related authors.
 
 ```php
-// Efficient: 2 queries total
+// Efficient for this one relation: posts query + users query
 $posts = (new Post())
     ->with('user')
     ->limit(50)
@@ -222,16 +222,10 @@ $posts = new Post();
 $posts->where('status', 'published')->get();
 $collection = $posts->collect();
 
-// 2. Builder shortcut
+// 2. Execute with a limit and return a collection
 $collection = (new Post())
     ->where('status', 'published')
     ->collect(10); // optional limit
-
-// 3. Magic proxying (auto-converts)
-$titles = (new Post())
-    ->where('status', 'published')
-    ->get()
-    ->pluck('title');
 ```
 
 ### Common helpers
@@ -277,24 +271,6 @@ $users->each(function ($user) {
 $users->save_all();
 $users->delete_all();
 ```
-
-## Configuration & Customising the Builder
-Adjust behaviour in `application/config/datamapper.php`:
-```php
-$config['query_builder'] = array(
-    'collection_class'     => 'App_Collection',
-    'legacy_array_results' => FALSE,
-    'auto_load_extension'  => TRUE,
-);
-```
-
-| Setting | Purpose |
-| --- | --- |
-| `collection_class` | Swap in your own class (extend `DMZ_Collection`) to add project-specific helpers. |
-| `legacy_array_results` | When `TRUE`, builder queries return plain arrays for older code. Call `$model->make_collection(NULL, TRUE)` to force a collection later. |
-| `auto_load_extension` | Disable if you only want the builder on selected models. |
-
-Because DataMapper now centralises collection creation through `make_collection()`, these settings apply consistently across classic and builder workflows.
 
 ## Tips for High-Performance Queries
 ```php

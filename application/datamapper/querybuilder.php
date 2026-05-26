@@ -777,6 +777,53 @@ class DMZ_QueryBuilder {
     {
         return $this->model;
     }
+
+    /**
+     * Enable query caching on the wrapped model.
+     *
+     * @param int $ttl Time to live in seconds
+     * @param string|null $key Optional cache key
+     * @return DMZ_QueryBuilder
+     */
+    public function cache($ttl = 3600, $key = NULL)
+    {
+        $this->model->cache($ttl, $key);
+        return $this;
+    }
+
+    /**
+     * Disable query caching on the wrapped model.
+     *
+     * @return DMZ_QueryBuilder
+     */
+    public function no_cache()
+    {
+        $this->model->no_cache();
+        return $this;
+    }
+
+    /**
+     * Enable query caching for a result that may contain eager-loaded relations.
+     *
+     * @param int $ttl Time to live in seconds
+     * @return DMZ_QueryBuilder
+     */
+    public function cache_relations($ttl = 3600)
+    {
+        $this->model->cache_relations($ttl);
+        return $this;
+    }
+
+    /**
+     * Clear cache entries through the wrapped model.
+     *
+     * @param string|null $pattern Optional cache key pattern
+     * @return int
+     */
+    public function clear_cache($pattern = NULL)
+    {
+        return $this->model->clear_cache($pattern);
+    }
     
     /**
      * Add eager loading for relationships

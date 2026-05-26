@@ -487,7 +487,8 @@ if ($show_comments) {
 
 ```php
 // Process 10,000 users in batches of 1000
-User::chunk(1000, function($users) {
+$query = new User();
+$query->chunk(1000, function($users) {
     foreach ($users as $user) {
         $user->process_something();
     }

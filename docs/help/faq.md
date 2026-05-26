@@ -10,7 +10,7 @@ DataMapper is an Object-Relational Mapper (ORM) for CodeIgniter 3.x that provide
 
 ### Is DataMapper 2.0 backward compatible?
 
-**Yes, 100%!** All DataMapper 1.x code continues to work without any changes. Version 2.0 adds new features while maintaining full compatibility.
+Yes. DataMapper 2.0 keeps the classic DataMapper API available while adding new opt-in helpers.
 
 ### Which PHP version do I need?
 
@@ -142,7 +142,7 @@ See [What's New](/guide/datamapper-2/) for details.
 
 ### Should I upgrade to 2.0?
 
-Yes! It's fully backward compatible and offers significant performance improvements. You can upgrade without changing existing code and adopt new features gradually.
+Yes, if you want the 2.0 helpers. You can upgrade existing code first and adopt query-builder, eager-loading, caching, casting, and streaming features gradually.
 
 ### How do I use the new query builder syntax?
 
@@ -185,7 +185,7 @@ foreach ($users as $user) {
 **Solution**: Use eager loading:
 
 ```php
-$users = (new User())->with('post')->get();  // 2 queries total!
+$users = (new User())->with('post')->get();  // users query + posts query
 ```
 
 ### How do I enable caching?

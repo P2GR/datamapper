@@ -31,6 +31,16 @@ class FakeDataMapper extends DataMapper
      */
     public $lastOffset = NULL;
 
+    /**
+     * @var array<int, array>
+     */
+    public $cacheLog = array();
+
+    /**
+     * @var int
+     */
+    public $clearCacheReturn = 0;
+
     public function __construct(array $rows = array())
     {
         // Do not call parent constructor to avoid CodeIgniter dependencies
@@ -129,9 +139,34 @@ class FakeDataMapper extends DataMapper
         return $this;
     }
 
+    public function cache($ttl = 3600, $key = NULL)
+    {
+        $this->cacheLog[] = array('cache', $ttl, $key);
+        return $this;
+    }
+
+    public function no_cache()
+    {
+        $this->cacheLog[] = array('no_cache');
+        return $this;
+    }
+
+    public function cache_relations($ttl = 3600)
+    {
+        $this->cacheLog[] = array('cache_relations', $ttl);
+        return $this;
+    }
+
+    public function clear_cache($pattern = NULL)
+    {
+        $this->cacheLog[] = array('clear_cache', $pattern);
+        return $this->clearCacheReturn;
+    }
+
     public function resetLog()
     {
         $this->queryLog = array();
+        $this->cacheLog = array();
         $this->getCalls = 0;
         $this->lastLimit = NULL;
         $this->lastOffset = NULL;

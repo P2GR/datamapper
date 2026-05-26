@@ -2,11 +2,13 @@
 
 This page outlines the planned features and improvements for future versions of DataMapper ORM.
 
+The code snippets on this page show proposed APIs, not methods available in the current release.
+
 ::: tip Community Input
 We value your feedback! Suggest features or vote on existing proposals in our [GitHub Discussions](https://github.com/P2GR/datamapper/discussions).
 :::
 
-## Version 2.1 (Q2 2025) - Performance & DX
+## Proposed 2.1 - Performance & DX
 
 ### Planned Features
 
@@ -120,11 +122,11 @@ $user->where('preferences->theme', 'dark')->get();
 - [ ] Beta release
 - [ ] Stable release
 
-**Expected Release:** June 2025
+Timing will be set after the 2.0 line stabilizes.
 
 ---
 
-## Version 2.2 (Q4 2025) - Enterprise Features
+## Proposed 2.2 - Enterprise Features
 
 ### Planned Features
 
@@ -235,11 +237,11 @@ $history = $user->revisions();
 - [ ] Design finalization
 - [ ] Implementation
 
-**Expected Release:** October 2025
+Timing will be set after the 2.1 scope is finalized.
 
 ---
 
-## Version 3.0 (2026) - Modern PHP
+## Proposed 3.0 - Modern PHP
 
 ### Major Changes
 
@@ -327,7 +329,7 @@ class User extends DataMapper {
 - [ ] Design phase
 - [ ] Prototype
 
-**Expected Release:** 2026
+Timing will be set after the 2.x roadmap is complete.
 
 ---
 

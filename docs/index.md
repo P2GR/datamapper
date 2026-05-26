@@ -4,7 +4,7 @@ layout: home
 hero:
   name: DataMapper ORM
   text: Modern Active Record for CodeIgniter
-  tagline: Build faster with modern query syntax, eager loading, and zero configuration
+  tagline: A CodeIgniter 3 ORM with chainable queries, eager loading, casting, caching, and streaming helpers
   actions:
     - theme: brand
       text: Get Started
@@ -19,13 +19,13 @@ hero:
 features:
   - icon: 🔗
     title: Query Builder
-    details: Chain methods naturally with modern syntax. Write clean, readable queries that feel like Laravel Eloquent.
+    details: Write chainable model queries while keeping classic DataMapper behaviour intact.
     link: /guide/datamapper-2/query-builder
     linkText: Learn More
     
   - icon: ⚡
     title: Eager Loading
-    details: Eliminate N+1 queries with powerful eager loading. Load relationships efficiently with constraints and nesting.
+    details: Load related models explicitly, with support for constraints and nested relations.
     link: /guide/datamapper-2/eager-loading
     linkText: Optimize Queries
     
@@ -37,19 +37,19 @@ features:
     
   - icon: 💾
     title: Query Caching
-    details: Cache expensive queries automatically. Improve performance with flexible TTL and cache invalidation.
+    details: Cache selected read queries through file, Redis, or Memcached drivers.
     link: /guide/datamapper-2/caching
     linkText: Speed It Up
     
   - icon: 🗑️
     title: Soft Deletes
-    details: Never lose data with soft delete support. Query with or without deleted records using simple scopes.
+    details: Mark records as deleted and opt into deleted rows when you need them.
     link: /guide/datamapper-2/soft-deletes
     linkText: Learn More
     
   - icon: 🕐
     title: Timestamps
-    details: Automatic created_at and updated_at tracking. Never manually manage timestamps again.
+    details: Maintain created and updated timestamps through the timestamp trait.
     link: /guide/datamapper-2/timestamps
     linkText: Auto Timestamps
     
@@ -61,7 +61,7 @@ features:
     
   - icon: 📊
     title: Streaming Results
-    details: Process massive datasets efficiently with generators. Handle millions of records with minimal memory.
+    details: Process large result sets with chunked callbacks, cursors, and lazy collections.
     link: /guide/datamapper-2/streaming
     linkText: Stream Data
 ---
@@ -82,14 +82,14 @@ features:
 <div style="border: 2px solid var(--vp-c-brand-1); border-radius: 12px; padding: 2rem; text-align: center;">
   <div style="font-size: 3rem; margin-bottom: 1rem;">2️⃣</div>
   <h3 style="margin-top: 0;">Create Models</h3>
-  <p>Build your first model and start querying your database with elegant syntax.</p>
+  <p>Build your first model and start querying your database with DataMapper's chainable helpers.</p>
   <a href="/guide/getting-started/quickstart" style="font-weight: 600; color: var(--vp-c-brand-1);">Quick Start →</a>
 </div>
 
 <div style="border: 2px solid var(--vp-c-brand-1); border-radius: 12px; padding: 2rem; text-align: center;">
   <div style="font-size: 3rem; margin-bottom: 1rem;">3️⃣</div>
   <h3 style="margin-top: 0;">Optimize</h3>
-  <p>Add eager loading, caching, and other advanced features to boost performance.</p>
+  <p>Add eager loading, caching, and streaming where they fit your workload.</p>
   <a href="/guide/datamapper-2/" style="font-weight: 600; color: var(--vp-c-brand-1);">Explore Features →</a>
 </div>
 
@@ -97,8 +97,8 @@ features:
 
 ## Why DataMapper 2.0?
 
-::: info Modern Syntax
-DataMapper 2.0 brings modern PHP patterns to CodeIgniter 3, making your code cleaner and more maintainable.
+::: info DataMapper 2.0
+DataMapper 2.0 adds focused query, collection, casting, cache, and streaming helpers while preserving the classic CodeIgniter 3 workflow.
 :::
 
 ### Before vs After
@@ -127,12 +127,12 @@ $users = (new User())
     ->where('age >', 18)
     ->order_by('created_at', 'DESC')
     ->limit(10)
-    ->with('post')  // Eager load - ONE query!
+    ->with('post')
     ->get();
 
-// No N+1 problem!
+// Related posts are already loaded.
 foreach ($users as $user) {
-    foreach ($user->post as $post) {  // Already loaded!
+  foreach ($user->post as $post) {
         echo $post->title;
     }
 }
@@ -140,10 +140,10 @@ foreach ($users as $user) {
 
 :::
 
-### Real-World Performance
+### Eager Loading in Practice
 
 ```php
-// Before: 101 queries (N+1 nightmare)
+// Without eager loading: one query for organizations, then one per organization.
 $organizations = (new Organization())->get();
 foreach ($organizations as $org) {
     foreach ($org->installation as $installation) {
@@ -151,7 +151,7 @@ foreach ($organizations as $org) {
     }
 }
 
-// After: 2 queries (98% reduction!)
+// With eager loading: one query for organizations and one for the related installations.
 $organizations = (new Organization())
     ->with('installation')
     ->get();
@@ -163,8 +163,8 @@ foreach ($organizations as $org) {
 }
 ```
 
-::: tip Performance Boost
-Eager loading can reduce queries by **95-99%** in typical applications with relationships.
+::: tip Query count
+For one relation, eager loading usually turns `1 + N` related queries into two queries. Nested or multiple relations add one query per loaded relation path.
 :::
 
 ## Quick Example
@@ -172,6 +172,7 @@ Eager loading can reduce queries by **95-99%** in typical applications with rela
 ```php
 // E-commerce: Get premium customers with recent orders
 $customers = (new Customer())
+  ->cache(3600)
     ->with([
         'order' => function($q) {
             $q->where('created_at >', date('Y-m-d', strtotime('-30 days')))
@@ -184,7 +185,6 @@ $customers = (new Customer())
     ->where('credits >', 100)
     ->where_not_null('email_verified_at')
     ->order_by('total_spent', 'DESC')
-    ->cache(3600)  // Cache for 1 hour
     ->get();
 
 // Work with collections

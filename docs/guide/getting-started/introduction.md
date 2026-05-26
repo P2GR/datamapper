@@ -1,10 +1,10 @@
 # Introduction
 
-Welcome to **DataMapper ORM 2.0** - a modern, powerful Active Record ORM for CodeIgniter 3.x that brings Laravel-style eloquence to your applications.
+Welcome to **DataMapper ORM 2.0**, an Active Record ORM for CodeIgniter 3.x with chainable queries, eager loading, collections, casting, caching, and streaming helpers.
 
 ## What is DataMapper?
 
-DataMapper is an Object-Relational Mapper (ORM) that provides an elegant Active Record implementation for working with your database. Each database table has a corresponding "Model" that interacts with that table.
+DataMapper is an Object-Relational Mapper (ORM) that provides an Active Record-style model for each database table.
 
 ```php
 // Simple, expressive syntax
@@ -30,7 +30,7 @@ Unlike generic ORMs, DataMapper is designed specifically for CodeIgniter 3.x. It
 - **Optimized SQL** - Efficient query generation
 
 ### Developer Experience
-- **Modern query builder** - Chainable, readable queries
+- **Query builder helpers** - Chainable, readable queries
 - **Type safety** - Attribute casting
 - **Collections** - Rich array helpers
 - **Validation** - Built-in validation rules
@@ -45,7 +45,7 @@ Unlike generic ORMs, DataMapper is designed specifically for CodeIgniter 3.x. It
 ## DataMapper 2.0 Highlights
 
 ::: info What's New in 2.0
-Version 2.0 brings modern PHP patterns and performance optimizations to CodeMapper while maintaining full backward compatibility.
+Version 2.0 adds focused query, collection, cache, casting, and streaming helpers while maintaining backward compatibility with classic DataMapper usage.
 :::
 
 ### Modern Query Builder
@@ -53,12 +53,12 @@ Version 2.0 brings modern PHP patterns and performance optimizations to CodeMapp
 ```php
 // Modern, chainable query builder syntax
 $posts = (new Post())
+    ->cache(3600)
     ->with(['user', 'comments'])
     ->where('published', 1)
     ->where('views >', 1000)
     ->order_by('created_at', 'DESC')
     ->limit(10)
-    ->cache(3600)
     ->get();
 ```
 

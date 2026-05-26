@@ -452,7 +452,7 @@ foreach ($user as $u) {
 
 ::: tip Solution: Eager Loading (DataMapper 2.0)
 ```php
-// Efficient: Only 2 queries total
+// Efficient for this one relation: users query + posts query
 $user = new User();
 $user->with('post')  // Eager load posts
      ->get();

@@ -1,16 +1,16 @@
 ﻿# What's New in DataMapper 2.0
 
-DataMapper 2.0 brings modern PHP patterns and powerful new features while maintaining 100% backward compatibility with version 1.x.
+DataMapper 2.0 adds query, collection, cache, casting, timestamp, soft-delete, and streaming helpers while keeping the classic DataMapper API available.
 
 ## Overview
 
-::: info Fully Backward Compatible
-All your existing DataMapper 1.x code continues to work without any changes!
+::: info Backward Compatible
+Existing DataMapper-style models and controllers can continue to use the classic API while you adopt 2.0 helpers gradually.
 :::
 
 DataMapper 2.0 focuses on three key areas:
 
-1. **Developer Experience** - Modern, chainable syntax
+1. **Developer Experience** - Chainable model syntax
 2. **Performance** - Eager loading and caching
 3. **Productivity** - Traits and collection methods
 
@@ -18,7 +18,7 @@ DataMapper 2.0 focuses on three key areas:
 
 ### Eager Loading with Constraints
 
-Eliminate N+1 queries and optimize relationship loading:
+Load relationships up front and avoid repeated relation queries in loops:
 
 ```php
 // Load users with their published posts
@@ -32,7 +32,7 @@ $users = (new User())
     ])
     ->get();
 
-// Posts are already loaded - no extra queries!
+// Posts are already loaded for this result set.
 foreach ($users as $user) {
     foreach ($user->post as $post) {
         echo $post->title;
@@ -40,10 +40,7 @@ foreach ($users as $user) {
 }
 ```
 
-**Performance Impact:**
-- Before: 101 queries (1 + 100 N+1)
-- After: 2 queries
-- **Improvement: 98% reduction!**
+For a single relation, eager loading changes the query pattern from `1 + N` to one parent query plus one relation query. Multiple relation paths add their own relation queries.
 
 [Learn More →](/guide/datamapper-2/eager-loading)
 
@@ -51,7 +48,7 @@ foreach ($users as $user) {
 
 ### Collections
 
-Work with query results using powerful collection methods:
+Work with query results using collection methods:
 
 ```php
 $users = (new User())

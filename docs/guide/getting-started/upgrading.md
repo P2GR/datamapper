@@ -6,10 +6,10 @@ Guide to upgrading DataMapper to the latest version safely.
 
 ### What's New in 2.0
 
-DataMapper 2.0 introduces modern PHP features while maintaining **100% backward compatibility**.
+DataMapper 2.0 adds opt-in query, collection, cache, casting, timestamp, soft-delete, and streaming helpers while keeping the classic DataMapper API available.
 
 ::: tip Backward Compatible
-All your existing DataMapper 1.x code will continue to work without changes!
+Existing DataMapper-style models and controllers can continue to use the classic API while you adopt 2.0 features gradually.
 :::
 
 **New Features:**

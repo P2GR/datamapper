@@ -1,653 +1,264 @@
 # Collections (DataMapper 2.0)
 
-Transform query results into powerful Collection objects with query builder-style methods for filtering, mapping, sorting, and aggregating data. Think of Collections as **arrays on steroids**.
+`DMZ_Collection` wraps a set of models or arrays and gives you a predictable set of filtering, mapping, sorting, grouping, and aggregate helpers. Classic `get()` still returns the model instance with `$object->all` populated; use `collect()` when you want a collection object.
 
-**New in DataMapper 2.0:** Collection API inspired by Laravel, providing 50+ methods for data manipulation with elegant, chainable syntax.
+## Getting a Collection
 
-## Why Collections?
-
-Traditional DataMapper returns arrays or iterators. Collections provide:
-
-- **Query Builder API** - Chain methods elegantly
-- **Type Safety** - Work with DataMapper objects
-- **Memory Efficient** - Lazy evaluation where possible
-- **Rich Functionality** - 50+ built-in methods
-- **Developer Experience** - Intuitive, readable code
-
-## Basic Usage
+### From a Query
 
 ```php
-$users = new User();
-$collection = $users->where('active', 1)->collect();
+$posts = new Post();
+$posts->where('status', 'published')->get();
 
-// Collection methods
-$filtered = $collection->filter(function($user) {
-    return $user->age >= 18;
-});
-
-$names = $collection->pluck('username');
-$total = $collection->sum('order_total');
+$collection = $posts->collect();
 ```
 
-## Creating Collections
-
-### From Query Results
+Pass a limit to `collect()` when the query has not been executed yet.
 
 ```php
-// Automatically returns Collection
-$posts = Post::where('status', 'published')->collect();
-
-// Or use get() then convert
-$users = new User();
-$users->get();
-$collection = $users->to_collection();
+$posts = new Post();
+$collection = $posts->where('status', 'published')
+                    ->collect(10);
 ```
 
-### From Array
+The query-builder wrapper also has `collect()` as a terminal method.
 
 ```php
-use DataMapper\Collection;
-
-$collection = new Collection([$user1, $user2, $user3]);
+$posts = (new Post())
+    ->with('author')
+    ->where('status', 'published')
+    ->collect();
 ```
 
-### Empty Collection
+### From an Array
 
 ```php
-$collection = new Collection();
-// or
-$collection = collect([]);
+$collection = new DMZ_Collection(array($user1, $user2, $user3));
 ```
 
-## Query Builder Helpers
+## Result Helpers on Models
 
-DataMapper 2.0 ships first-class helpers on the query builder so you can choose the return style that matches your workload without extra plumbing:
-
-- `get()` — executes the query and returns the **model** (for backward compatibility with classic DataMapper).
-- `collect()` — returns a `DMZ_Collection` for fluent collection chaining.
-- `pluck($column)` — returns a plain array of column values (ideal for IDs or emails).
-- `value($column, $default = null)` — fetch a single scalar from the first row, optionally supplying a fallback when nothing matches.
-- `first()` — returns the first hydrated model while leaving existing limits/offsets intact.
-
-> **Note:** If you need a collection of plucked values, use `collect()->pluck($column)`.
-
-All helpers respect the active query, eager-load hints (`with()`), and caching directives:
+For common read patterns you can use the model-level helpers directly:
 
 ```php
 $emails = (new User())
     ->where('active', 1)
-    ->order_by('last_login', 'DESC')
-    ->cache(300)
     ->pluck('email');
-
-$topAuthors = (new Post())
-    ->with('author')
-    ->where('status', 'published')
-    ->order_by('view_count', 'DESC')
-    ->collect()
-    ->take(5);
 
 $latestSlug = (new Post())
     ->order_by('created_at', 'DESC')
-    ->value('slug', 'draft-placeholder');
+    ->value('slug', 'draft');
+
+$firstAdmin = (new User())
+    ->where('role', 'admin')
+    ->first();
 ```
 
-These shortcuts are also available from an instantiated model (`$posts->collect()`, `$posts->pluck('title')`) so you can upgrade legacy code incrementally while keeping existing `get()` flows running.
+Use `collect()->pluck()` when you need a collection chain before plucking. `pluck()` itself returns a plain PHP array.
 
-## Available Methods
-
-### Filtering Methods
-
-#### filter()
-
-Filter collection by callback:
+## Reading Items
 
 ```php
-$adults = $users->collect()->filter(function($user) {
-    return $user->age >= 18;
-});
+$users = (new User())->where('active', 1)->collect();
 
-// With key
-$active = $users->collect()->filter(function($user, $key) {
-    return $user->active && $key % 2 === 0;
-});
+$count = $users->count();
+$first = $users->first();
+$last = $users->last();
+$isEmpty = $users->is_empty();
+$hasItems = $users->is_not_empty();
+$fifth = $users->get(4);
+$byId = $users->find(15);
+$ids = $users->ids();
 ```
 
-#### where()
-
-Filter by field value:
+Collections implement `IteratorAggregate` and `Countable`, so they work naturally in `foreach` and `count()`.
 
 ```php
-$admins = $users->collect()->where('role', 'admin');
-
-// Operators supported
-$expensive = $products->collect()->where('price', '>', 100);
-$recent = $posts->collect()->where('created_at', '>=', '2024-01-01');
-```
-
-#### where_in() / where_not_in()
-
-```php
-$selected = $users->collect()->where_in('id', [1, 5, 10, 15]);
-$excluded = $users->collect()->where_not_in('status', ['banned', 'deleted']);
-```
-
-#### where_null() / where_not_null()
-
-```php
-$pending = $orders->collect()->where_null('shipped_at');
-$completed = $orders->collect()->where_not_null('completed_at');
-```
-
-#### where_between()
-
-```php
-$midRange = $products->collect()->where_between('price', [10, 50]);
-```
-
-#### first() / last()
-
-```php
-$firstUser = $users->collect()->first();
-$lastUser = $users->collect()->last();
-
-// With callback
-$firstAdmin = $users->collect()->first(function($user) {
-    return $user->role === 'admin';
-});
-```
-
-#### take() / skip()
-
-```php
-$first10 = $users->collect()->take(10);
-$skip5 = $users->collect()->skip(5);
-
-// Negative takes from end
-$last5 = $users->collect()->take(-5);
-```
-
-### Transformation Methods
-
-#### map()
-
-Transform each item:
-
-```php
-$usernames = $users->collect()->map(function($user) {
-    return $user->username;
-});
-
-$formatted = $products->collect()->map(function($product) {
-    return [
-        'name' => $product->name,
-        'price' => '$' . number_format($product->price, 2)
-    ];
-});
-```
-
-    $allTags = $posts->collect()->flat_map(function($post) {
-
-Extract single column:
-
-```php
-$names = $users->collect()->pluck('username');
-$emails = $users->collect()->pluck('email');
-
-// With keys
-$emailsByName = $users->collect()->pluck('email', 'username');
-// Result: ['john' => 'john@example.com', ...]
-```
-
-#### transform()
-
-Transform collection in-place:
-
-```php
-$collection->transform(function($user) {
-    $user->name = strtoupper($user->name);
-    return $user;
-});
-```
-
-#### flat_map()
-
-Map and flatten results:
-
-```php
-$allTags = $posts->collect()->flat_map(function($post) {
-    return $post->tags; // Returns array of tags
-});
-// Single flat array of all tags
-```
-
-### Aggregation Methods
-
-#### sum()
-
-```php
-$totalRevenue = $orders->collect()->sum('total');
-$totalPoints = $users->collect()->sum('points');
-
-// With callback
-$totalPrice = $items->collect()->sum(function($item) {
-    return $item->price * $item->quantity;
-});
-```
-
-#### avg() / average()
-
-```php
-$averageAge = $users->collect()->avg('age');
-$averagePrice = $products->collect()->average('price');
-```
-
-#### min() / max()
-
-```php
-$youngest = $users->collect()->min('age');
-$oldest = $users->collect()->max('age');
-$cheapest = $products->collect()->min('price');
-$expensive = $products->collect()->max('price');
-```
-
-#### count()
-
-```php
-$total = $users->collect()->count();
-$adults = $users->collect()->filter(fn($u) => $u->age >= 18)->count();
-```
-
-#### median() / mode()
-
-```php
-$medianAge = $users->collect()->median('age');
-$commonRole = $users->collect()->mode('role');
-```
-
-### Sorting Methods
-
-#### sort_by() / sort_by_desc()
-
-```php
-$byName = $users->collect()->sort_by('username');
-$byAge = $users->collect()->sort_by_desc('age');
-
-// With callback
-$sorted = $users->collect()->sort_by(function($user) {
-    return $user->last_name . ' ' . $user->first_name;
-});
-```
-
-#### sort() / sort_desc()
-
-```php
-$numbers->collect()->sort();        // Ascending
-$numbers->collect()->sort_desc();    // Descending
-```
-
-#### reverse()
-
-```php
-$reversed = $users->collect()->reverse();
-```
-
-#### shuffle()
-
-```php
-$random = $users->collect()->shuffle();
-```
-
-### Grouping Methods
-
-#### group_by()
-
-```php
-$byRole = $users->collect()->group_by('role');
-// Result: ['admin' => [...], 'user' => [...]]
-
-$byCountry = $users->collect()->group_by('country_id');
-
-// With callback
-$byAgeGroup = $users->collect()->group_by(function($user) {
-    return $user->age < 18 ? 'minor' : 'adult';
-});
-```
-
-#### key_by()
-
-Key collection by field:
-
-```php
-$byId = $users->collect()->key_by('id');
-// Result: [1 => User, 2 => User, ...]
-
-$byEmail = $users->collect()->key_by('email');
-```
-
-#### partition()
-
-Split into two groups:
-
-```php
-[$adults, $minors] = $users->collect()->partition(function($user) {
-    return $user->age >= 18;
-});
-```
-
-### Chunking Methods
-
-#### chunk()
-
-Split into chunks:
-
-```php
-$chunks = $users->collect()->chunk(100);
-
-foreach ($chunks as $chunk) {
-    // Process 100 users at a time
-    $this->processUsers($chunk);
-}
-```
-
-#### split()
-
-Split into N groups:
-
-```php
-$groups = $users->collect()->split(3);
-// 3 roughly equal groups
-```
-
-### Combining Methods
-
-#### merge()
-
-```php
-$combined = $collection1->merge($collection2);
-```
-
-#### concat()
-
-```php
-$all = $users->collect()->concat($admins->collect());
-```
-
-#### union()
-
-```php
-$unique = $collection1->union($collection2);
-```
-
-#### zip()
-
-```php
-$zipped = $names->zip($emails, $ages);
-// Result: ['John', 'john@example.com', 30], ...]
-```
-
-### Checking Methods
-
-#### contains()
-
-```php
-$hasAdmin = $users->collect()->contains('role', 'admin');
-$hasUser = $users->collect()->contains(function($user) {
-    return $user->id === 5;
-});
-```
-
-#### is_empty() / is_not_empty()
-
-```php
-if ($users->collect()->is_empty()) {
-    echo "No users found";
-}
-
-if ($products->collect()->is_not_empty()) {
-    // Process products
-}
-```
-
-#### every()
-
-Check if all items pass test:
-
-```php
-$allActive = $users->collect()->every(function($user) {
-    return $user->active === 1;
-});
-```
-
-#### some() / contains()
-
-Check if any item passes test:
-
-```php
-$hasAdmin = $users->collect()->some(function($user) {
-    return $user->role === 'admin';
-});
-```
-
-### Utility Methods
-
-#### each()
-
-Iterate over items:
-
-```php
-$users->collect()->each(function($user) {
-    echo $user->name . "\n";
-});
-
-// Break early by returning false
-$users->collect()->each(function($user) {
-    if ($user->id === 10) {
-        return false; // Stop iteration
-    }
-    echo $user->name;
-});
-```
-
-#### tap()
-
-Perform action without modifying collection:
-
-```php
-$users->collect()
-    ->tap(function($collection) {
-        error_log("Processing " . $collection->count() . " users");
-    })
-    ->filter(fn($u) => $u->active)
-    ->each(fn($u) => $u->send_email());
-```
-
-#### pipe()
-
-Pass collection to callback:
-
-```php
-$result = $users->collect()->pipe(function($collection) {
-    return $collection->filter(fn($u) => $u->active)->count();
-});
-```
-
-#### dd() / dump()
-
-Debug and die:
-
-```php
-$users->collect()
-    ->where('active', 1)
-    ->dd(); // Dump and die
-
-$users->collect()->dump(); // Dump and continue
-```
-
-## Chaining Methods
-
-Collections excel at chaining:
-
-```php
-$result = Post::where('status', 'published')
-    ->collect()
-    ->filter(fn($p) => $p->view_count > 1000)
-    ->sort_by_desc('created_at')
-    ->take(10)
-    ->map(fn($p) => [
-        'title' => $p->title,
-        'url' => site_url('posts/' . $p->slug),
-        'views' => number_format($p->view_count)
-    ])
-    ->to_array();
-```
-
-## Real-World Examples
-
-### E-commerce Order Summary
-
-```php
-$orders = Order::where('user_id', $userId)
-    ->where('status', 'completed')
-    ->collect();
-
-$summary = [
-    'total_orders' => $orders->count(),
-    'total_spent' => $orders->sum('total'),
-    'average_order' => $orders->avg('total'),
-    'largest_order' => $orders->max('total'),
-    'by_month' => $orders->group_by(function($order) {
-        return $order->created_at->format('Y-m');
-    })->map(fn($group) => $group->sum('total'))
-];
-```
-
-### User Analytics
-
-```php
-$users = User::all()->collect();
-
-$analytics = [
-    'total' => $users->count(),
-    'active' => $users->where('active', 1)->count(),
-    'by_role' => $users->group_by('role')->map->count(),
-    'by_country' => $users->group_by('country')->map->count(),
-    'average_age' => $users->avg('age'),
-    'top_contributors' => $users->sort_by_desc('contribution_score')->take(10)
-];
-```
-
-### Product Catalog
-
-```php
-$products = Product::where('active', 1)->collect();
-
-$catalog = $products
-    ->group_by('category_id')
-    ->map(function($categoryProducts) {
-        return [
-            'count' => $categoryProducts->count(),
-            'price_range' => [
-                'min' => $categoryProducts->min('price'),
-                'max' => $categoryProducts->max('price'),
-                'avg' => $categoryProducts->avg('price')
-            ],
-            'products' => $categoryProducts->sort_by('name')->values()
-        ];
-    });
-```
-
-## Performance Considerations
-
-::: tip Memory vs Speed
-- **Small datasets (< 1000 records)**: Collections are perfect
-- **Medium datasets (1000-10000)**: Use collections with chunk()
-- **Large datasets (> 10000)**: Consider get_iterated() or chunk queries
-
-```php
-// GOOD: Small dataset
-$users = User::limit(100)->collect()->filter(...);
-
-// BETTER: Large dataset
-User::chunk(1000, function($users) {
-    $users->filter(...)->each(...);
-});
-
-// BEST: Huge dataset
-$users = User::get_iterated();
 foreach ($users as $user) {
-    // Process one at a time
+    echo $user->name;
 }
 ```
-:::
 
-## Converting Collections
-
-### To Array
+## Filtering
 
 ```php
-$array = $collection->to_array();
-$array = $collection->all();
+$users = (new User())->collect();
+
+$admins = $users->where('role', 'admin');
+$adults = $users->where('age', '>=', 18);
+$selected = $users->where_in('id', array(1, 5, 10));
+$visible = $users->where_not_in('status', array('banned', 'deleted'));
+$pending = $users->where_null('approved_at');
+$approved = $users->where_not_null('approved_at');
+$midRange = $users->where_between('score', 50, 80);
+
+$recent = $users->filter(function($user) {
+    return $user->created_at >= '2026-01-01';
+});
 ```
 
-### To JSON
+`where_between()` also accepts an array with start and end values.
 
 ```php
-$json = $collection->to_json();
-$json = $collection->to_json(JSON_PRETTY_PRINT);
+$midRange = $users->where_between('score', array(50, 80));
 ```
 
-### To Query Result
+## Mapping and Iterating
 
 ```php
-// Get back to DataMapper result
-$result = $collection->to_data_mapper();
+$names = $users->map(function($user) {
+    return $user->first_name . ' ' . $user->last_name;
+});
+
+$users->each(function($user) {
+    $user->last_seen = date('Y-m-d H:i:s');
+    $user->save();
+});
 ```
 
-## Custom Collections
-
-Create custom collection classes for your models:
+Return `FALSE` from `each()` to stop early.
 
 ```php
-use DataMapper\Collection;
-
-class UserCollection extends Collection {
-    public function active() {
-        return $this->filter(fn($user) => $user->active === 1);
+$users->each(function($user) {
+    if ($user->id > 1000) {
+        return FALSE;
     }
-    
-    public function admins() {
-        return $this->where('role', 'admin');
-    }
-    
-    public function sendEmail($subject, $message) {
-        return $this->each(function($user) use ($subject, $message) {
-            $user->sendEmail($subject, $message);
-        });
-    }
-}
-
-// Use in model
-class User extends DataMapper {
-    public function newCollection(array $models = []) {
-        return new UserCollection($models);
-    }
-}
-
-// Now your queries return UserCollection
-$users = User::where('active', 1)->collect();
-$users->admins()->sendEmail('Update', 'System update tonight');
+});
 ```
 
-## Related Documentation
+Use `flat_map()` when each item returns an array or collection that should be flattened into one collection.
 
-- [Query Builder](query-builder)
-- [Eager Loading](eager-loading)
-- [Streaming & Chunking](streaming)
-- [Get Iterated](../models/get-iterated)
+```php
+$tags = $posts->flat_map(function($post) {
+    return $post->tags;
+});
+```
+
+## Plucking and Values
+
+```php
+$emails = $users->pluck('email');
+$items = $users->values();
+$array = $users->to_array();
+$json = $users->to_json();
+```
+
+## Aggregates
+
+```php
+$orders = (new Order())->where('status', 'paid')->collect();
+
+$total = $orders->sum('total');
+$average = $orders->avg('total');
+$min = $orders->min('total');
+$max = $orders->max('total');
+$median = $orders->median('total');
+$mode = $orders->mode('status');
+```
+
+Aggregate helpers accept a field name or a callback.
+
+```php
+$gross = $orders->sum(function($order) {
+    return $order->quantity * $order->price;
+});
+```
+
+## Sorting and Grouping
+
+```php
+$byName = $users->sort_by('name');
+$byScore = $users->sort_by_desc('score');
+$reversed = $users->reverse();
+$random = $users->shuffle();
+$uniqueEmails = $users->unique('email');
+
+$byRole = $users->group_by('role');
+$byId = $users->key_by('id');
+```
+
+`group_by()` returns a collection whose values are `DMZ_Collection` instances.
+
+```php
+$totalsByUser = $orders->group_by('user_id')->map(function($group) {
+    return $group->sum('total');
+});
+```
+
+## Combining Collections
+
+```php
+$all = $active->merge($inactive);
+$combined = $active->concat($invited);
+$unique = $active->union($invited);
+$pairs = $names->zip($emails);
+```
+
+## Slicing
+
+```php
+$firstTen = $users->take(10);
+$afterTen = $users->skip(10);
+$chunks = $users->chunk(100);
+$groups = $users->split(3);
+```
+
+`chunk()` is an in-memory collection operation. For large tables, use the model-level streaming methods instead.
+
+```php
+$users = new User();
+$users->where('active', 1)
+      ->chunk(1000, function($chunk) {
+          $chunk->each(function($user) {
+              $user->sync_profile();
+          });
+      });
+```
+
+## Checks
+
+```php
+$hasAdmin = $users->contains('admin', 'role');
+
+$allActive = $users->every(function($user) {
+    return $user->active == 1;
+});
+
+$hasLockedUser = $users->some(function($user) {
+    return $user->locked_at !== NULL;
+});
+```
+
+## Bulk Operations
+
+Collections that contain DataMapper models can persist or delete every item.
+
+```php
+$users->each(function($user) {
+    $user->status = 'archived';
+});
+
+$users->save_all();
+$users->delete_all();
+```
+
+## Converting Back to DataMapper
+
+```php
+$result = $users->to_data_mapper();
+```
+
+`to_data_mapper()` rebuilds a DataMapper result object when the collection was created with a source model.
+
+## Notes
+
+- `get()` returns a DataMapper model instance; `collect()` returns `DMZ_Collection`.
+- `pluck()` returns a plain array.
+- Collection helpers operate on already loaded data.
+- Model-level `chunk()`, `chunk_by_id()`, `cursor()`, and `lazy()` fetch data in batches and are better suited to large tables.
 
 ## See Also
 
-- [Query Basics](../models/get)
-- [Advanced Queries](advanced-query-building)
-- [Performance Tips](../../help/faq#Performance)
+- [Query Builder](query-builder)
+- [Streaming & Chunking](streaming)
+- [Quick Reference](/reference/quick-reference)

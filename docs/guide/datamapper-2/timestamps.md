@@ -409,10 +409,10 @@ for ($i = 0; $i < $months; $i++) {
 
 // Content activity
 $activity = array(
-    'posts_today' => Post::where('created_at >', date('Y-m-d 00:00:00'))->count(),
-    'posts_this_week' => Post::where('created_at >', date('Y-m-d', strtotime('monday this week')))->count(),
-    'posts_this_month' => Post::where('created_at >', date('Y-m-01 00:00:00'))->count(),
-    'recently_updated' => Post::where('updated_at >', date('Y-m-d H:i:s', strtotime('-1 hour')))->count()
+    'posts_today' => (new Post())->where('created_at >', date('Y-m-d 00:00:00'))->count(),
+    'posts_this_week' => (new Post())->where('created_at >', date('Y-m-d', strtotime('monday this week')))->count(),
+    'posts_this_month' => (new Post())->where('created_at >', date('Y-m-01 00:00:00'))->count(),
+    'recently_updated' => (new Post())->where('updated_at >', date('Y-m-d H:i:s', strtotime('-1 hour')))->count()
 );
 ```
 

@@ -429,16 +429,17 @@ $user->with('post', function($query) {
 ```php
 $users = new User();
 $users->where('status', 'active')->get();
+$collection = $users->collect();
 
 // Collection methods
-$emails = $users->pluck('email');
-$admins = $users->filter(function($u) {
+$emails = $collection->pluck('email');
+$admins = $collection->filter(function($u) {
     return $u->role === 'admin';
 });
-$names = $users->map(function($u) {
+$names = $collection->map(function($u) {
     return strtoupper($u->name);
 });
-$chunks = $users->chunk(100);
+$chunks = $collection->chunk(100);
 ```
 
 ### Query Caching
@@ -463,7 +464,7 @@ $emails = (new User())
 ### Soft Deletes
 
 ```php
-use DataMapper\SoftDeletes;
+use DataMapper\Traits\SoftDeletes;
 
 class User extends DataMapper {
     use SoftDeletes;
@@ -489,7 +490,7 @@ $user->restore();
 ### Timestamps
 
 ```php
-use DataMapper\HasTimestamps;
+use DataMapper\Traits\HasTimestamps;
 
 class User extends DataMapper {
     use HasTimestamps;

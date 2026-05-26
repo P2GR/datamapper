@@ -20,18 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 - **Eager Loading** - Eliminate N+1 queries with `with()` method
   ```php
-  $user->with('posts')->with('comments')->get();
+  $user->with('posts', 'comments')->get();
   ```
-- **Collections** - Laravel-style collection methods
+- **Collections** - Result collection helpers
   ```php
-  $users->filter()->map()->pluck('email')->all();
+  $users->collect()->filter($callback)->pluck('email');
   ```
 - **Query Caching** - Built-in caching with automatic invalidation
 - **Soft Deletes** - Trait-based soft delete functionality
 - **Timestamps** - Automatic created_at/updated_at management
 - **Attribute Casting** - Auto-cast attributes to specific types
 - **Streaming Results** - Memory-efficient result processing
-- **Advanced Query Building** - Subqueries, unions, advanced joins
+- **Advanced Query Building** - Subqueries, relationship filters, grouping, aggregates, and raw expressions
 - **Better Error Messages** - More descriptive validation and query errors
 
 ### Changed - Breaking Changes
@@ -44,8 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved - Performance
 
-- Query optimization reduced database calls by up to 95%
-- Eager loading prevents N+1 queries automatically
+- Eager loading reduces repeated relationship queries when used on relations that will be accessed
 - Production cache now uses faster serialization
 - Collection methods use lazy evaluation
 - Memory usage reduced by 60% for large datasets

@@ -175,6 +175,28 @@ class QueryBuilderHelpersTest extends TestCase
         $this->assertSame($constraint, $builder->getEagerConstraints()['profile']);
     }
 
+    public function testCacheHelpersProxyToWrappedModel(): void
+    {
+        $mapper = new FakeDataMapper(array(array('id' => 103)));
+        $mapper->clearCacheReturn = 3;
+        $builder = new DMZ_QueryBuilder($mapper);
+
+        $result = $builder
+            ->with('profile')
+            ->cache(900, 'profiled-users')
+            ->no_cache()
+            ->cache_relations(1200);
+
+        $this->assertSame($builder, $result);
+        $this->assertSame(3, $builder->clear_cache('query:fake:*'));
+        $this->assertSame(array(
+            array('cache', 900, 'profiled-users'),
+            array('no_cache'),
+            array('cache_relations', 1200),
+            array('clear_cache', 'query:fake:*'),
+        ), $builder->get_model()->cacheLog);
+    }
+
     public function testFindUsesConfiguredPrimaryKey(): void
     {
         $mapper = new FakeDataMapper(array(array('uuid' => 'abc-123')));
