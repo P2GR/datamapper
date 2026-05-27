@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Mass-assignment protection (`$fillable`, `$guarded`, `fill()`, `force_fill()`, `Model::create()`) with full documentation and examples.
+- CI/CD workflows: PHP test matrix (8.1–8.5) and VitePress docs deployment via SSH.
+
+### Changed
+- `join_related()` now emits an `E_USER_DEPRECATED` notice. Use `include_related()` instead.
+
+### Removed
+- Removed camelCase aliases `toArray()` and `applyOperations()` from `DMZ_LazyCollection`. Use `to_array()` and `apply_operations()` instead.
+
+### Security
+- Hardened `_unserialize()` with `allowed_classes => FALSE` to prevent PHP object injection.
+
+### Fixed
+- Removed `@` error suppression on querybuilder auto-loading.
 
 ## [2.0.0] - 2024-12-15
 

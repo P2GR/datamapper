@@ -24,10 +24,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed `pluck_values()` from `DMZ_QueryBuilder`, `DMZ_Collection`, and `DataMapper` — use `pluck()` which already returns a plain array.
 - Removed deprecated soft-delete aliases: `with_deleted()`, `only_deleted()`, `without_deleted()` — use `with_softdeleted()`, `only_softdeleted()`, `without_softdeleted()` instead.
 - Removed deprecated `_dm_with_deleted` and `_dm_only_deleted` compatibility properties.
+- Removed camelCase aliases `toArray()` and `applyOperations()` from `DMZ_LazyCollection` — use `to_array()` and `apply_operations()`.
+
+### Security
+- Hardened `_unserialize()` with `allowed_classes => FALSE` to prevent PHP object injection.
+
+### Deprecated
+- `join_related()` now emits an `E_USER_DEPRECATED` notice. Use `include_related()` instead.
 
 ### Fixed
 - Fixed dead documentation links in extension headers (overzealous.com → github.com/P2GR/datamapper2).
 - Fixed typo in rowindex.php header (`worIndex` → `rowindex`).
+- Removed `@` error suppression on querybuilder auto-loading.
 - Resolved FIXME comment in `get()` method — silent behavior when no constraints are provided is intentional.
 
 ### Documentation

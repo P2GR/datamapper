@@ -171,7 +171,7 @@ The following is a list of reserved names that cannot be used as function names 
 - include_related
 - include_related_count
 - is_related_to
-- join_related
+- join_related _(deprecated — use include_related)_
 - like
 - limit
 - load_extension
