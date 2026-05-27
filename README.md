@@ -1,10 +1,9 @@
 # DataMapper ORM v2.0.0-beta1
 
-[![PHP Version](https://img.shields.io/badge/PHP-5.4--8.5%2B-blue)](https://php.net)
+[![CI](https://img.shields.io/github/actions/workflow/status/P2GR/datamapper/ci.yml?branch=2.0.0-beta1&label=CI&logo=github)](https://github.com/P2GR/datamapper/actions/workflows/ci.yml)
+[![PHP Version](https://img.shields.io/badge/PHP-7.4--8.5%2B-blue)](https://php.net)
 [![CodeIgniter](https://img.shields.io/badge/CodeIgniter-3.x-orange)](https://codeigniter.com)
 [![License](https://img.shields.io/badge/License-MIT-green)](license.txt)
-[![CI](https://img.shields.io/github/actions/workflow/status/P2GR/datamapper/ci.yml?branch=datamapper&label=CI&logo=github)](https://github.com/P2GR/datamapper/actions/workflows/ci.yml)
-[![GitHub](https://img.shields.io/badge/GitHub-P2GR%2Fdatamapper-blue)](https://github.com/P2GR/datamapper)
 
 A powerful Object-Relational Mapper (ORM) for CodeIgniter 3 with modern features and 100% backward compatibility.
 
@@ -14,185 +13,186 @@ DataMapper ORM provides an elegant Active Record implementation for CodeIgniter 
 
 ## What's New in v2.0
 
-### Core Features
-- **Query Builder** - Modern chainable query syntax for elegant database queries
-- **Result Helpers** - `collect()`, `pluck()`, `value()`, and `first()` bridge classic DataMapper flows with the new collection pipeline
-- **Eager Loading** - Eliminate N+1 query problems with the `with()` method (96%+ query reduction)
-- **Eager Loading with Constraints** - Filter related records at the database level for maximum efficiency
-- **Enhanced Collections** - Powerful result set manipulation with map, filter, reduce, and more
-- **100% Backward Compatible** - All existing DataMapper 1.x code works unchanged
+### Query & Performance
+- **[Query Builder](https://datamapper.mss54.com/guide/datamapper-2/query-builder)** — Modern chainable query syntax
+- **[Eager Loading](https://datamapper.mss54.com/guide/datamapper-2/eager-loading)** — Eliminate N+1 problems with `with()` (96%+ query reduction)
+- **[Collections](https://datamapper.mss54.com/guide/datamapper-2/collections)** — `collect()`, `pluck()`, `value()`, `first()`, map/filter/reduce
+- **[Streaming & Chunking](https://datamapper.mss54.com/guide/datamapper-2/streaming)** — Process millions of rows with `chunk()` and `lazy()`
+- **[Query Caching](https://datamapper.mss54.com/guide/datamapper-2/caching)** — Built-in File, Redis, and Memcached support
+- **[Query Scopes](https://datamapper.mss54.com/guide/datamapper-2/query-scopes)** — Reusable query constraints via `scope_` methods
 
 ### Data Management
-- **Attribute Casting** - Automatic type conversion (int, bool, float, array, json, datetime, etc.)
-- **Soft Deletes Trait** - Soft deletion with `deleted_at` timestamps (`with_softdeleted`, `only_softdeleted`, `restore`)
-- **Timestamps Trait** - Automatic `created_at` and `updated_at` management with customizable formats
-- **Query Caching** - Built-in caching with File, Redis, and Memcached support for improved performance
+- **[Attribute Casting](https://datamapper.mss54.com/guide/datamapper-2/casting)** — Automatic type conversion (int, bool, float, array, json, datetime)
+- **[Soft Deletes](https://datamapper.mss54.com/guide/datamapper-2/soft-deletes)** — Trait-based soft deletion with `deleted_at` timestamps
+- **[Timestamps](https://datamapper.mss54.com/guide/datamapper-2/timestamps)** — Automatic `created_at`/`updated_at` management
+- **[Dirty Tracking](https://datamapper.mss54.com/guide/datamapper-2/dirty-tracking)** — `is_dirty()`, `is_clean()`, `get_dirty()`, `get_original()`, `was_changed()`
+- **[Serialization Control](https://datamapper.mss54.com/guide/datamapper-2/serialization)** — `$hidden`, `$visible`, `$appends` for API-safe output
 
-### Performance & Scalability
-- **Streaming & Chunking** - Process large datasets with minimal memory usage via `chunk()` and `lazy()`
-- **Lazy Collections** - Memory-efficient lazy evaluation for massive datasets
-- **Database-Level Filtering** - Apply constraints in eager loading to reduce data transfer (up to 80% reduction)
-- **Server-Sent Events (SSE)** - Real-time streaming for CSV exports and batch processing
-
-## Legacy Highlights
-
-Classic DataMapper strengths are still here:
-
-- Everything is an object with intuitive relationship mapping
-- Easy setup and custom validation on model properties
-- Lazy loading keeps related data efficient
-- Relationship integrity managed automatically (one-to-one, one-to-many, many-to-many)
-- Active Record-style querying with or without method chaining
-
-## Installation
-
-Download the latest release from [GitHub Releases](https://github.com/P2GR/datamapper/releases).
-
-Detailed installation instructions live in the [Installation guide](https://datamapper.mss54.com/pages/installation.html).
-
-## Documentation
-
-Complete documentation is available at **[datamapper.mss54.com](http://datamapper.mss54.com)**.
-
-> **Note:** The legacy `manual/` HTML bundle has been removed. Documentation now resides under `docs/` and is published to the site above.
-
-### Quick Links
-
-- [Getting Started Guide](http://datamapper.mss54.com/pages/gettingstarted.html)
-- [Query Builder](https://datamapper.mss54.com/guide/datamapper-2/query-builder)
-- [Relationships](http://datamapper.mss54.com/pages/relationtypes.html)
-- [Validation](http://datamapper.mss54.com/pages/validation.html)
-- [Quick Reference](http://datamapper.mss54.com/pages/quickref.html)
+### Model Lifecycle
+- **[Model Events](https://datamapper.mss54.com/guide/datamapper-2/model-events)** — `before_save`, `after_save`, `before_create`, `after_create`, `before_delete`, etc.
+- **[Model Utilities](https://datamapper.mss54.com/guide/datamapper-2/model-utilities)** — `increment()`, `decrement()`, `replicate()`, `fresh()`, `tap()`, `destroy()`
+- **Mass Assignment Protection** — `$fillable` / `$guarded` with `fill()` and `create()`
 
 ## Requirements
 
 - PHP 7.4 or higher (tested through PHP 8.5)
 - CodeIgniter 3.x
-- MySQL, PostgreSQL, SQLite, or any database supported by CodeIgniter
+- MySQL, PostgreSQL, SQLite, or any CI-supported database
+
+## Installation
+
+```bash
+# Clone or download into your application directory
+git clone https://github.com/P2GR/datamapper.git
+```
+
+Copy the contents of `application/` into your CodeIgniter `application/` folder. See the [Installation Guide](https://datamapper.mss54.com/guide/getting-started/installation) for details.
 
 ## Quick Examples
 
-### Soft Deletes
-```php
-class Post extends DataMapper {
-    use SoftDeletes;
-}
-
-$post = (new Post())->find(1);
-$post->delete(); // Soft delete (sets deleted_at)
-
-// Query only non-deleted (default)
-$posts = (new Post())->get();
-
-// Include soft-deleted records
-$all = (new Post())->with_softdeleted()->get();
-
-// Only soft-deleted records
-$trashed = (new Post())->only_softdeleted()->get();
-
-// Restore soft-deleted
-$post->restore();
-
-// Permanently delete
-$post->force_delete();
-```
-
-### Automatic Timestamps
+### Basic CRUD
 ```php
 class User extends DataMapper {
-    use HasTimestamps;
+    use HasTimestamps, SoftDeletes;
+
+    public $has_many = array('post', 'comment');
 }
 
+// Create
 $user = new User();
-$user->name = 'John Doe';
-$user->save(); // Automatically sets created_at and updated_at
-
 $user->name = 'Jane Doe';
-$user->save(); // Automatically updates updated_at
+$user->email = 'jane@example.com';
+$user->save(); // created_at and updated_at set automatically
+
+// Read
+$user = (new User())->get_by_id(1);
+echo $user->name;
+
+// Update
+$user->name = 'Jane Smith';
+$user->save(); // updated_at refreshed automatically
+
+// Delete
+$user->delete(); // soft-deleted (sets deleted_at)
+$user->restore(); // undo soft delete
+$user->force_delete(); // permanent removal
 ```
 
 ### Eager Loading with Constraints
 ```php
-// Load users with only active installations
 $users = (new User())
-    ->with('installation', function($q) {
-        $q->where('active', 1);
+    ->with('post', function($q) {
+        $q->where('status', 'published');
         $q->order_by('created_at', 'DESC');
-        $q->limit(10);
+        $q->limit(5);
     })
-    ->get();
-
-// Include soft-deleted relations
-$users = (new User())
-    ->with('posts', function($q) {
-        $q->with_softdeleted(); // Include deleted posts
-    })
+    ->where('active', 1)
     ->get();
 ```
 
-### Collection-Friendly Query Helpers
+### Query Scopes
 ```php
-$activeEmails = (new User())
-    ->where('active', 1)
-    ->order_by('last_login', 'DESC')
-    ->pluck('email');
+class Post extends DataMapper {
+    public function scope_published() {
+        return $this->where('status', 'published');
+    }
 
-$topPosts = (new Post())
-    ->where('status', 'published')
-    ->with('author')
-    ->collect()
-    ->take(5);
+    public function scope_recent($days = 7) {
+        return $this->where('created_at >', date('Y-m-d', strtotime("-{$days} days")));
+    }
+}
 
-$latestSlug = (new Post())
-    ->order_by('created_at', 'DESC')
-    ->value('slug', 'draft-placeholder');
+// Chain scopes naturally
+$posts = (new Post())->published()->recent(30)->get();
 ```
 
-### Memory-Efficient Streaming
+### Dirty Tracking & Model Events
 ```php
-// Process 1 million records with minimal memory
-(new User())
-    ->where('active', 1)
-    ->chunk(1000, function($users) {
-        foreach ($users as $user) {
-            // Process each batch
-            $user->send_email();
+class Article extends DataMapper {
+    protected function before_save() {
+        if ($this->is_dirty('title')) {
+            $this->slug = url_title($this->title, '-', TRUE);
         }
-    });
+    }
 
-// Lazy collections for chained operations
-$emails = (new User())
-    ->lazy(500)
-    ->map(fn($user) => $user->email)
-    ->filter(fn($email) => str_contains($email, '@gmail.com'))
-    ->take(1000);
+    protected function after_save() {
+        log_message('info', 'Saved: ' . implode(', ', array_keys($this->get_changes())));
+    }
+}
 ```
+
+### Serialization Control
+```php
+class User extends DataMapper {
+    public $hidden = array('password', 'api_token');
+    public $appends = array('full_name');
+
+    public function get_full_name_attribute() {
+        return $this->first_name . ' ' . $this->last_name;
+    }
+}
+
+$user->to_array();
+// ['id' => 1, 'first_name' => 'Jane', 'last_name' => 'Doe', 'full_name' => 'Jane Doe']
+// password and api_token are excluded
+```
+
+### Collections & Streaming
+```php
+// Fluent collection pipeline
+$emails = (new User())
+    ->where('active', 1)
+    ->collect()
+    ->map(function($u) { return $u->email; })
+    ->filter(function($e) { return str_contains($e, '@gmail.com'); });
+
+// Process millions of rows with constant memory
+(new User())->chunk(1000, function($batch) {
+    foreach ($batch as $user) {
+        $user->send_reminder();
+    }
+});
+```
+
+### Model Utilities
+```php
+// Atomic counters (no race conditions)
+$post->increment('views');
+$post->decrement('stock', 5);
+
+// Clone a record
+$draft = $post->replicate(['id', 'published_at']);
+$draft->status = 'draft';
+$draft->save();
+
+// Bulk delete by ID
+Post::destroy(array(1, 2, 3));
+```
+
+## Documentation
+
+Full documentation: **[datamapper.mss54.com](https://datamapper.mss54.com)**
+
+- [Getting Started](https://datamapper.mss54.com/guide/getting-started/installation)
+- [Query Builder](https://datamapper.mss54.com/guide/datamapper-2/query-builder)
+- [Eager Loading](https://datamapper.mss54.com/guide/datamapper-2/eager-loading)
+- [DataMapper 2.0 Features](https://datamapper.mss54.com/guide/datamapper-2/)
+- [Quick Reference](https://datamapper.mss54.com/reference/quick-reference)
 
 ## Credits
 
 ### Original Authors
 
-- **Simon Stenhouse (Stensi)** - Original DataMapper creator
-- **Harro Verton (WanWizard)** - DataMapper 1.x maintenance and improvements
+- **Simon Stenhouse (Stensi)** — Original DataMapper creator
+- **Harro Verton (WanWizard)** — DataMapper 1.x maintenance and improvements
 
 ### DataMapper 2.0
 
-- **Maintained by [P2GR](https://github.com/P2GR)** - Version 2.0 development and maintenance
-- **Maintained by [KayElliot](https://github.com/kayelliot)** - Version 2.0 development and maintenance
-
-### Community
-
-Special thanks to all contributors who have helped improve DataMapper over the years.
+- **[P2GR](https://github.com/P2GR)** — Version 2.0 development and maintenance
+- **[KayElliot](https://github.com/kayelliot)** — Version 2.0 development and maintenance
 
 ## License
 
 DataMapper ORM is open-sourced software licensed under the [MIT License](license.txt).
-
-## Links
-
-- **Documentation**: [datamapper.mss54.com](http://datamapper.mss54.com)
-- **Repository**: [github.com/P2GR/datamapper](https://github.com/P2GR/datamapper)
-- **Download**: [Latest Release](https://github.com/P2GR/datamapper/releases)
-- **Issues**: [Bug Reports & Feature Requests](https://github.com/P2GR/datamapper/issues)
 
 
