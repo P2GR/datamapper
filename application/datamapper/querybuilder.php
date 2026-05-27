@@ -834,7 +834,7 @@ class DMZ_QueryBuilder {
      * Usage examples:
      *   ->with('installations')                                    // Simple eager load
      *   ->with('installations', function($q) { $q->where(...); })  // With constraint (DataMapper style)
-     *   ->with(['installations' => function($q) {...}])            // Array syntax (Eloquent-like)
+     *   ->with(['installations' => function($q) {...}])            // Array syntax
      *   ->with(['installations', 'building'])                      // Multiple relations
      *
      * @param string|array $relations Relations to eager load

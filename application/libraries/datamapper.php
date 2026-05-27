@@ -375,6 +375,43 @@ class DataMapper implements IteratorAggregate {
 	public $guarded = array('id');
 
 	/**
+	 * DataMapper 2.0 - Serialization Control
+	 *
+	 * $hidden: attributes excluded from to_array() / to_json() output.
+	 * $visible: if set, only these attributes are included (whitelist).
+	 * $appends: computed accessor attributes to include in serialized output.
+	 *
+	 * @var array
+	 */
+	public $hidden = array();
+	public $visible = array();
+	public $appends = array();
+
+	/**
+	 * DataMapper 2.0 - Model Events
+	 *
+	 * Override these in your model to hook into lifecycle events.
+	 * Each receives no arguments. Return FALSE from a "before" event
+	 * to cancel the operation.
+	 *
+	 * Available hooks:
+	 *   before_create / after_create
+	 *   before_update / after_update
+	 *   before_save   / after_save   (wraps both create & update)
+	 *   before_delete / after_delete
+	 *
+	 * Example:
+	 *   protected function before_save() { $this->slug = url_title($this->title); }
+	 */
+
+	/**
+	 * Tracks field values that were changed during the last save().
+	 * Populated by save(), cleared on fresh get().
+	 * @var array
+	 */
+	protected $_dm_changed = array();
+
+	/**
 	 * DataMapper 2.0 - Timestamps
 	 * 
 	 * To enable automatic timestamps, use the HasTimestamps trait:
@@ -716,6 +753,16 @@ class DataMapper implements IteratorAggregate {
 
 				// Get and store the table's field names and meta data
 				$fields = $this->db->field_data($this->table);
+
+				// Guard against missing or inaccessible tables (field_data returns FALSE)
+				if ($fields === FALSE || empty($fields))
+				{
+					throw new DataMapper_Exception(
+						"DataMapper: Unable to retrieve field data for table '{$this->table}'. " .
+						"The table may not exist or the database connection may have failed. " .
+						"Model: " . get_class($this)
+					);
+				}
 
 				// Store only the field names and ensure validation list includes all fields
 				foreach ($fields as $field)
@@ -1548,6 +1595,15 @@ class DataMapper implements IteratorAggregate {
 			return call_user_func_array(array($collection, $snake_case_method), $arguments);
 		}
 
+		// DataMapper 2.0 - Local Query Scopes
+		// If the model defines scope_active(), calling $model->active() will invoke it.
+		$scope_method = 'scope_' . $snake_case_method;
+		if (method_exists($this, $scope_method))
+		{
+			call_user_func_array(array($this, $scope_method), $arguments);
+			return $this;
+		}
+
 		// show an error, for debugging's sake.
 		throw new DataMapper_Exception("Unable to call the method \"$method\" on the class " . get_class($this));
 	}
@@ -2014,7 +2070,33 @@ class DataMapper implements IteratorAggregate {
 		// If validation passed
 		if ($this->valid)
 		{
-			// DataMapper 2.0 - Automatic Timestamps (Eloquent-style)
+			// Determine if this is a create or an update
+			$is_new = ($this->_force_save_as_new || empty($this->id));
+
+			// --- Model Events: before_save / before_create / before_update ---
+			if ($this->_fire_event('before_save') === FALSE)
+			{
+				$this->_force_save_as_new = FALSE;
+				return FALSE;
+			}
+			if ($is_new)
+			{
+				if ($this->_fire_event('before_create') === FALSE)
+				{
+					$this->_force_save_as_new = FALSE;
+					return FALSE;
+				}
+			}
+			else
+			{
+				if ($this->_fire_event('before_update') === FALSE)
+				{
+					$this->_force_save_as_new = FALSE;
+					return FALSE;
+				}
+			}
+
+			// DataMapper 2.0 - Automatic Timestamps
 			$this->_handle_timestamps();
 
 			// Begin auto transaction
@@ -2045,6 +2127,9 @@ class DataMapper implements IteratorAggregate {
 			// Convert this object to array
 			$data = $this->_to_array();
 
+			// Track changed fields for was_changed()
+			$this->_dm_changed = array();
+
 			if ( ! empty($data))
 			{
 				if ( ! $this->_force_save_as_new && ! empty($data['id']))
@@ -2065,6 +2150,9 @@ class DataMapper implements IteratorAggregate {
 						// update it now
 						$data[$this->updated_field] = $this->{$this->updated_field} = $timestamp;
 					}
+
+					// Record which fields changed
+					$this->_dm_changed = $data;
 
 					// Only go ahead with save if there is still data
 					if (empty($data))
@@ -2095,6 +2183,9 @@ class DataMapper implements IteratorAggregate {
 							unset($data[$field]);
 						}
 					}
+
+					// Record all populated fields as "changed" for a new record
+					$this->_dm_changed = $data;
 
 					// Create new record
 					if ($result[] = $this->db->insert($this->table, $data))
@@ -2139,6 +2230,17 @@ class DataMapper implements IteratorAggregate {
 			}
 
 			$this->_auto_trans_complete($trans_complete_label);
+
+			// --- Model Events: after_create / after_update / after_save ---
+			if ($is_new)
+			{
+				$this->_fire_event('after_create');
+			}
+			else
+			{
+				$this->_fire_event('after_update');
+			}
+			$this->_fire_event('after_save');
 		}
 
 		$this->_force_save_as_new = FALSE;
@@ -2410,7 +2512,13 @@ class DataMapper implements IteratorAggregate {
 		{
 			if ( ! empty($this->id))
 			{
-				// DataMapper 2.0 - Soft Delete (Eloquent-style)
+				// --- Model Event: before_delete ---
+				if ($this->_fire_event('before_delete') === FALSE)
+				{
+					return FALSE;
+				}
+
+				// DataMapper 2.0 - Soft Delete
 				// Skip soft deletes when force delete has been requested
 				if ( ! $this->_force_delete_in_progress && $this->_soft_delete_is_enabled())
 				{
@@ -2436,7 +2544,15 @@ class DataMapper implements IteratorAggregate {
 							}
 						}
 
-						return $this->save();
+						$result = $this->save();
+
+						// --- Model Event: after_delete ---
+						if ($result)
+						{
+							$this->_fire_event('after_delete');
+						}
+
+						return $result;
 					}
 				}
 				
@@ -2499,6 +2615,9 @@ class DataMapper implements IteratorAggregate {
 
 				// Invalidate cache after delete
 				$this->_invalidate_cache();
+
+				// --- Model Event: after_delete ---
+				$this->_fire_event('after_delete');
 
 				// Clear this object
 				$this->clear();
@@ -2892,6 +3011,391 @@ class DataMapper implements IteratorAggregate {
 	public function force_validation($force = TRUE)
 	{
 		$this->_force_validation = $force;
+		return $this;
+	}
+
+	// --------------------------------------------------------------------
+	// DataMapper 2.0 — Dirty Tracking
+	// --------------------------------------------------------------------
+
+	/**
+	 * Determine if any attributes have been modified since the last
+	 * database retrieval or save.
+	 *
+	 * @param	string|array|null $field A field name, array of names, or NULL for any.
+	 * @return	bool
+	 */
+	public function is_dirty($field = NULL)
+	{
+		$dirty = $this->get_dirty();
+
+		if (is_null($field))
+		{
+			return count($dirty) > 0;
+		}
+
+		foreach ((array) $field as $f)
+		{
+			if (array_key_exists($f, $dirty))
+			{
+				return TRUE;
+			}
+		}
+
+		return FALSE;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Determine if all attributes remain unchanged since the last
+	 * database retrieval or save.
+	 *
+	 * @param	string|array|null $field A field name, array of names, or NULL for any.
+	 * @return	bool
+	 */
+	public function is_clean($field = NULL)
+	{
+		return ! $this->is_dirty($field);
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Determine if a field was changed during the last save().
+	 *
+	 * @param	string|array|null $field A field name, array of names, or NULL for any.
+	 * @return	bool
+	 */
+	public function was_changed($field = NULL)
+	{
+		if (is_null($field))
+		{
+			return count($this->_dm_changed) > 0;
+		}
+
+		foreach ((array) $field as $f)
+		{
+			if (array_key_exists($f, $this->_dm_changed))
+			{
+				return TRUE;
+			}
+		}
+
+		return FALSE;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Get the attributes that have been changed since the last
+	 * database retrieval or save.
+	 *
+	 * @return	array Associative array of field => current_value.
+	 */
+	public function get_dirty()
+	{
+		$dirty = array();
+
+		foreach ($this->fields as $field)
+		{
+			if ( ! isset($this->stored) || ! property_exists($this->stored, $field))
+			{
+				if (isset($this->{$field}))
+				{
+					$dirty[$field] = $this->{$field};
+				}
+			}
+			elseif ($this->{$field} !== $this->stored->{$field})
+			{
+				$dirty[$field] = $this->{$field};
+			}
+		}
+
+		return $dirty;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Get the original value(s) as they were when loaded from the database.
+	 *
+	 * @param	string|null $field A specific field, or NULL for all.
+	 * @return	mixed The original value, or associative array of all originals.
+	 */
+	public function get_original($field = NULL)
+	{
+		if ( ! is_null($field))
+		{
+			return isset($this->stored) && property_exists($this->stored, $field)
+				? $this->stored->{$field}
+				: NULL;
+		}
+
+		$originals = array();
+		if (isset($this->stored))
+		{
+			foreach ($this->fields as $f)
+			{
+				$originals[$f] = property_exists($this->stored, $f)
+					? $this->stored->{$f}
+					: NULL;
+			}
+		}
+
+		return $originals;
+	}
+
+	// --------------------------------------------------------------------
+	// DataMapper 2.0 — Model Refresh
+	// --------------------------------------------------------------------
+
+	/**
+	 * Return a new instance of this model loaded fresh from the database.
+	 * The current instance is not modified.
+	 *
+	 * @return	DataMapper|null A fresh model, or NULL if not found.
+	 */
+	public function fresh()
+	{
+		if ( ! $this->exists())
+		{
+			return NULL;
+		}
+
+		$class = get_class($this);
+		$fresh = new $class();
+		$fresh->get_by_id($this->id);
+
+		return $fresh->exists() ? $fresh : NULL;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Re-hydrate the current model instance from the database.
+	 *
+	 * @return	DataMapper Returns self for method chaining.
+	 */
+	public function refresh()
+	{
+		if ( ! $this->exists())
+		{
+			return $this;
+		}
+
+		$class = get_class($this);
+		$fresh = new $class();
+		$fresh->get_by_id($this->id);
+
+		if ($fresh->exists())
+		{
+			foreach ($this->fields as $field)
+			{
+				$this->{$field} = $fresh->{$field};
+			}
+			$this->_refresh_stored_values();
+			$this->_dm_changed = array();
+		}
+
+		return $this;
+	}
+
+	// --------------------------------------------------------------------
+	// DataMapper 2.0 — Atomic Counters
+	// --------------------------------------------------------------------
+
+	/**
+	 * Increment a column's value by the given amount.
+	 * Executes a single UPDATE query — no race conditions.
+	 *
+	 * @param	string $field Column to increment.
+	 * @param	int|float $amount Amount to add (default 1).
+	 * @param	array $extra Additional columns to update at the same time.
+	 * @return	bool
+	 */
+	public function increment($field, $amount = 1, $extra = array())
+	{
+		if ( ! $this->exists())
+		{
+			return FALSE;
+		}
+
+		$this->db->set($field, "{$field} + {$amount}", FALSE);
+
+		if ( ! empty($extra))
+		{
+			$this->db->set($extra);
+		}
+
+		// Update updated_at timestamp if applicable
+		if ($this->_timestamps_is_enabled())
+		{
+			$updated_col = property_exists($this, 'updatedAtColumn') && ! empty($this->updatedAtColumn)
+				? $this->updatedAtColumn
+				: (isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
+
+			if (in_array($updated_col, $this->fields))
+			{
+				$this->db->set($updated_col, $this->_fresh_timestamp());
+			}
+		}
+
+		$this->db->where($this->primary_key, $this->id);
+		$result = $this->db->update($this->table);
+
+		if ($result)
+		{
+			$this->{$field} = $this->{$field} + $amount;
+
+			foreach ($extra as $k => $v)
+			{
+				$this->{$k} = $v;
+			}
+
+			$this->_refresh_stored_values();
+		}
+
+		return $result;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Decrement a column's value by the given amount.
+	 *
+	 * @param	string $field Column to decrement.
+	 * @param	int|float $amount Amount to subtract (default 1).
+	 * @param	array $extra Additional columns to update at the same time.
+	 * @return	bool
+	 */
+	public function decrement($field, $amount = 1, $extra = array())
+	{
+		return $this->increment($field, -$amount, $extra);
+	}
+
+	// --------------------------------------------------------------------
+	// DataMapper 2.0 — Bulk Destroy
+	// --------------------------------------------------------------------
+
+	/**
+	 * Delete one or more records by primary key without loading them.
+	 *
+	 * @param	int|array $ids A single ID or array of IDs to delete.
+	 * @return	bool
+	 */
+	public static function destroy($ids)
+	{
+		$ids = is_array($ids) ? $ids : func_get_args();
+
+		if (empty($ids))
+		{
+			return TRUE;
+		}
+
+		$class = get_called_class();
+		$instance = new $class();
+
+		// If soft deletes are enabled, perform soft delete
+		if ($instance->_soft_delete_is_enabled())
+		{
+			$deleted_col = $instance->_get_deleted_at_column();
+
+			if ($deleted_col !== NULL && in_array($deleted_col, $instance->fields))
+			{
+				$data = array($deleted_col => $instance->_fresh_timestamp());
+
+				// Update updated_at if timestamps enabled
+				if ($instance->_timestamps_is_enabled())
+				{
+					$updated_col = property_exists($instance, 'updatedAtColumn') && ! empty($instance->updatedAtColumn)
+						? $instance->updatedAtColumn
+						: (isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
+
+					if (in_array($updated_col, $instance->fields))
+					{
+						$data[$updated_col] = $instance->_fresh_timestamp();
+					}
+				}
+
+				$instance->db->where_in($instance->primary_key, $ids);
+				return $instance->db->update($instance->table, $data);
+			}
+		}
+
+		$instance->db->where_in($instance->primary_key, $ids);
+		return $instance->db->delete($instance->table);
+	}
+
+	// --------------------------------------------------------------------
+	// DataMapper 2.0 — Model Comparison
+	// --------------------------------------------------------------------
+
+	/**
+	 * Determine if two models refer to the same record.
+	 *
+	 * @param	DataMapper|null $model
+	 * @return	bool
+	 */
+	public function is($model)
+	{
+		return ! is_null($model) &&
+			$this->id == $model->id &&
+			$this->table === $model->table;
+	}
+
+	/**
+	 * Determine if two models are NOT the same record.
+	 *
+	 * @param	DataMapper|null $model
+	 * @return	bool
+	 */
+	public function is_not($model)
+	{
+		return ! $this->is($model);
+	}
+
+	// --------------------------------------------------------------------
+	// DataMapper 2.0 — Model Replication
+	// --------------------------------------------------------------------
+
+	/**
+	 * Create an unsaved copy of this model, optionally excluding fields.
+	 *
+	 * @param	array $except Fields to exclude from the replica.
+	 * @return	DataMapper
+	 */
+	public function replicate($except = array())
+	{
+		$class = get_class($this);
+		$replica = new $class();
+
+		$except = array_merge(array($this->primary_key), (array) $except);
+
+		foreach ($this->fields as $field)
+		{
+			if ( ! in_array($field, $except))
+			{
+				$replica->{$field} = $this->{$field};
+			}
+		}
+
+		return $replica;
+	}
+
+	// --------------------------------------------------------------------
+	// DataMapper 2.0 — Tap
+	// --------------------------------------------------------------------
+
+	/**
+	 * Apply a callback to the model and return the model.
+	 *
+	 * @param	callable $callback
+	 * @return	DataMapper Returns self for method chaining.
+	 */
+	public function tap($callback)
+	{
+		$callback($this);
 		return $this;
 	}
 
@@ -7789,7 +8293,7 @@ class DataMapper implements IteratorAggregate {
 	// --------------------------------------------------------------------
 
 	/**
-	 * Populate (Eloquent-inspired alias for _to_object)
+	 * Populate (alias for _to_object)
 	 * 
 	 * Simplified method to populate a model instance from a database row.
 	 * This is used primarily by the eager loading system in QueryBuilder.
@@ -7897,6 +8401,29 @@ class DataMapper implements IteratorAggregate {
 		{
 			$this->{$field_name} = $this->stored->{$field_name} = $this->{$match_name};
 		}
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Fire a model lifecycle event.
+	 *
+	 * Checks whether the model defines a method with the given name
+	 * (e.g. before_save, after_create) and calls it.  If the method
+	 * returns FALSE explicitly, this helper returns FALSE so the
+	 * caller can abort the operation.
+	 *
+	 * @param	string $event Event name (e.g. 'before_save').
+	 * @return	mixed FALSE if the handler returned FALSE, TRUE otherwise.
+	 */
+	protected function _fire_event($event)
+	{
+		if (method_exists($this, $event))
+		{
+			return $this->{$event}();
+		}
+
+		return TRUE;
 	}
 
 	// --------------------------------------------------------------------
@@ -9997,8 +10524,7 @@ class DataMapper implements IteratorAggregate {
 	}
 
 	/**
-	 * Update the updated_at timestamp without saving other changes
-	 * Eloquent-style touch() method
+	 * Update the updated_at timestamp without saving other changes.
 	 * 
 	 * @return bool Success or failure
 	 */
@@ -10087,8 +10613,7 @@ class DataMapper implements IteratorAggregate {
 	}
 	
 	/**
-	 * Permanently delete the record from database
-	 * Eloquent-style forceDelete()
+	 * Permanently delete the record from database.
 	 * 
 	 * @return bool Success or failure
 	 */
@@ -10114,8 +10639,7 @@ class DataMapper implements IteratorAggregate {
 	}
 	
 	/**
-	 * Restore a soft-deleted record
-	 * Eloquent-style restore()
+	 * Restore a soft-deleted record.
 	 * 
 	 * @return bool Success or failure
 	 */
@@ -10155,8 +10679,7 @@ class DataMapper implements IteratorAggregate {
 	}
 	
 	/**
-	 * Check if the current record is soft-deleted
-	 * Eloquent-style trashed()
+	 * Check if the current record is soft-deleted.
 	 * 
 	 * @return bool TRUE if soft-deleted, FALSE otherwise
 	 */

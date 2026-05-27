@@ -481,5 +481,6 @@ error_log(print_r($user->to_array(), TRUE));
 
 - [from_array() - Import from Array](from-array)
 - [to_json() - Export to JSON](to-json)
+- [Serialization Control](../datamapper-2/serialization) – `$hidden`, `$visible`, and `$appends` for automatic field filtering
 - [Attribute Casting](../datamapper-2/casting)
 - [API Development Best Practices](../../help/faq#API)

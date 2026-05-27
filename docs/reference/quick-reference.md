@@ -224,7 +224,7 @@ $user->order_by('status', 'asc')
 // Random
 $user->order_by('id', 'random')
 
-// Eloquent-style aliases
+// Convenience aliases
 $user->order_by_desc('created_at')
 $user->latest()              // newest by created_at/custom created column
 $user->oldest('updated_at')  // oldest by explicit column
@@ -521,6 +521,117 @@ class User extends DataMapper {
 $user = new User(1);
 var_dump($user->is_active); // bool(true)
 var_dump($user->metadata);   // array(...)
+```
+
+### Dirty Tracking
+
+```php
+$user = new User();
+$user->get_by_id(1);
+
+$user->email = 'new@example.com';
+
+$user->is_dirty();                  // TRUE
+$user->is_dirty('email');           // TRUE
+$user->is_clean('name');            // TRUE
+$user->get_dirty();                 // array('email' => 'new@example.com')
+$user->get_original('email');       // 'old@example.com'
+
+// After save
+$user->save();
+$user->was_changed('email');        // TRUE
+```
+
+### Model Events
+
+```php
+class Order extends DataMapper {
+
+    protected function before_save()
+    {
+        if ($this->total <= 0) {
+            return FALSE; // Cancel save
+        }
+    }
+
+    protected function after_create()
+    {
+        // Send order confirmation
+    }
+
+    protected function before_delete()
+    {
+        if ($this->status === 'shipped') {
+            return FALSE; // Prevent deletion
+        }
+    }
+}
+```
+
+Available events: `before_save`, `after_save`, `before_create`, `after_create`, `before_update`, `after_update`, `before_delete`, `after_delete`.
+
+### Query Scopes
+
+```php
+class Post extends DataMapper {
+
+    public function scope_published()
+    {
+        return $this->where('status', 'published');
+    }
+
+    public function scope_popular($min = 1000)
+    {
+        return $this->where('views >', $min);
+    }
+}
+
+// Use without scope_ prefix — chainable
+$posts = new Post();
+$posts->published()->popular(500)->get();
+```
+
+### Serialization Control
+
+```php
+class User extends DataMapper {
+    public $hidden  = array('password', 'api_secret');
+    public $visible = array();  // Empty = all except hidden
+    public $appends = array('full_name');
+
+    public function get_full_name_attribute()
+    {
+        return $this->first_name . ' ' . $this->last_name;
+    }
+}
+
+$user->to_array();  // password excluded, full_name included
+$user->to_json();   // same rules apply
+```
+
+### Model Utilities
+
+```php
+// Atomic increment/decrement
+$post->increment('views');
+$post->decrement('stock', 5);
+
+// Model comparison
+$a->is($b);       // Same record?
+$a->is_not($b);   // Different record?
+
+// Replicate (unsaved copy)
+$copy = $product->replicate();
+$copy = $product->replicate(array('slug')); // Exclude fields
+
+// Fresh copy from DB (current unchanged)
+$fresh = $user->fresh();
+
+// Bulk delete by ID
+User::destroy(array(1, 2, 3));
+
+// Tap (side effect, returns self)
+$user->tap(function ($u) { log_message('info', $u->name); })->save();
 ```
 
 ## Validation

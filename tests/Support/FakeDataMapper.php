@@ -47,6 +47,7 @@ class FakeDataMapper extends DataMapper
         $this->model = 'fake';
         $this->table = 'fakes';
         $this->fields = $this->detectFields($rows);
+        $this->stored = new \stdClass();
         $this->setRows($rows);
 
         $this->_field_tracking = array('matches' => array());

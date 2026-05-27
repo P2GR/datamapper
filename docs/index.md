@@ -195,8 +195,8 @@ $topCustomer = $customers->first();
 
 ## Feature Comparison
 
-| Feature | DataMapper 2.0 | Laravel Eloquent | Doctrine ORM |
-|---------|---------------|------------------|--------------|
+| Feature | DataMapper 2.0 | Laravel | Doctrine ORM |
+|---------|---------------|---------|--------------|
 | **Modern Query Builder** | Yes | Yes | DQL |
 | **Eager Loading** | Yes | Yes | Yes |
 | **Query Caching** | Built-in | Manual | Complex |

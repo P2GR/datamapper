@@ -559,4 +559,6 @@ if ($post->updated_at > $last_updated) {
 - [get() - Querying](/guide/models/get)
 - [clone() - Copy Objects](clone)
 - [Model Fields](fields)
+- [Dirty Tracking](/guide/datamapper-2/dirty-tracking) – `refresh()` resets the dirty state
+- [Model Utilities](/guide/datamapper-2/model-utilities) – `fresh()` returns a new instance without modifying the original
 - [Optimistic Locking](../../help/troubleshooting#Concurrency)

@@ -77,13 +77,18 @@ export default defineConfig({
               { text: 'Query Caching', link: '/guide/datamapper-2/caching' },
               { text: 'Soft Deletes', link: '/guide/datamapper-2/soft-deletes' },
               { text: 'Timestamps', link: '/guide/datamapper-2/timestamps' },
-              { text: 'Streaming Results', link: '/guide/datamapper-2/streaming' }
+              { text: 'Streaming Results', link: '/guide/datamapper-2/streaming' },
+              { text: 'Model Events', link: '/guide/datamapper-2/model-events' }
             ]
           },
           {
             text: 'Data Shapes',
             items: [
-              { text: 'Attribute Casting', link: '/guide/datamapper-2/casting' }
+              { text: 'Attribute Casting', link: '/guide/datamapper-2/casting' },
+              { text: 'Serialization Control', link: '/guide/datamapper-2/serialization' },
+              { text: 'Dirty Tracking', link: '/guide/datamapper-2/dirty-tracking' },
+              { text: 'Query Scopes', link: '/guide/datamapper-2/query-scopes' },
+              { text: 'Model Utilities', link: '/guide/datamapper-2/model-utilities' }
             ]
           }
         ]
@@ -175,13 +180,18 @@ export default defineConfig({
                 { text: 'Query Caching', link: '/guide/datamapper-2/caching' },
                 { text: 'Soft Deletes', link: '/guide/datamapper-2/soft-deletes' },
                 { text: 'Timestamps', link: '/guide/datamapper-2/timestamps' },
-                { text: 'Streaming Results', link: '/guide/datamapper-2/streaming' }
+                { text: 'Streaming Results', link: '/guide/datamapper-2/streaming' },
+                { text: 'Model Events', link: '/guide/datamapper-2/model-events' }
               ]
             },
             {
               text: 'Data Shapes',
               items: [
-                { text: 'Attribute Casting', link: '/guide/datamapper-2/casting' }
+                { text: 'Attribute Casting', link: '/guide/datamapper-2/casting' },
+                { text: 'Serialization Control', link: '/guide/datamapper-2/serialization' },
+                { text: 'Dirty Tracking', link: '/guide/datamapper-2/dirty-tracking' },
+                { text: 'Query Scopes', link: '/guide/datamapper-2/query-scopes' },
+                { text: 'Model Utilities', link: '/guide/datamapper-2/model-utilities' }
               ]
             }
           ]

@@ -325,3 +325,10 @@ $post->save(
 );
 
 ```
+
+## See Also
+
+- [Model Events](/guide/datamapper-2/model-events) – `before_save`, `after_save`, `before_create`, `after_create`, `before_update`, `after_update` hooks
+- [Dirty Tracking](/guide/datamapper-2/dirty-tracking) – check which fields changed before saving
+- [Mass Assignment](/guide/models/mass-assignment) – safely populate models from request data
+- [Timestamps](/guide/datamapper-2/timestamps) – automatic `created_at` / `updated_at`

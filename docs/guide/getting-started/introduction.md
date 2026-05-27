@@ -121,8 +121,8 @@ $post->restore();
 
 ## Quick Comparison
 
-| Feature | DataMapper 2.0 | CodeIgniter Query Builder | Laravel Eloquent |
-|---------|----------------|---------------------------|------------------|
+| Feature | DataMapper 2.0 | CodeIgniter Query Builder | Laravel |
+|---------|----------------|---------------------------|---------|
 | **Query Builder Syntax** | Yes | Basic | Yes |
 | **Relationships** | Full | Manual | Full |
 | **Eager Loading** | Advanced | No | Advanced |

@@ -153,3 +153,9 @@ $post->delete(
 );
 
 ```
+
+## See Also
+
+- [Model Events](/guide/datamapper-2/model-events) – `before_delete` and `after_delete` hooks
+- [Soft Deletes](/guide/datamapper-2/soft-deletes) – mark records as deleted instead of removing them
+- [Model Utilities](/guide/datamapper-2/model-utilities) – `destroy()` for bulk deletion by ID

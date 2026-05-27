@@ -159,7 +159,7 @@ $config['cascade_delete'] = TRUE;
 
 /*
 |--------------------------------------------------------------------------
-| DataMapper 2.0 - Modern Timestamps (Eloquent-style)
+| DataMapper 2.0 - Modern Timestamps
 |--------------------------------------------------------------------------
 |
 | Enable automatic created_at/updated_at timestamp management.

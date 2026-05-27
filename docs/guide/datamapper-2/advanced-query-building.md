@@ -92,7 +92,7 @@ $users = (new User())
     ->get();
 ```
 
-`has()`, `where_has()`, and `where_doesnt_have()` provide Eloquent-style existence checks in snake_case.
+`has()`, `where_has()`, and `where_doesnt_have()` provide relationship existence checks in snake_case.
 
 ```php
 $users = (new User())

@@ -222,6 +222,136 @@ Process massive datasets efficiently with generators:
 
 ---
 
+### Dirty Tracking
+
+Know exactly which fields have been modified on a model:
+
+```php
+$user = new User();
+$user->get_by_id(1);
+
+$user->email = 'new@example.com';
+
+$user->is_dirty();          // TRUE
+$user->is_dirty('email');   // TRUE
+$user->is_dirty('name');    // FALSE
+
+$user->get_dirty();         // array('email' => 'new@example.com')
+$user->get_original('email'); // 'old@example.com'
+```
+
+[Learn More →](/guide/datamapper-2/dirty-tracking)
+
+---
+
+### Model Events
+
+Hook into the save/delete lifecycle with before and after events:
+
+```php
+class User extends DataMapper {
+
+    protected function before_save()
+    {
+        $this->username = strtolower($this->username);
+    }
+
+    protected function before_delete()
+    {
+        if ($this->is_admin) {
+            return FALSE; // Cancel the delete
+        }
+    }
+
+    protected function after_create()
+    {
+        // Send welcome email
+    }
+}
+```
+
+[Learn More →](/guide/datamapper-2/model-events)
+
+---
+
+### Local Query Scopes
+
+Encapsulate reusable query logic inside the model:
+
+```php
+class Post extends DataMapper {
+
+    public function scope_published()
+    {
+        return $this->where('status', 'published');
+    }
+
+    public function scope_popular($min = 1000)
+    {
+        return $this->where('views >', $min);
+    }
+}
+
+// Use without the scope_ prefix — chainable!
+$posts = new Post();
+$posts->published()->popular(500)->order_by('views', 'desc')->get();
+```
+
+[Learn More →](/guide/datamapper-2/query-scopes)
+
+---
+
+### Serialization Control
+
+Control which fields appear in `to_array()` and `to_json()` output:
+
+```php
+class User extends DataMapper {
+    public $hidden  = array('password', 'api_secret');
+    public $appends = array('full_name');
+
+    public function get_full_name_attribute()
+    {
+        return $this->first_name . ' ' . $this->last_name;
+    }
+}
+
+$user->to_array();
+// password and api_secret excluded, full_name included automatically
+```
+
+[Learn More →](/guide/datamapper-2/serialization)
+
+---
+
+### Model Utilities
+
+Convenience methods for common model operations:
+
+```php
+// Atomic counters
+$post->increment('views');
+$post->decrement('stock', 5);
+
+// Model comparison
+$user_a->is($user_b);       // Same record?
+
+// Replicate
+$copy = $product->replicate();
+$copy->name .= ' (Copy)';
+$copy->save();
+
+// Bulk delete by ID
+User::destroy(array(1, 2, 3));
+
+// Fresh copy from database
+$fresh = $user->fresh();
+```
+
+[Learn More →](/guide/datamapper-2/model-utilities)
+
+---
+
 ### Advanced Query Building
 
 Build complex queries with ease:
@@ -275,6 +405,12 @@ $users = $query->get();
 | **Timestamps** | Manual | Trait |
 | **Type Casting** | Manual | Automatic |
 | **Streaming** | No | Yes |
+| **Dirty Tracking** | No | Built-in |
+| **Model Events** | No | Built-in |
+| **Query Scopes** | No | Built-in |
+| **Serialization Control** | No | `$hidden` / `$visible` / `$appends` |
+| **Atomic Counters** | No | `increment()` / `decrement()` |
+| **Model Comparison** | No | `is()` / `is_not()` |
 | **Debugging** | `check_last_query()` | `debug()`, `benchmark()`, `get_query_index()` |
 | **PHP Version** | 5.6 - 7.4 | 7.4 - 8.3+ |
 | **Performance** | Good | Excellent |

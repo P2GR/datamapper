@@ -78,6 +78,9 @@ class DMZ_Json {
 			}
 		}
 
+		// DataMapper 2.0 — Serialization Control
+		$result = $this->_apply_json_serialization_control($object, $result);
+
 		if ($no_encode)
 		{
 			return $result;
@@ -247,6 +250,43 @@ class DMZ_Json {
 		}
 
 		return $new_json;
+	}
+
+	/**
+	 * Apply $hidden, $visible, and $appends serialization control for JSON output.
+	 *
+	 * @param	DataMapper $object
+	 * @param	array $result Current result array
+	 * @return	array Modified result array
+	 */
+	protected function _apply_json_serialization_control($object, $result)
+	{
+		// $visible acts as a whitelist
+		$visible = isset($object->visible) ? $object->visible : array();
+		if ( ! empty($visible))
+		{
+			$result = array_intersect_key($result, array_flip($visible));
+		}
+
+		// $hidden acts as a blacklist
+		$hidden = isset($object->hidden) ? $object->hidden : array();
+		if ( ! empty($hidden))
+		{
+			$result = array_diff_key($result, array_flip($hidden));
+		}
+
+		// $appends — include computed accessor values
+		$appends = isset($object->appends) ? $object->appends : array();
+		foreach ($appends as $accessor)
+		{
+			$method = 'get_' . $accessor . '_attribute';
+			if (method_exists($object, $method))
+			{
+				$result[$accessor] = $object->{$method}();
+			}
+		}
+
+		return $result;
 	}
 
 }

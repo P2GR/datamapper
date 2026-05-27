@@ -30,7 +30,7 @@ For modern PHP 8+ support and active maintenance, we recommend using the [pocket
 :::
 
 ::: warning CodeIgniter 4
-CodeIgniter 4 is not supported. If you need an ORM for CI4, consider using CodeIgniter's built-in Entity/Model system or Eloquent.
+CodeIgniter 4 is not supported. If you need an ORM for CI4, consider using CodeIgniter's built-in Entity/Model system.
 :::
 
 ## Database Support

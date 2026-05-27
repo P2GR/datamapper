@@ -591,6 +591,7 @@ public function get_user($id) {
 
 - [to_array() - Export to Array](to-array)
 - [from_array() - Import from Array](from-array)
+- [Serialization Control](../datamapper-2/serialization) – `$hidden`, `$visible`, and `$appends` for automatic field filtering
 - [Attribute Casting](../datamapper-2/casting)
 - [REST API Best Practices](../../help/faq#API)
 - [JSON Handling](../../help/troubleshooting#JSON)
