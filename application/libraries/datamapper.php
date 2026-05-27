@@ -1564,7 +1564,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		// Auto-load DMZ_Collection if not already loaded
 		if (!class_exists('DMZ_Collection', FALSE)) {
-			@include_once(APPPATH . 'datamapper/querybuilder.php');
+			include_once(APPPATH . 'datamapper/querybuilder.php');
 		}
 		
 		// Only check if class exists after trying to load it
@@ -6152,11 +6152,11 @@ class DataMapper implements IteratorAggregate {
 
 	/**
 	 * Legacy version of include_related
-	 * DEPRECATED: Will be removed by 2.0
-	 * @deprecated Please use include_related
+	 * @deprecated 2.0.0 Use include_related() instead. Will be removed in a future release.
 	 */
 	public function join_related($related_field, $fields = NULL, $append_name = TRUE)
 	{
+		trigger_error('join_related() is deprecated. Use include_related() instead.', E_USER_DEPRECATED);
 		return $this->include_related($related_field, $fields, $append_name);
 	}
 
@@ -7333,7 +7333,7 @@ class DataMapper implements IteratorAggregate {
 		}
 		elseif(is_string($this->{$field}))
 		{
-			$this->{$field} = unserialize($this->{$field});
+			$this->{$field} = unserialize($this->{$field}, array('allowed_classes' => FALSE));
 		}
 	}
 

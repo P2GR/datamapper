@@ -276,11 +276,7 @@ class DMZ_LazyCollection implements IteratorAggregate
 		return $result;
 	}
 
-		protected function applyOperations($item, &$seenKeys)
-		{
-			return $this->apply_operations($item, $seenKeys);
-		}
-	
+
 	/**
 	 * Convert lazy collection to array (forces evaluation)
 	 *
@@ -293,10 +289,7 @@ class DMZ_LazyCollection implements IteratorAggregate
 		return iterator_to_array($this->getIterator(), false);
 	}
 
-	public function toArray()
-	{
-		return $this->to_array();
-	}
+
 	
 	/**
 	 * Count items (forces evaluation)
