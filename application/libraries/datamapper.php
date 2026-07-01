@@ -3619,9 +3619,16 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function exists()
 	{
-		// returns TRUE if the id of this object is set and not empty, OR
+		// returns TRUE if the id of this object is set to a non-NULL,
+		// non-empty-string value (this correctly treats a legitimate
+		// primary key of 0 or "0" as existing, unlike empty()), OR
 		// there are items in the ALL array.
-		return isset($this->id) ? !empty($this->id) : ($this->result_count() > 0);
+		if (isset($this->id) && $this->id !== '')
+		{
+			return TRUE;
+		}
+
+		return $this->result_count() > 0;
 	}
 
 	// --------------------------------------------------------------------
