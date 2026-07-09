@@ -238,7 +238,21 @@ $users = (new UserSearch())->apply($filters)->get();
 
 ## Notes on Scopes
 
-Laravel-style `scope_active()` discovery and `add_global_scope()` are not part of the current DataMapper 2.0 implementation. Use explicit model methods, `when()`/`unless()`, soft-delete helpers, or eager-loading constraints instead.
+DataMapper 2.0 supports **local query scopes** via the `scope_` prefix convention. Define a method like `scope_published()` on your model, then call `$model->published()` — the `__call()` magic method discovers and invokes it, returning `$this` for chaining.
+
+```php
+class Post extends DataMapper {
+    public function scope_published() {
+        return $this->where('status', 'published');
+    }
+}
+
+(new Post())->published()->get();
+```
+
+**Global scopes** (`add_global_scope()`) are not yet implemented. For reusable cross-model query constraints, use explicit model methods, `when()`/`unless()`, soft-delete helpers, or eager-loading constraints instead.
+
+See [Local Query Scopes](/guide/datamapper-2/#local-query-scopes) for more examples.
 
 ## See Also
 
