@@ -23,7 +23,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '2.0.0-beta1');
+define('DMZ_VERSION', '2.0.0');
 
 // Define APPPATH when running outside of CodeIgniter bootstrap (e.g., CLI tooling)
 if (!defined('APPPATH')) {
