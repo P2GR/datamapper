@@ -1,0 +1,4021 @@
+<?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+/**
+ * DataMapper Query Builder Extension
+ *
+ * Provides a query builder interface for DataMapper ORM while maintaining
+ * full backward compatibility with existing DataMapper functionality.
+ *
+ * @package    DataMapper ORM
+ * @subpackage Extensions  
+ * @category   Query Builder
+ * @author     DataMapper Development Team
+ * @license    MIT License
+ * @link       http://datamapper.wanwizard.eu/
+ * @version    2.0.0
+ */
+
+if (!function_exists('dmz_log_message')) {
+    function dmz_log_message($level, $message, array $context = array())
+    {
+        if (!function_exists('log_message')) {
+            return;
+        }
+
+        if (!is_string($message)) {
+            $message = print_r($message, TRUE);
+        }
+
+        if (!empty($context)) {
+            $context_json = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if ($context_json !== FALSE) {
+                $message .= ' | context=' . $context_json;
+            }
+        }
+
+        call_user_func('log_message', $level, '[DataMapper] ' . $message);
+    }
+}
+
+if (!function_exists('dmz_camel_to_snake')) {
+    /**
+     * Convert camelCase to snake_case.
+     *
+     * Normalizes soft-delete method names so camelCase helpers resolve correctly.
+     *
+     * @param string $method CamelCase method name
+     * @return string snake_case method name
+     */
+    function dmz_camel_to_snake($method)
+    {
+        $snake = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $method));
+
+        // Historical methods used "softdeleted" without an underscore
+        return str_replace('soft_deleted', 'softdeleted', $snake);
+    }
+}
+
+/**
+ * DataMapper Query Builder Class
+ *
+ * Query builder interface that extends DataMapper functionality without
+ * breaking existing code. All original DataMapper methods remain unchanged.
+ */
+class DMZ_QueryBuilder {
+    
+    /**
+     * DataMapper instance
+     * @var DataMapper
+     */
+    protected $model;
+    
+    /**
+     * Relations to eager load
+     * @var array
+     */
+    protected $eager_loads = array();
+    
+    /**
+     * Eager loading constraints
+     * @var array
+     */
+    protected $eager_constraints = array();
+    
+    /**
+     * Query limit
+     * @var int
+     */
+    protected $_limit;
+    
+    /**
+     * Query offset
+     * @var int
+     */
+    protected $_offset;
+
+    /**
+     * Tracks generated aliases for relation count subqueries
+     * @var array
+     */
+    protected $_relation_count_aliases = array();
+    
+    /**
+     * Static cache for table existence checks
+     * Prevents repeated SHOW TABLES queries
+     * @var array
+     */
+    protected static $_table_exists_cache = array();
+    
+    /**
+     * Constructor
+     *
+     * @param DataMapper $model The model instance
+     */
+    public function __construct($model) {
+        if (!($model instanceof DataMapper)) {
+              throw new DataMapper_Exception('QueryBuilder requires a DataMapper instance');
+        }
+        $this->model = $model->get_clone();
+    }
+    
+    /**
+     * Add WHERE clause
+     *
+     * @param string $field Field name
+     * @param mixed $value Value to compare  
+     * @param string $operator Comparison operator
+     * @return DMZ_QueryBuilder
+     */
+    public function where($field, $value = NULL, $operator = '=') {
+        if ($value === NULL && $operator === '=') {
+            $this->model->where($field);
+        } else {
+            if ($operator !== '=') {
+                $field = $field . ' ' . $operator;
+            }
+            $this->model->where($field, $value);
+        }
+        return $this;
+    }
+
+    /**
+     * Add WHERE field IS NULL.
+     *
+     * @param string $field Field name
+     * @return DMZ_QueryBuilder
+     */
+    public function where_null($field) {
+        $this->model->where($field, NULL);
+        return $this;
+    }
+
+    /**
+     * Add WHERE field IS NOT NULL.
+     *
+     * @param string $field Field name
+     * @return DMZ_QueryBuilder
+     */
+    public function where_not_null($field) {
+        $this->model->where($field . ' IS NOT NULL', NULL, FALSE);
+        return $this;
+    }
+
+    /**
+     * Conditionally apply query constraints.
+     *
+     * @param mixed $value Value used to decide whether to run the callback
+     * @param callable $callback Callback receiving ($query, $value)
+     * @param callable|null $default Optional callback when $value is falsy
+     * @return DMZ_QueryBuilder
+     */
+    public function when($value, $callback, $default = NULL) {
+        if ($value) {
+            $result = call_user_func($callback, $this, $value);
+            return $result instanceof self ? $result : $this;
+        }
+
+        if (is_callable($default)) {
+            $result = call_user_func($default, $this, $value);
+            return $result instanceof self ? $result : $this;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Inverse of when().
+     *
+     * @param mixed $value Value used to decide whether to run the callback
+     * @param callable $callback Callback receiving ($query, $value)
+     * @param callable|null $default Optional callback when $value is truthy
+     * @return DMZ_QueryBuilder
+     */
+    public function unless($value, $callback, $default = NULL) {
+        if (!$value) {
+            $result = call_user_func($callback, $this, $value);
+            return $result instanceof self ? $result : $this;
+        }
+
+        if (is_callable($default)) {
+            $result = call_user_func($default, $this, $value);
+            return $result instanceof self ? $result : $this;
+        }
+
+        return $this;
+    }
+    
+    /**
+     * Add OR WHERE clause
+     *
+     * @param string $field Field name
+     * @param mixed $value Value to compare
+     * @param string $operator Comparison operator
+     * @return DMZ_QueryBuilder
+     */
+    public function or_where($field, $value = NULL, $operator = '=') {
+        if ($value === NULL && $operator === '=') {
+            $this->model->or_where($field);
+        } else {
+            if ($operator !== '=') {
+                $field = $field . ' ' . $operator;
+            }
+            $this->model->or_where($field, $value);
+        }
+        return $this;
+    }
+    
+    /**
+     * Add WHERE IN clause
+     *
+     * @param string $field Field name
+     * @param array $values Array of values
+     * @return DMZ_QueryBuilder
+     */
+    public function where_in($field, $values) {
+        $this->model->where_in($field, $values);
+        return $this;
+    }
+    
+    /**
+     * Add WHERE NOT IN clause
+     *
+     * @param string $field Field name  
+     * @param array $values Array of values
+     * @return DMZ_QueryBuilder
+     */
+    public function where_not_in($field, $values) {
+        $this->model->where_not_in($field, $values);
+        return $this;
+    }
+    
+    /**
+     * Add LIKE clause
+     *
+     * @param string $field Field name
+     * @param string $match Pattern to match
+     * @param string $side Which side to match (both, before, after)
+     * @return DMZ_QueryBuilder
+     */
+    public function like($field, $match, $side = 'both') {
+        $this->model->like($field, $match, $side);
+        return $this;
+    }
+    
+    /**
+     * Add OR LIKE clause
+     *
+     * @param string $field Field name
+     * @param string $match Pattern to match
+     * @param string $side Which side to match (both, before, after)
+     * @return DMZ_QueryBuilder
+     */
+    public function or_like($field, $match, $side = 'both') {
+        $this->model->or_like($field, $match, $side);
+        return $this;
+    }
+    
+    /**
+     * Add NOT LIKE clause
+     *
+     * @param string $field Field name
+     * @param string $match Pattern to match
+     * @param string $side Which side to match (both, before, after)
+     * @return DMZ_QueryBuilder
+     */
+    public function not_like($field, $match, $side = 'both') {
+        $this->model->not_like($field, $match, $side);
+        return $this;
+    }
+    
+    /**
+     * Add OR NOT LIKE clause
+     *
+     * @param string $field Field name
+     * @param string $match Pattern to match
+     * @param string $side Which side to match (both, before, after)
+     * @return DMZ_QueryBuilder
+     */
+    public function or_not_like($field, $match, $side = 'both') {
+        $this->model->or_not_like($field, $match, $side);
+        return $this;
+    }
+    
+    /**
+     * Add OR WHERE IN clause
+     *
+     * @param string $field Field name
+     * @param array $values Array of values
+     * @return DMZ_QueryBuilder
+     */
+    public function or_where_in($field, $values) {
+        $this->model->or_where_in($field, $values);
+        return $this;
+    }
+    
+    /**
+     * Add OR WHERE NOT IN clause
+     *
+     * @param string $field Field name
+     * @param array $values Array of values
+     * @return DMZ_QueryBuilder
+     */
+    public function or_where_not_in($field, $values) {
+        $this->model->or_where_not_in($field, $values);
+        return $this;
+    }
+    
+    /**
+     * Add WHERE BETWEEN clause
+     *
+     * @param string $field Field name
+     * @param mixed $value1 Start value
+     * @param mixed $value2 End value
+     * @return DMZ_QueryBuilder
+     */
+    public function where_between($field, $value1, $value2) {
+        $this->model->where_between($field, $value1, $value2);
+        return $this;
+    }
+    
+    /**
+     * Add WHERE NOT BETWEEN clause
+     *
+     * @param string $field Field name
+     * @param mixed $value1 Start value
+     * @param mixed $value2 End value
+     * @return DMZ_QueryBuilder
+     */
+    public function where_not_between($field, $value1, $value2) {
+        $this->model->where_not_between($field, $value1, $value2);
+        return $this;
+    }
+    
+    /**
+     * Add OR WHERE BETWEEN clause
+     *
+     * @param string $field Field name
+     * @param mixed $value1 Start value
+     * @param mixed $value2 End value
+     * @return DMZ_QueryBuilder
+     */
+    public function or_where_between($field, $value1, $value2) {
+        $this->model->or_where_between($field, $value1, $value2);
+        return $this;
+    }
+    
+    /**
+     * Add OR WHERE NOT BETWEEN clause
+     *
+     * @param string $field Field name
+     * @param mixed $value1 Start value
+     * @param mixed $value2 End value
+     * @return DMZ_QueryBuilder
+     */
+    public function or_where_not_between($field, $value1, $value2) {
+        $this->model->or_where_not_between($field, $value1, $value2);
+        return $this;
+    }
+    
+    /**
+     * Filter JSON columns containing a specific value.
+     *
+     * @param string $field JSON column (supports -> path syntax)
+     * @param mixed $value Candidate value to locate inside the JSON document
+     * @param string|array|null $path Optional extra path appended to $field
+     * @return DMZ_QueryBuilder
+     */
+    public function where_json_contains($field, $value, $path = NULL) {
+        $this->model->where_json_contains($field, $value, $path);
+        return $this;
+    }
+
+    /**
+     * OR variant of {@see where_json_contains}.
+     */
+    public function or_where_json_contains($field, $value, $path = NULL) {
+        $this->model->or_where_json_contains($field, $value, $path);
+        return $this;
+    }
+
+    /**
+     * Negative containment helper for JSON columns.
+     *
+     * @param string $field
+     * @param mixed $value
+     * @param string|array|null $path
+     * @return DMZ_QueryBuilder
+     */
+    public function where_json_doesnt_contain($field, $value, $path = NULL) {
+        $this->model->where_json_doesnt_contain($field, $value, $path);
+        return $this;
+    }
+
+    /**
+     * OR variant of {@see where_json_doesnt_contain}.
+     */
+    public function or_where_json_doesnt_contain($field, $value, $path = NULL) {
+        $this->model->or_where_json_doesnt_contain($field, $value, $path);
+        return $this;
+    }
+
+    /**
+     * Start a group of WHERE conditions
+     *
+     * @param string $not NOT prefix
+     * @param string $type AND/OR type
+     * @return DMZ_QueryBuilder
+     */
+    public function group_start($not = '', $type = 'AND ') {
+        $this->model->group_start($not, $type);
+        return $this;
+    }
+    
+    /**
+     * Start an OR group of WHERE conditions
+     *
+     * @return DMZ_QueryBuilder
+     */
+    public function or_group_start() {
+        $this->model->or_group_start();
+        return $this;
+    }
+    
+    /**
+     * Start a NOT group of WHERE conditions
+     *
+     * @return DMZ_QueryBuilder
+     */
+    public function not_group_start() {
+        $this->model->not_group_start();
+        return $this;
+    }
+    
+    /**
+     * Start an OR NOT group of WHERE conditions
+     *
+     * @return DMZ_QueryBuilder
+     */
+    public function or_not_group_start() {
+        $this->model->or_not_group_start();
+        return $this;
+    }
+    
+    /**
+     * End a group of WHERE conditions
+     *
+     * @return DMZ_QueryBuilder
+     */
+    public function group_end() {
+        $this->model->group_end();
+        return $this;
+    }
+    
+    /**
+     * Add OR HAVING clause
+     *
+     * @param string $field Field name
+     * @param mixed $value Value to compare
+     * @return DMZ_QueryBuilder
+     */
+    public function or_having($field, $value = NULL) {
+        if ($value === NULL) {
+            $this->model->or_having($field);
+        } else {
+            $this->model->or_having($field, $value);
+        }
+        return $this;
+    }
+    
+    /**
+     * Add ORDER BY clause
+     *
+     * @param string $field Field name
+     * @param string $direction Sort direction (asc/desc)
+     * @return DMZ_QueryBuilder
+     */
+    public function order_by($field, $direction = 'asc') {
+        $this->model->order_by($field, $direction);
+        return $this;
+    }
+
+    /**
+     * Order descending by a field.
+     *
+     * @param string $field Field name
+     * @return DMZ_QueryBuilder
+     */
+    public function order_by_desc($field) {
+        return $this->order_by($field, 'desc');
+    }
+
+    /**
+     * Order newest records first.
+     *
+     * @param string|null $field Optional field, defaults to created_at when available
+     * @return DMZ_QueryBuilder
+     */
+    public function latest($field = NULL) {
+        return $this->order_by($this->_default_timestamp_order_column($field), 'desc');
+    }
+
+    /**
+     * Order oldest records first.
+     *
+     * @param string|null $field Optional field, defaults to created_at when available
+     * @return DMZ_QueryBuilder
+     */
+    public function oldest($field = NULL) {
+        return $this->order_by($this->_default_timestamp_order_column($field), 'asc');
+    }
+
+    /**
+     * Resolve the default timestamp ordering column.
+     *
+     * @param string|null $field Explicit field override
+     * @return string
+     */
+    protected function _default_timestamp_order_column($field = NULL) {
+        if ($field !== NULL && $field !== '') {
+            return $field;
+        }
+
+        if (method_exists($this->model, 'get_created_at_column')) {
+            $created_at_column = $this->model->get_created_at_column();
+            if (!empty($created_at_column)) {
+                return $created_at_column;
+            }
+        }
+
+        if (!empty($this->model->fields) && in_array('created_at', $this->model->fields, TRUE)) {
+            return 'created_at';
+        }
+
+        $config = is_array(DataMapper::$config) ? DataMapper::$config : array();
+        return isset($config['created_at_column']) ? $config['created_at_column'] : 'created_at';
+    }
+    
+    /**
+     * Add offset to query
+     *
+     * @param int $offset Number of records to skip
+     * @return DMZ_QueryBuilder
+     */
+    public function offset($offset) {
+        $this->_offset = $offset;
+        return $this;
+    }
+
+    /**
+     * Alias for offset().
+     *
+     * @param int $offset Number of records to skip
+     * @return DMZ_QueryBuilder
+     */
+    public function skip($offset) {
+        return $this->offset($offset);
+    }
+    
+    /**
+     * Select specific fields with aggregation functions
+     *
+     * @param string $select Field to select max from
+     * @param string $alias Alias for the result
+     * @return DMZ_QueryBuilder
+     */
+    public function select_max($select = '', $alias = '') {
+        $this->model->select_max($select, $alias);
+        return $this;
+    }
+    
+    /**
+     * Select specific fields with min aggregation
+     *
+     * @param string $select Field to select min from
+     * @param string $alias Alias for the result
+     * @return DMZ_QueryBuilder
+     */
+    public function select_min($select = '', $alias = '') {
+        $this->model->select_min($select, $alias);
+        return $this;
+    }
+    
+    /**
+     * Select specific fields with avg aggregation
+     *
+     * @param string $select Field to select avg from
+     * @param string $alias Alias for the result
+     * @return DMZ_QueryBuilder
+     */
+    public function select_avg($select = '', $alias = '') {
+        $this->model->select_avg($select, $alias);
+        return $this;
+    }
+    
+    /**
+     * Select specific fields with sum aggregation
+     *
+     * @param string $select Field to select sum from
+     * @param string $alias Alias for the result
+     * @return DMZ_QueryBuilder
+     */
+    public function select_sum($select = '', $alias = '') {
+        $this->model->select_sum($select, $alias);
+        return $this;
+    }
+    
+    /**
+     * Join related models (DataMapper-specific)
+     *
+     * @param string $related_field Related field name
+     * @param mixed $fields Fields to select
+     * @param bool $append_name Whether to append table name
+     * @return DMZ_QueryBuilder
+     */
+    public function join_related($related_field, $fields = NULL, $append_name = TRUE) {
+        $this->model->join_related($related_field, $fields, $append_name);
+        return $this;
+    }
+    
+    /**
+     * Add LIMIT clause
+     *
+     * @param int $limit Number of records to limit
+     * @param int $offset Number of records to offset
+     * @return DMZ_QueryBuilder
+     */
+    public function limit($limit, $offset = NULL) {
+        // Store for later use in get()
+        $this->_limit = $limit;
+        if ($offset !== NULL || !isset($this->_offset)) {
+            $this->_offset = $offset;
+        }
+        return $this;
+    }
+
+    /**
+     * Alias for limit().
+     *
+     * @param int $limit Number of records to limit
+     * @return DMZ_QueryBuilder
+     */
+    public function take($limit) {
+        return $this->limit($limit);
+    }
+    
+    /**
+     * Add GROUP BY clause
+     *
+     * @param string $field Field name
+     * @return DMZ_QueryBuilder
+     */
+    public function group_by($field) {
+        $this->model->group_by($field);
+        return $this;
+    }
+    
+    /**
+     * Add HAVING clause
+     *
+     * @param string $field Field name
+     * @param mixed $value Value to compare
+     * @param string $operator Comparison operator
+     * @return DMZ_QueryBuilder
+     */
+    public function having($field, $value = NULL, $operator = '=') {
+        if ($value === NULL && $operator === '=') {
+            $this->model->having($field);
+        } else {
+            if ($operator !== '=') {
+                $field = $field . ' ' . $operator;
+            }
+            $this->model->having($field, $value);
+        }
+        return $this;
+    }
+    
+    /**
+     * Select specific fields
+     *
+     * @param string $fields Comma separated field names or single field
+     * @return DMZ_QueryBuilder
+     */
+    public function select($fields = '*') {
+        $this->model->select($fields);
+        return $this;
+    }
+    
+    /**
+     * Add DISTINCT clause
+     *
+     * @return DMZ_QueryBuilder
+     */
+    public function distinct() {
+        $this->model->distinct();
+        return $this;
+    }
+
+    /**
+     * Filter results where the given relationship satisfies the count/operator condition.
+     *
+     * @param string $relation Relation name (dot or slash notation)
+     * @param string $operator Comparison operator
+     * @param int $count Comparison count
+     * @param callable|null $callback Optional constraint callback applied to relation
+     * @return DMZ_QueryBuilder
+     */
+    public function has($relation, $operator = '>=', $count = 1, $callback = NULL)
+    {
+        return $this->_apply_has_constraint('and', $relation, $callback, $operator, $count);
+    }
+
+    /**
+     * Alias for has() following snake_case conventions.
+     */
+    public function where_has($relation, $callback = NULL, $operator = '>=', $count = 1)
+    {
+        return $this->_apply_has_constraint('and', $relation, $callback, $operator, $count);
+    }
+
+    /**
+     * OR variant of has().
+     */
+    public function or_has($relation, $callback = NULL, $operator = '>=', $count = 1)
+    {
+        return $this->_apply_has_constraint('or', $relation, $callback, $operator, $count);
+    }
+
+    /**
+     * Filter results that do NOT have the given relationship.
+     */
+    public function doesnt_have($relation, $callback = NULL)
+    {
+        return $this->_apply_has_constraint('and', $relation, $callback, '<', 1);
+    }
+
+    /**
+     * Snake_case alias for doesnt_have().
+     */
+    public function where_doesnt_have($relation, $callback = NULL)
+    {
+        return $this->doesnt_have($relation, $callback);
+    }
+
+    /**
+     * OR variant for doesnt_have().
+     */
+    public function or_where_doesnt_have($relation, $callback = NULL)
+    {
+        return $this->_apply_has_constraint('or', $relation, $callback, '<', 1);
+    }
+
+    /**
+     * Expose the internal DataMapper instance used by this builder.
+     *
+     * @return DataMapper
+     */
+    public function get_model()
+    {
+        return $this->model;
+    }
+
+    /**
+     * Enable query caching on the wrapped model.
+     *
+     * @param int $ttl Time to live in seconds
+     * @param string|null $key Optional cache key
+     * @return DMZ_QueryBuilder
+     */
+    public function cache($ttl = 3600, $key = NULL)
+    {
+        $this->model->cache($ttl, $key);
+        return $this;
+    }
+
+    /**
+     * Disable query caching on the wrapped model.
+     *
+     * @return DMZ_QueryBuilder
+     */
+    public function no_cache()
+    {
+        $this->model->no_cache();
+        return $this;
+    }
+
+    /**
+     * Enable query caching for a result that may contain eager-loaded relations.
+     *
+     * @param int $ttl Time to live in seconds
+     * @return DMZ_QueryBuilder
+     */
+    public function cache_relations($ttl = 3600)
+    {
+        $this->model->cache_relations($ttl);
+        return $this;
+    }
+
+    /**
+     * Clear cache entries through the wrapped model.
+     *
+     * @param string|null $pattern Optional cache key pattern
+     * @return int
+     */
+    public function clear_cache($pattern = NULL)
+    {
+        return $this->model->clear_cache($pattern);
+    }
+    
+    /**
+     * Add eager loading for relationships
+     *
+     * This is the key feature that solves N+1 query problems.
+     * Now supports WHERE constraints on related queries.
+     *
+     * Usage examples:
+     *   ->with('installations')                                    // Simple eager load
+     *   ->with('installations', function($q) { $q->where(...); })  // With constraint (DataMapper style)
+     *   ->with(['installations' => function($q) {...}])            // Array syntax
+     *   ->with(['installations', 'building'])                      // Multiple relations
+     *
+     * @param string|array $relations Relations to eager load
+     * @param callable|null $constraints Optional constraint callback (when $relations is string)
+     * @return DMZ_QueryBuilder
+     */
+    public function with($relations, $constraints = NULL) {
+        $arguments = func_get_args();
+
+        // Handle: with('relation', function($q) {...})
+        if (count($arguments) === 2 && is_string($relations) && is_callable($constraints)) {
+            return $this->_add_eager_load($relations, $constraints);
+        }
+
+        if (count($arguments) > 1) {
+            foreach ($arguments as $relation) {
+                if (is_array($relation)) {
+                    $this->_add_eager_loads($relation);
+                } else {
+                    $this->_add_eager_load($relation);
+                }
+            }
+
+            return $this;
+        }
+
+        if (is_string($relations)) {
+            return $this->_add_eager_load($relations);
+        }
+
+        $this->_add_eager_loads($relations);
+        return $this;
+    }
+
+    /**
+     * Register one eager-loaded relation.
+     *
+     * @param string $relation Relation name
+     * @param callable|null $constraint Optional relation query constraint
+     * @return DMZ_QueryBuilder
+     */
+    protected function _add_eager_load($relation, $constraint = NULL)
+    {
+        if (!is_string($relation) || $relation === '') {
+            return $this;
+        }
+
+        if (!in_array($relation, $this->eager_loads, TRUE)) {
+            $this->eager_loads[] = $relation;
+        }
+
+        if (is_callable($constraint)) {
+            $this->eager_constraints[$relation] = $constraint;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Register a list or map of eager-loaded relations.
+     *
+     * @param array $relations Relation list or relation => callback map
+     * @return DMZ_QueryBuilder
+     */
+    protected function _add_eager_loads($relations)
+    {
+        if (!is_array($relations)) {
+            return $this;
+        }
+
+        foreach ($relations as $key => $relation) {
+            if (is_numeric($key)) {
+                $this->_add_eager_load($relation);
+            } else {
+                $this->_add_eager_load($key, $relation);
+            }
+        }
+
+        return $this;
+    }
+    
+    /**
+     * Execute query and return results
+     *
+     * Returns the DataMapper model instance for backward compatibility.
+     * Results are stored in $model->all as with the original DataMapper.
+     * Use collect() if you need a DMZ_Collection for collection helpers.
+     *
+     * @return DataMapper Returns the model instance for method chaining
+     */
+    public function get() {
+        // Store the model class before calling get()
+        $model_class = get_class($this->model);
+        
+        // Call DataMapper's get() method (returns $this, populates $this->model->all)
+        if (isset($this->_limit)) {
+            $this->model->get($this->_limit, $this->_offset);
+        } else {
+            if (isset($this->_offset) && $this->_offset !== NULL) {
+                $this->model->offset($this->_offset);
+            }
+            $this->model->get();
+        }
+        
+        // Apply eager loading if requested
+        if (!empty($this->eager_loads) && !empty($this->model->all)) {
+            $queries_before = isset($this->model->db->queries) ? count($this->model->db->queries) : 0;
+            
+            // Create a temporary collection for eager loading (internal use only)
+            $collection = new DMZ_Collection($this->model->all, $this->model);
+            
+            // Apply eager loading to the models
+            $this->_load_eager_relations($collection);
+            
+            $queries_after = isset($this->model->db->queries) ? count($this->model->db->queries) : 0;
+            $eager_query_count = $queries_after - $queries_before;
+            
+            // Log eager loading execution
+            dmz_log_message('debug', "Eager loading for {$model_class}", array(
+                'relations' => $this->eager_loads,
+                'result_count' => count($this->model->all),
+                'queries' => $eager_query_count
+            ));
+        }
+        
+        // Return the model for backward compatibility (like DataMapper::get())
+        return $this->model;
+    }
+
+    /**
+     * Execute query and return results as a DMZ_Collection.
+     *
+     * Use this when you need collection helpers like filter(), map(), pluck().
+     * For standard DataMapper workflow, use get() which returns the model.
+     *
+     * Example:
+     *   $ids = (new User())->where('active', 1)->collect()->pluck('id');
+     *   $emails = (new User())->with('profile')->collect()->map(fn($u) => $u->email);
+     *
+     * @return DMZ_Collection Hydrated collection of models
+     */
+    public function collect()
+    {
+        // Call get() to execute query and apply eager loading
+        $this->get();
+        
+        // Return a collection wrapping the results
+        return new DMZ_Collection($this->model->all, $this->model);
+    }
+
+    /**
+     * Pluck a field from every model into a plain array.
+     *
+     * Mirrors Laravel's `pluck()` helper and returns simple scalars, which is
+     * perfect for building ID/email lists without dragging along the full
+     * model payload.
+     *
+     * @param string $field Column or accessor name to extract from each model
+     * @return array<int, mixed> Ordered list of extracted values
+     */
+    public function pluck($field)
+    {
+        return $this->collect()->pluck($field);
+    }
+
+    /**
+     * Fetch a single scalar value from the first matching record.
+     *
+     * Useful for lightweight lookups (`value('id')`) where building an entire
+     * model is overkill. Automatically restores any previously configured
+     * limit/offset so the builder can keep chaining afterwards.
+     *
+     * @param string $field Column or accessor to read
+     * @param mixed $default Value returned when the query produces no rows or the field is missing
+     * @return mixed Scalar value (or the provided default)
+     */
+    public function value($field, $default = NULL)
+    {
+        $previousLimit = $this->_limit;
+        $previousOffset = $this->_offset;
+
+        $model = $this->limit(1)->get();
+
+        // Restore original pagination settings for further chaining
+        $this->_limit = $previousLimit;
+        $this->_offset = $previousOffset;
+
+        $first = (!empty($model->all) && isset($model->all[0])) ? $model->all[0] :
+                 (!empty($model->all) ? reset($model->all) : NULL);
+
+        if (!$first) {
+            return $default;
+        }
+
+        if (is_array($first)) {
+            return array_key_exists($field, $first) ? $first[$field] : $default;
+        }
+
+        return isset($first->{$field}) ? $first->{$field} : $default;
+    }
+    
+    /**
+     * Get first result
+     *
+     * @return DataMapper|NULL
+     */
+    public function first() {
+        $previousLimit = $this->_limit;
+        $previousOffset = $this->_offset;
+
+        $model = $this->limit(1)->get();
+
+        // Restore original pagination settings for further chaining
+        $this->_limit = $previousLimit;
+        $this->_offset = $previousOffset;
+
+        return (!empty($model->all) && isset($model->all[0])) ? $model->all[0] : 
+               (!empty($model->all) ? reset($model->all) : NULL);
+    }
+
+    /**
+     * Add a where clause and return the first result.
+     *
+     * @param string $field Field name
+     * @param mixed $value Field value
+     * @param string $operator Comparison operator
+     * @return DataMapper|object|null
+     */
+    public function first_where($field, $value = NULL, $operator = '=') {
+        return $this->where($field, $value, $operator)->first();
+    }
+
+    /**
+     * Get first result or throw a DataMapper exception.
+     *
+     * @param string|null $message Optional exception message
+     * @return DataMapper|object
+     */
+    public function first_or_fail($message = NULL) {
+        $result = $this->first();
+
+        if (!$result || ($result instanceof DataMapper && !$result->exists())) {
+            if ($message === NULL) {
+                $message = 'No ' . get_class($this->model) . ' record was found for the current query.';
+            }
+
+            dmz_log_message('warning', $message);
+            throw new DataMapper_Exception($message);
+        }
+
+        return $result;
+    }
+    
+    /**
+     * Find by primary key
+     *
+     * @param int $id Primary key value
+     * @return DataMapper|NULL
+     */
+    public function find($id) {
+        if ($id === NULL) {
+            return NULL;
+        }
+
+        $primary_key = isset($this->model->primary_key) && $this->model->primary_key ? $this->model->primary_key : 'id';
+        return $this->where($primary_key, $id)->first();
+    }
+    
+    /**
+     * Find by primary key or throw a DataMapper exception.
+     *
+     * @param int $id Primary key value
+     * @return DataMapper|object
+     */
+    public function find_or_fail($id) {
+        $result = $this->find($id);
+
+        if (!$result || ($result instanceof DataMapper && !$result->exists())) {
+            $primary_key = isset($this->model->primary_key) && $this->model->primary_key ? $this->model->primary_key : 'id';
+            $message = get_class($this->model) . ' record not found for ' . $primary_key . ': ' . $id;
+            dmz_log_message('warning', $message, array('model' => get_class($this->model), 'key' => $primary_key, 'value' => $id));
+            throw new DataMapper_Exception($message);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Fetch all matching records as a collection.
+     *
+     * @return DMZ_Collection
+     */
+    public function all() {
+        return $this->collect();
+    }
+
+    /**
+     * Return the first matching model or a new unsaved model.
+     *
+     * @param array $attributes Attributes used to query and seed a new model
+     * @param array $values Additional values for new model instances
+     * @return DataMapper|object
+     */
+    public function first_or_new(array $attributes = array(), array $values = array()) {
+        $query = new self($this->model);
+        foreach ($attributes as $field => $value) {
+            if ($value === NULL) {
+                $query->where_null($field);
+            } else {
+                $query->where($field, $value);
+            }
+        }
+
+        $result = $query->first();
+        if ($result) {
+            return $result;
+        }
+
+        return $this->_new_model_instance(array_merge($attributes, $values));
+    }
+
+    /**
+     * Return the first matching model or create it.
+     *
+     * @param array $attributes Attributes used to query and seed a new model
+     * @param array $values Additional values for new model instances
+     * @return DataMapper|object|bool
+     */
+    public function first_or_create(array $attributes = array(), array $values = array()) {
+        $model = $this->first_or_new($attributes, $values);
+
+        if (!($model instanceof DataMapper) || $model->exists()) {
+            return $model;
+        }
+
+        if ($model->save()) {
+            return $model;
+        }
+
+        dmz_log_message('error', 'first_or_create failed to save model', array('model' => get_class($model), 'attributes' => $attributes));
+        return FALSE;
+    }
+
+    /**
+     * Return the first matching model, update it, or create a new one.
+     *
+     * @param array $attributes Attributes used to query and seed a new model
+     * @param array $values Values to assign before saving
+     * @return DataMapper|object|bool
+     */
+    public function update_or_create(array $attributes = array(), array $values = array()) {
+        $model = $this->first_or_new($attributes, $values);
+
+        if ($model instanceof DataMapper) {
+            $this->_fill_model($model, $values);
+
+            if ($model->save()) {
+                return $model;
+            }
+
+            dmz_log_message('error', 'update_or_create failed to save model', array('model' => get_class($model), 'attributes' => $attributes));
+            return FALSE;
+        }
+
+        return $model;
+    }
+
+    /**
+     * Sum a column for the current query.
+     *
+     * @param string $field Field name
+     * @return int|float
+     */
+    public function sum($field) {
+        return $this->_aggregate('sum', $field, 0);
+    }
+
+    /**
+     * Average a column for the current query.
+     *
+     * @param string $field Field name
+     * @return int|float|null
+     */
+    public function avg($field) {
+        return $this->_aggregate('avg', $field, NULL);
+    }
+
+    /**
+     * Alias for avg().
+     *
+     * @param string $field Field name
+     * @return int|float|null
+     */
+    public function average($field) {
+        return $this->avg($field);
+    }
+
+    /**
+     * Minimum column value for the current query.
+     *
+     * @param string $field Field name
+     * @return mixed
+     */
+    public function min($field) {
+        return $this->_aggregate('min', $field, NULL);
+    }
+
+    /**
+     * Maximum column value for the current query.
+     *
+     * @param string $field Field name
+     * @return mixed
+     */
+    public function max($field) {
+        return $this->_aggregate('max', $field, NULL);
+    }
+
+    /**
+     * Create a fresh model instance seeded with attributes.
+     *
+     * @param array $attributes Attributes to assign
+     * @return DataMapper
+     */
+    protected function _new_model_instance(array $attributes)
+    {
+        $class = get_class($this->model);
+        $model = new $class();
+        $this->_fill_model($model, $attributes);
+        return $model;
+    }
+
+    /**
+     * Assign attributes while respecting modern fill() when available.
+     *
+     * @param DataMapper $model Model to fill
+     * @param array $attributes Attributes to assign
+     * @return DataMapper
+     */
+    protected function _fill_model($model, array $attributes)
+    {
+        if (method_exists($model, 'fill')) {
+            $model->fill($attributes);
+            return $model;
+        }
+
+        foreach ($attributes as $field => $value) {
+            $model->{$field} = $value;
+        }
+
+        return $model;
+    }
+
+    /**
+     * Run an aggregate query, falling back to collection aggregation for test doubles.
+     *
+     * @param string $function sum, avg, min, or max
+     * @param string $field Field name
+     * @param mixed $default Default when no value exists
+     * @return mixed
+     */
+    protected function _aggregate($function, $field, $default)
+    {
+        $db_method = 'select_' . $function;
+        $alias = '_dmz_aggregate_value';
+
+        if (isset($this->model->db) && is_object($this->model->db) && method_exists($this->model->db, $db_method)) {
+            try {
+                $model = $this->model->get_clone();
+                $model->{$db_method}($field, $alias)->get();
+
+                $first = (!empty($model->all) && isset($model->all[0])) ? $model->all[0] :
+                         (!empty($model->all) ? reset($model->all) : NULL);
+
+                if ($first && isset($first->{$alias})) {
+                    if ($function === 'avg' && is_numeric($first->{$alias})) {
+                        return (float) $first->{$alias};
+                    }
+
+                    return is_numeric($first->{$alias}) ? $first->{$alias} + 0 : $first->{$alias};
+                }
+
+                return $default;
+            } catch (Exception $e) {
+                dmz_log_message('error', 'Aggregate query failed', array('function' => $function, 'field' => $field, 'error' => $e->getMessage()));
+                throw $e;
+            }
+        }
+
+        $collection = $this->collect();
+        if ($function === 'sum') {
+            return $collection->sum($field);
+        }
+
+        if ($function === 'avg') {
+            $value = $collection->avg($field);
+            return ($value === NULL) ? NULL : (float) $value;
+        }
+
+        if ($function === 'min') {
+            return $collection->min($field);
+        }
+
+        if ($function === 'max') {
+            return $collection->max($field);
+        }
+
+        return $default;
+    }
+    
+    /**
+     * Check if any results exist
+     *
+     * @return bool
+     */
+    public function exists() {
+        $model_copy = $this->model->get_clone();
+        return $model_copy->count() > 0;
+    }
+    
+    /**
+     * Get count of results
+     *
+     * @return int
+     */
+    public function count() {
+        $model_copy = $this->model->get_clone();
+        return $model_copy->count();
+    }
+    
+    /**
+     * Get results as array (backward compatibility)
+     *
+     * @return array
+     */
+    public function get_array() {
+        $model = $this->get();
+        return $model->all;
+    }
+    
+    /**
+     * Get SQL query string
+     *
+     * @return string
+     */
+    public function to_sql() {
+        $limit = isset($this->_limit) ? $this->_limit : NULL;
+        $offset = isset($this->_offset) ? $this->_offset : NULL;
+        return $this->model->get_sql($limit, $offset);
+    }
+
+    /**
+     * Get debug information about the last executed query.
+     *
+     * Returns an associative array containing:
+     * - sql: The raw SQL query string
+     * - bindings: Query bindings/parameters (if available)
+     * - time: Execution time in seconds
+     * - model: The model class name
+     * - eager_loads: Relations that were eager loaded
+     *
+     * @param bool $return If TRUE, return the debug info; if FALSE, dump it
+     * @return array|void
+     */
+    public function debug($return = TRUE)
+    {
+        $db = $this->model->db;
+        
+        $info = array(
+            'model'       => get_class($this->model),
+            'table'       => $this->model->table,
+            'sql'         => $db->last_query(),
+            'eager_loads' => $this->eager_loads,
+            'result_count'=> isset($this->model->all) ? count($this->model->all) : 0,
+        );
+        
+        // Get timing for last query if available
+        if (isset($db->query_times) && is_array($db->query_times) && !empty($db->query_times)) {
+            $info['time'] = end($db->query_times);
+            $info['time_formatted'] = number_format($info['time'] * 1000, 2) . ' ms';
+        }
+        
+        if ($return) {
+            return $info;
+        }
+        
+        // Pretty print for debugging
+        echo '<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:5px;font-family:monospace;font-size:13px;overflow-x:auto;">';
+        echo '<span style="color:#569cd6;font-weight:bold;">Query Debug Information</span>' . "\n";
+        echo '<span style="color:#6a9955;">─────────────────────────</span>' . "\n\n";
+        
+        echo '<span style="color:#9cdcfe;">Model:</span>       <span style="color:#ce9178;">' . $info['model'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">Table:</span>       <span style="color:#ce9178;">' . $info['table'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">Results:</span>     <span style="color:#b5cea8;">' . $info['result_count'] . '</span> row(s)' . "\n";
+        
+        if (!empty($info['eager_loads'])) {
+            echo '<span style="color:#9cdcfe;">Eager Loads:</span> <span style="color:#ce9178;">' . implode(', ', $info['eager_loads']) . '</span>' . "\n";
+        }
+        
+        if (isset($info['time_formatted'])) {
+            echo '<span style="color:#9cdcfe;">Time:</span>        <span style="color:#b5cea8;">' . $info['time_formatted'] . '</span>' . "\n";
+        }
+        
+        echo "\n" . '<span style="color:#569cd6;">SQL:</span>' . "\n";
+        echo '<span style="color:#dcdcaa;">' . htmlspecialchars($info['sql']) . '</span>' . "\n";
+        echo '</pre>';
+    }
+
+    /**
+     * Get benchmark/profiling information for all queries executed.
+     *
+     * Returns detailed metrics including:
+     * - total_queries: Number of queries executed
+     * - total_time: Total execution time
+     * - queries: Array of individual query details
+     * - memory: Current memory usage
+     *
+     * @param bool $return If TRUE, return the benchmark info; if FALSE, dump it
+     * @param int $since_query_index Only include queries from this index onwards (useful for measuring just your query)
+     * @return array|void
+     */
+    public function benchmark($return = TRUE, $since_query_index = NULL)
+    {
+        $db = $this->model->db;
+        
+        $queries = isset($db->queries) ? $db->queries : array();
+        $times = isset($db->query_times) ? $db->query_times : array();
+        
+        // Filter to only queries since the specified index
+        if ($since_query_index !== NULL && $since_query_index > 0) {
+            $queries = array_slice($queries, $since_query_index, NULL, TRUE);
+            $times = array_slice($times, $since_query_index, NULL, TRUE);
+        }
+        
+        $query_details = array();
+        $total_time = 0;
+        
+        foreach ($queries as $i => $sql) {
+            $time = isset($times[$i]) ? $times[$i] : 0;
+            $total_time += $time;
+            
+            $query_details[] = array(
+                'index' => $i,
+                'sql'   => $sql,
+                'time'  => $time,
+                'time_formatted' => number_format($time * 1000, 2) . ' ms',
+            );
+        }
+        
+        $info = array(
+            'total_queries'   => count($queries),
+            'total_time'      => $total_time,
+            'total_time_formatted' => number_format($total_time * 1000, 2) . ' ms',
+            'average_time'    => count($queries) > 0 ? $total_time / count($queries) : 0,
+            'average_time_formatted' => count($queries) > 0 ? number_format(($total_time / count($queries)) * 1000, 2) . ' ms' : '0.00 ms',
+            'queries'         => $query_details,
+            'memory'          => memory_get_usage(TRUE),
+            'memory_formatted'=> $this->_format_bytes(memory_get_usage(TRUE)),
+            'peak_memory'     => memory_get_peak_usage(TRUE),
+            'peak_memory_formatted' => $this->_format_bytes(memory_get_peak_usage(TRUE)),
+            'model'           => get_class($this->model),
+            'eager_loads'     => $this->eager_loads,
+        );
+        
+        if ($return) {
+            return $info;
+        }
+        
+        // Pretty print for debugging
+        echo '<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:5px;font-family:monospace;font-size:13px;overflow-x:auto;">';
+        echo '<span style="color:#569cd6;font-weight:bold;">Query Benchmark Report</span>' . "\n";
+        echo '<span style="color:#6a9955;">─────────────────────────</span>' . "\n\n";
+        
+        echo '<span style="color:#c586c0;">Summary</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">  Total Queries:</span>  <span style="color:#b5cea8;">' . $info['total_queries'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">  Total Time:</span>     <span style="color:#b5cea8;">' . $info['total_time_formatted'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">  Average Time:</span>   <span style="color:#b5cea8;">' . $info['average_time_formatted'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">  Memory:</span>         <span style="color:#b5cea8;">' . $info['memory_formatted'] . '</span>' . "\n";
+        echo '<span style="color:#9cdcfe;">  Peak Memory:</span>    <span style="color:#b5cea8;">' . $info['peak_memory_formatted'] . '</span>' . "\n";
+        
+        if (!empty($info['eager_loads'])) {
+            echo '<span style="color:#9cdcfe;">  Eager Loads:</span>    <span style="color:#ce9178;">' . implode(', ', $info['eager_loads']) . '</span>' . "\n";
+        }
+        
+        if (!empty($query_details)) {
+            echo "\n" . '<span style="color:#c586c0;">Queries</span>' . "\n";
+            foreach ($query_details as $q) {
+                $color = $q['time'] > 0.1 ? '#f14c4c' : ($q['time'] > 0.01 ? '#cca700' : '#4ec9b0');
+                echo '<span style="color:#6a9955;">  [' . $q['index'] . ']</span> ';
+                echo '<span style="color:' . $color . ';">' . $q['time_formatted'] . '</span> ';
+                echo '<span style="color:#dcdcaa;">' . htmlspecialchars(substr($q['sql'], 0, 100)) . (strlen($q['sql']) > 100 ? '...' : '') . '</span>' . "\n";
+            }
+        }
+        
+        echo '</pre>';
+    }
+
+    /**
+     * Get the current query index for use with benchmark().
+     *
+     * Call this before executing your query, then pass the result to benchmark()
+     * to measure only the queries from your operation.
+     *
+     * @return int
+     */
+    public function get_query_index()
+    {
+        $db = $this->model->db;
+        return isset($db->queries) ? count($db->queries) : 0;
+    }
+
+    /**
+     * Format bytes to human readable string.
+     *
+     * @param int $bytes
+     * @return string
+     */
+    protected function _format_bytes($bytes)
+    {
+        $units = array('B', 'KB', 'MB', 'GB');
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+        return round($bytes, 2) . ' ' . $units[$pow];
+    }
+
+    /**
+     * Core handler for has/whereHas style constraints.
+     *
+     * @param string $boolean 'and' or 'or'
+     * @param string $relation Relation key (dot/slash notation)
+     * @param callable|null $callback Constraint callback
+     * @param string $operator Comparison operator
+     * @param int $count Comparison count
+     * @return DMZ_QueryBuilder
+     */
+    protected function _apply_has_constraint($boolean, $relation, $callback, $operator, $count)
+    {
+        if (empty($relation)) {
+            return $this;
+        }
+
+        $normalized = $this->_normalize_relation_path($relation);
+        $alias = $this->_reserve_relation_count_alias($relation);
+
+        $this->model->include_related_count($normalized, $alias, $callback);
+
+        $clause = $alias . ' ' . $operator;
+        if (strtolower($boolean) === 'or') {
+            $this->model->or_having($clause, $count);
+        } else {
+            $this->model->having($clause, $count);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Convert dotted relation path to DataMapper slash format.
+     *
+     * @param string $relation
+     * @return string
+     */
+    protected function _normalize_relation_path($relation)
+    {
+        return str_replace('.', '/', trim($relation));
+    }
+
+    /**
+     * Reserve a unique alias for relation count subqueries.
+     *
+     * @param string $relation
+     * @return string
+     */
+    protected function _reserve_relation_count_alias($relation)
+    {
+        $base = '_dmz_' . preg_replace('/[^a-z0-9_]/i', '_', strtolower($relation)) . '_count';
+        $alias = $base;
+        $suffix = 1;
+        while (isset($this->_relation_count_aliases[$alias])) {
+            $alias = $base . '_' . $suffix++;
+        }
+        $this->_relation_count_aliases[$alias] = TRUE;
+        return $alias;
+    }
+    
+    /**
+     * Load eager relationships for results
+     * Optimized to avoid redundant loading of nested relationships
+     *
+     * @param DMZ_Collection $results
+     */
+    protected function _load_eager_relations($results) {
+        if ($results->count() === 0) {
+            return;
+        }
+        
+        // Optimize eager loads by removing redundant nested paths
+        // If loading 'a.b.c', don't also load 'a' and 'a.b' separately
+        $optimized_loads = $this->_optimize_eager_loads($this->eager_loads);
+        
+        foreach ($optimized_loads as $relation) {
+            $this->_load_relation($results, $relation);
+        }
+        
+        // NOW disable auto-populate on all eagerly loaded models to prevent N+1 queries
+        // This happens AFTER all nested relations are loaded, so nested loading works properly
+        $this->_disable_auto_populate_recursive($results);
+    }
+    
+    /**
+     * Recursively disable auto-populate on all eagerly loaded models
+     * Called AFTER all eager loading is complete to prevent N+1 queries on access
+     *
+     * @param DMZ_Collection $collection
+     */
+    protected function _disable_auto_populate_recursive($collection) {
+        foreach ($collection->to_array() as $model) {
+            // Disable auto-populate on this model
+            $model->auto_populate_has_one = FALSE;
+            $model->auto_populate_has_many = FALSE;
+
+            $current_vars = get_object_vars($model);
+            foreach (array_merge(array_keys($model->has_one), array_keys($model->has_many)) as $relation) {
+                if (!isset($current_vars[$relation]) || !is_object($current_vars[$relation])) {
+                    continue;
+                }
+
+                $related = $current_vars[$relation];
+
+                if ($related instanceof DMZ_Collection) {
+                    // has_many or many_to_many - recurse on collection
+                    $this->_disable_auto_populate_recursive($related);
+                } elseif ($related instanceof DataMapper && $related->exists()) {
+                    // has_one - disable and recurse
+                    $related->auto_populate_has_one = FALSE;
+                    $related->auto_populate_has_many = FALSE;
+
+                    $single_collection = new DMZ_Collection(array($related));
+                    $this->_disable_auto_populate_recursive($single_collection);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Optimize eager load paths to avoid redundant loading
+     * 
+     * Example: ['installation', 'installation.building', 'installation.building.client']
+     * Optimizes to: ['installation.building.client']
+     * Because loading 'installation.building.client' will load all parent levels
+     *
+     * @param array $eager_loads
+     * @return array
+     */
+    protected function _optimize_eager_loads($eager_loads) {
+        if (empty($eager_loads)) {
+            return array();
+        }
+        
+        $optimized = array();
+        
+        foreach ($eager_loads as $load) {
+            $is_redundant = FALSE;
+            
+            // Check if this load path is a subset of any other load path
+            foreach ($eager_loads as $other_load) {
+                if ($load !== $other_load && strpos($other_load, $load . '.') === 0) {
+                    // This load is a parent of another load, skip it
+                    $is_redundant = TRUE;
+                    break;
+                }
+            }
+            
+            if (!$is_redundant) {
+                $optimized[] = $load;
+            }
+        }
+        
+        return $optimized;
+    }
+    
+    /**
+     * Load a specific relation for results using DataMapper's relationship system
+     *
+     * @param DMZ_Collection $results
+     * @param string $relation
+     */
+    protected function _load_relation($results, $relation) {
+        // Handle nested relations (e.g., 'comments.user')
+        if (strpos($relation, '.') !== FALSE) {
+            $this->_load_nested_relation($results, $relation);
+            return;
+        }
+        
+        $first_model = $results->first();
+        if (!$first_model) {
+            return;
+        }
+        
+        // Check if relation exists in has_one or has_many
+        $is_has_many = isset($first_model->has_many[$relation]);
+        $is_has_one = isset($first_model->has_one[$relation]);
+        
+        if (!$is_has_many && !$is_has_one) {
+            return; // Skip invalid relations silently
+        }
+        
+        // Get relationship configuration
+        $relation_config = $is_has_many ? $first_model->has_many[$relation] : $first_model->has_one[$relation];
+        
+        // Normalize config - handle both simple strings and arrays
+        if (is_string($relation_config)) {
+            $relation_config = array('class' => $relation_config);
+        }
+        
+        $related_class = $relation_config['class'];
+
+        // Convert 'installation' -> 'Installation', 'building' -> 'Building', etc.
+        if (!class_exists($related_class)) {
+            // Try capitalizing first letter (DataMapper convention)
+            $capitalized = ucfirst($related_class);
+            if (class_exists($capitalized)) {
+                $related_class = $capitalized;
+            }
+        }
+        
+        // Get all parent IDs for batch loading
+        $parent_ids = array();
+        foreach ($results->to_array() as $model) {
+            if (!empty($model->id)) {
+                $parent_ids[] = $model->id;
+            }
+        }
+        
+        if (empty($parent_ids)) {
+            return;
+        }
+        
+        // Determine the relationship table and keys based on DataMapper conventions
+        $parent_model = strtolower(get_class($first_model));
+        $parent_table = $first_model->table;
+        
+        // Create related model instance
+        $related_model = new $related_class();
+        $related_table = $related_model->table;
+        
+        // Determine join table and foreign keys using DataMapper's naming convention
+        // For many-to-many: uses join table like 'users_roles'
+        // For one-to-many/one-to-one: uses foreign key in related table
+        // NOTE: has_one can ALSO use a join table (e.g., users->role via roles_users)
+        
+        $uses_join_table = $this->_is_many_to_many($first_model, $relation, $relation_config, $is_has_one);
+        
+        if ($uses_join_table) {
+            // Relationship uses join table (many-to-many OR has_one via join table)
+            $this->_load_many_to_many($results, $relation, $relation_config, $parent_ids, $is_has_one);
+        } else {
+            // One-to-many or one-to-one with foreign key
+            $this->_load_with_foreign_key($results, $relation, $relation_config, $parent_ids, $is_has_many);
+        }
+    }
+    
+    /**
+     * Check if relationship is many-to-many (uses join table)
+     * 
+     * @param DataMapper $model
+     * @param string $relation
+     * @param array $config
+     * @param bool $is_has_one Optional flag indicating this is a has_one relationship
+     * @return bool
+     */
+    protected function _is_many_to_many($model, $relation, $config, $is_has_one = FALSE) {
+        // If join_table is explicitly set to a non-empty value, it's many-to-many
+        if (isset($config['join_table']) && !empty($config['join_table'])) {
+            dmz_log_message('debug', "Relation '{$relation}' is many-to-many (join_table explicitly set)");
+            return TRUE;
+        }
+        
+        // NOTE: Do NOT check join_self_as / join_other_as here!
+        // DataMapper's _relationship() method sets these defaults for ALL relationships,
+        // not just many-to-many ones. They are just naming hints, not indicators of join table usage.
+        
+        // PRIORITY CHECK: For has_one relationships, check if FK column exists in parent table FIRST
+        // If the FK column exists, this is NOT a many-to-many relationship - use FK-based loading
+        // This check must happen BEFORE checking for join table existence to avoid false positives
+        if ($is_has_one || isset($model->has_one[$relation])) {
+            $fk_column = $relation . '_id';
+            
+            // Check if FK column exists in parent model's fields (case-insensitive)
+            if (!empty($model->fields) && is_array($model->fields)) {
+                $fk_column_lower = strtolower($fk_column);
+                foreach ($model->fields as $field) {
+                    if (strtolower($field) === $fk_column_lower) {
+                        dmz_log_message('debug', "Relation '{$relation}' has FK column '{$field}' in parent table - NOT many-to-many");
+                        return FALSE;
+                    }
+                }
+            }
+        }
+        
+        // AUTO-DETECTION: Even if join table isn't explicitly configured,
+        // check if a join table exists following DataMapper naming convention
+        // This maintains backward compatibility with models that don't explicitly configure join tables
+        $parent_table = $model->table;
+        $related_class = $config['class'];
+        
+        dmz_log_message('debug', "Auto-detecting join table for '{$relation}'", array(
+            'parent_table' => $parent_table,
+            'related_class' => $related_class
+        ));
+        
+        // Capitalize class name if needed
+        if (!class_exists($related_class)) {
+            $capitalized = ucfirst($related_class);
+            if (class_exists($capitalized)) {
+                $related_class = $capitalized;
+                dmz_log_message('debug', "Capitalized class name to '{$related_class}'");
+            }
+        }
+        
+        $related_metadata = $this->_get_model_metadata($related_class);
+        $related_table = ($related_metadata !== NULL && isset($related_metadata['table'])) ? $related_metadata['table'] : NULL;
+		
+        if ($related_table === NULL) {
+            $related_model = new $related_class();
+            $related_table = $related_model->table;
+        }
+        
+        // Try both orderings (alphabetical is DataMapper convention)
+        $join_table_1 = $parent_table . '_' . $related_table;
+        $join_table_2 = $related_table . '_' . $parent_table;
+        
+        dmz_log_message('debug', "Checking for join tables", array(
+            'option_1' => $join_table_1,
+            'option_2' => $join_table_2
+        ));
+        
+        // Check cache first
+        $db = $model->db;
+        $db_name = $db->database;
+        
+        $cache_key_1 = $db_name . '.' . $join_table_1;
+        $cache_key_2 = $db_name . '.' . $join_table_2;
+        
+        // Check if we've already verified either table exists
+        if (isset(self::$_table_exists_cache[$cache_key_1])) {
+            $result = self::$_table_exists_cache[$cache_key_1];
+            dmz_log_message('debug', "Found '{$join_table_1}' in cache", array('exists' => $result));
+            return $result;
+        }
+        if (isset(self::$_table_exists_cache[$cache_key_2])) {
+            $result = self::$_table_exists_cache[$cache_key_2];
+            dmz_log_message('debug', "Found '{$join_table_2}' in cache", array('exists' => $result));
+            return $result;
+        }
+        
+        // Not in cache - check database (only once thanks to caching!)
+        $exists_1 = $db->table_exists($join_table_1);
+        $exists_2 = !$exists_1 ? $db->table_exists($join_table_2) : FALSE;
+        
+        dmz_log_message('debug', "Database join table check", array(
+            'table_1' => $join_table_1,
+            'exists_1' => $exists_1,
+            'table_2' => $join_table_2,
+            'exists_2' => $exists_2
+        ));
+        
+        // Cache the results for future queries
+        self::$_table_exists_cache[$cache_key_1] = $exists_1;
+        if (!$exists_1) {
+            self::$_table_exists_cache[$cache_key_2] = $exists_2;
+        }
+        
+        $is_many_to_many = $exists_1 || $exists_2;
+        dmz_log_message('debug', "Relation '{$relation}' detected as " . ($is_many_to_many ? 'MANY-TO-MANY' : 'ONE-TO-MANY'));
+        
+        return $is_many_to_many;
+    }
+
+    /**
+     * Retrieve cached metadata for a DataMapper model class.
+     *
+     * @param string $class
+     * @return array|null
+     */
+    protected function _get_model_metadata($class)
+    {
+        $lower = strtolower($class);
+
+        if (isset(DataMapper::$common[DMZ_CLASSNAMES_KEY][$lower])) {
+            $common_key = DataMapper::$common[DMZ_CLASSNAMES_KEY][$lower];
+            if (isset(DataMapper::$common[$common_key])) {
+                return DataMapper::$common[$common_key];
+            }
+        }
+
+        if (!class_exists($class)) {
+            return NULL;
+        }
+
+        $instance = new $class();
+        $lower = strtolower($class);
+
+        if (isset(DataMapper::$common[DMZ_CLASSNAMES_KEY][$lower])) {
+            $common_key = DataMapper::$common[DMZ_CLASSNAMES_KEY][$lower];
+            if (isset(DataMapper::$common[$common_key])) {
+                return DataMapper::$common[$common_key];
+            }
+        }
+
+        return array('table' => isset($instance->table) ? $instance->table : NULL);
+    }
+    
+    /**
+     * Load many-to-many relationship using join table
+     * Also handles has_one relationships that use join tables
+     * 
+     * @param DMZ_Collection $results
+     * @param string $relation
+     * @param array $config
+     * @param array $parent_ids
+     * @param bool $is_has_one If true, return single model instead of collection
+     */
+    protected function _load_many_to_many($results, $relation, $config, $parent_ids, $is_has_one = FALSE) {
+        $first_model = $results->first();
+        $parent_table = $first_model->table;
+        $parent_key = isset($config['join_self_as']) ? $config['join_self_as'] : rtrim($parent_table, 's');
+        
+        $related_class = $config['class'];
+        
+        // Capitalize class name if needed (DataMapper convention)
+        if (!class_exists($related_class)) {
+            $capitalized = ucfirst($related_class);
+            if (class_exists($capitalized)) {
+                $related_class = $capitalized;
+            }
+        }
+        
+        $related_model = new $related_class();
+        $related_table = $related_model->table;
+        $related_key = isset($config['join_other_as']) ? $config['join_other_as'] : rtrim($related_table, 's');
+        
+        // Determine join table
+        $join_table = isset($config['join_table']) ? 
+                     $config['join_table'] : 
+                     $this->_get_join_table($parent_table, $related_table, $first_model->db);
+        
+        // Safety check: ensure join table is not empty
+        if (empty($join_table)) {
+            // Fallback: manually construct join table name
+            $join_table = $this->_get_join_table($parent_table, $related_table, $first_model->db);
+            
+            // If still empty, log error and return
+            if (empty($join_table)) {
+                dmz_log_message('error', "Could not determine join table for relation '{$relation}'", array(
+                    'parent_table' => $parent_table,
+                    'related_table' => $related_table
+                ));
+                return;
+            }
+        }
+        
+        // Build query to get related records through join table
+        $db = $first_model->db;
+        
+        // Reset query builder to ensure clean state
+        $db->reset_query();
+        
+        // Query: SELECT related.*, join.parent_id FROM related 
+        //        JOIN join_table ON related.id = join.related_id 
+        //        WHERE join.parent_id IN (...)
+        $db->select($related_table . '.*, ' . $join_table . '.' . $parent_key . '_id as _dm_parent_id')
+           ->from($related_table)
+           ->join($join_table, $related_table . '.id = ' . $join_table . '.' . $related_key . '_id')
+           ->where_in($join_table . '.' . $parent_key . '_id', $parent_ids);
+        
+        // Apply eager loading constraints FIRST (to capture soft delete scope from user)
+        // For many-to-many, we pass the DB instance directly since we're using manual queries
+        $wrapper = $this->_apply_eager_constraints_to_db($db, $relation, $related_table);
+        
+        // Apply DataMapper 2.0 soft delete scope automatically
+        // Check if the related model has soft deletes enabled (either trait or built-in)
+        // Pass wrapper so we can respect with_softdeleted()/only_softdeleted() flags from constraint callbacks
+        $related_instance = new $related_class();
+        $this->_apply_soft_delete_scope_to_db($db, $related_instance, $related_table, $wrapper);
+        
+        // Execute query
+        $query = $db->get();
+        
+        // Group results by parent ID
+        $grouped = array();
+        
+        // Check if query succeeded
+        if ($query && $query->num_rows() > 0) {
+            foreach ($query->result() as $row) {
+                $parent_id = $row->_dm_parent_id;
+                unset($row->_dm_parent_id);
+                
+                // Create model instance (don't disable auto-populate yet - needed for nested loading)
+                $item = new $related_class();
+                $item->_populate($row);
+                
+                if (!isset($grouped[$parent_id])) {
+                    $grouped[$parent_id] = array();
+                }
+                $grouped[$parent_id][] = $item;
+            }
+        }
+        
+        // Assign to parent models
+        foreach ($results->to_array() as $model) {
+            if (isset($grouped[$model->id])) {
+                if ($is_has_one) {
+                    // has_one via join table - return first (and only) related model
+                    $this->_assign_eager_relation($model, $relation, $grouped[$model->id][0]);
+                } else {
+                    // has_many - return collection
+                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection($grouped[$model->id]));
+                }
+            } else {
+                if ($is_has_one) {
+                    // has_one - return null when no related record
+                    $this->_assign_eager_relation($model, $relation, NULL);
+                } else {
+                    // has_many - return empty collection
+                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection(array()));
+                }
+            }
+        }
+    }
+    
+    /**
+     * Load relationship using foreign key
+     * 
+     * @param DMZ_Collection $results
+     * @param string $relation
+     * @param array $config
+     * @param array $parent_ids
+     * @param bool $is_has_many
+     */
+    protected function _load_with_foreign_key($results, $relation, $config, $parent_ids, $is_has_many) {
+        $first_model = $results->first();
+        $related_class = $config['class'];
+        $related_model = new $related_class();
+        
+        if ($is_has_many) {
+            // has_many: foreign key is in the RELATED table (e.g., installations.user_id)
+            $parent_model_name = strtolower(get_class($first_model));
+            $foreign_key = isset($config['other_field']) ? 
+                          $config['other_field'] . '_id' : 
+                          $parent_model_name . '_id';
+            
+            // Batch load related records where foreign_key IN (parent_ids)
+            // Build base query
+            $related_model->where_in($foreign_key, $parent_ids);
+            
+            // Apply eager loading constraints if any
+            $this->_apply_eager_constraints($related_model, $relation);
+            
+            // Execute query
+            $related_records = $related_model->get();
+            
+            // NOTE: Don't disable auto-populate here - it will prevent nested eager loading
+            // Auto-populate will be disabled at the very end, after all nested relations are loaded
+            
+            // Group by foreign key
+            $grouped = array();
+            if (isset($related_records->all)) {
+                foreach ($related_records->all as $record) {
+                    $key = $record->{$foreign_key};
+                    if (!isset($grouped[$key])) {
+                        $grouped[$key] = array();
+                    }
+                    $grouped[$key][] = $record;
+                }
+            }
+            
+            // Assign to parent models
+            foreach ($results->to_array() as $model) {
+                if (isset($grouped[$model->id])) {
+                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection($grouped[$model->id]));
+                } else {
+                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection(array()));
+                }
+            }
+            
+        } else {
+            // has_one: foreign key is in the PARENT table (e.g., users.role_id)
+            $foreign_key_field = $relation . '_id';
+            
+            // Collect all the foreign key IDs from parent models
+            $foreign_ids = array();
+            foreach ($results->to_array() as $model) {
+                if (!empty($model->{$foreign_key_field})) {
+                    $foreign_ids[] = $model->{$foreign_key_field};
+                }
+            }
+            
+            // Remove duplicates to avoid loading the same record multiple times
+            $foreign_ids = array_unique($foreign_ids);
+            
+            if (empty($foreign_ids)) {
+                // No foreign keys set, set all to NULL
+                foreach ($results->to_array() as $model) {
+                    $this->_assign_eager_relation($model, $relation, NULL);
+                }
+                return;
+            }
+            
+            // Load related records by ID (BATCHED - single query)
+            // Build base query
+            $related_model->where_in('id', $foreign_ids);
+            
+            // Apply eager loading constraints if any
+            $this->_apply_eager_constraints($related_model, $relation);
+            
+            // Execute query
+            $related_records = $related_model->get();
+            
+            // NOTE: Don't disable auto-populate here - it will prevent nested eager loading
+            // Auto-populate will be disabled at the very end, after all nested relations are loaded
+            
+            // Index by ID for fast lookup
+            $indexed = array();
+            if (isset($related_records->all)) {
+                foreach ($related_records->all as $record) {
+                    $indexed[$record->id] = $record;
+                }
+            }
+            
+            // Assign to parent models
+            foreach ($results->to_array() as $model) {
+                if (!empty($model->{$foreign_key_field}) && isset($indexed[$model->{$foreign_key_field}])) {
+                    $this->_assign_eager_relation($model, $relation, $indexed[$model->{$foreign_key_field}]);
+                } else {
+                    $this->_assign_eager_relation($model, $relation, NULL);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Get join table name for many-to-many relationship
+     * DataMapper uses alphabetical ordering: installations_users (not users_installations)
+     * 
+     * @param string $table1
+     * @param string $table2
+     * @param object $db Database connection
+     * @return string
+     */
+    protected function _get_join_table($table1, $table2, $db) {
+        // DataMapper convention: alphabetical ordering
+        // For 'users' and 'installations' -> 'installations_users'
+        $tables = array($table1, $table2);
+        sort($tables);
+        return $tables[0] . '_' . $tables[1];
+    }
+    
+    /**
+     * Apply eager loading constraints that were registered for a relation.
+     *
+     * @param DataMapper $model The model being queried
+     * @param string $relation The relation name
+     * @return void
+     */
+    protected function _apply_eager_constraints($model, $relation) {
+        if (!isset($this->eager_constraints[$relation])) {
+            return; // No constraints for this relation
+        }
+        
+        $constraint = $this->eager_constraints[$relation];
+        
+        if (is_callable($constraint)) {
+            // Call the constraint callback, passing the model as the query builder
+            call_user_func($constraint, $model);
+        }
+    }
+    
+    /**
+     * Apply eager loading constraints to a CI database query builder
+     * 
+     * Used for many-to-many relationships which use direct DB queries.
+     * Creates a temporary DataMapper wrapper to provide a consistent interface.
+     * 
+     * @param CI_DB_query_builder $db The database query builder
+     * @param string $relation The relation name
+     * @param string $table_prefix Optional table prefix for WHERE clauses
+     * @return DMZ_DB_Constraint_Wrapper|null The wrapper instance (to check soft delete scope)
+     */
+    protected function _apply_eager_constraints_to_db($db, $relation, $table_prefix = '') {
+        if (!isset($this->eager_constraints[$relation])) {
+            return NULL; // No constraints for this relation
+        }
+        
+        $constraint = $this->eager_constraints[$relation];
+        
+        if (is_callable($constraint)) {
+            // Create a temporary wrapper to provide DataMapper-like interface to DB
+            $wrapper = new DMZ_DB_Constraint_Wrapper($db, $table_prefix);
+            call_user_func($constraint, $wrapper);
+            return $wrapper; // Return wrapper so caller can check soft delete scope
+        }
+        
+        return NULL;
+    }
+    
+    /**
+     * Apply soft delete scope to a database query builder
+     * 
+    * Automatically excludes soft-deleted records when the consuming
+    * model imports the SoftDeletes trait. Keeps eager-loaded results
+    * consistent with standard queries.
+    * 
+     * @param CI_DB_query_builder $db The database query builder
+     * @param DataMapper $model The model instance to check for soft delete configuration
+     * @param string $table_prefix The table name prefix for WHERE clauses
+     * @param DMZ_DB_Constraint_Wrapper|null $wrapper Optional wrapper to check for soft delete scope override
+     * @return void
+     */
+    protected function _apply_soft_delete_scope_to_db($db, $model, $table_prefix = '', $wrapper = NULL) {
+        // Check if user explicitly set soft delete scope in constraint callback
+        if ($wrapper !== NULL) {
+            $scope = $wrapper->get_soft_delete_scope();
+			
+            // If user called with_softdeleted(), don't apply any deleted_at filter
+            if ($scope === 'with_softdeleted' || $scope === 'with_deleted') {
+                return;
+            }
+			
+            // If user called onlySoftDeleted(), apply deleted_at IS NOT NULL
+            if ($scope === 'only_softdeleted' || $scope === 'only_deleted') {
+                $deleted_col = $this->_get_deleted_at_column($model);
+                if ($deleted_col) {
+                    $column_name = !empty($table_prefix) ? $table_prefix . '.' . $deleted_col : $deleted_col;
+                    $db->where($column_name . ' IS NOT NULL', NULL, FALSE);
+                }
+                return;
+            }
+            
+            // Otherwise fall through to apply default without_softdeleted() scope
+        }
+        
+        // IMPORTANT: Ignore LODataMapper custom implementation
+        // Check for native DataMapper 2.0 flags first (NOT LODataMapper's _withoutSoftDeletedScope)
+        if (property_exists($model, '_dm_with_softdeleted') && $model->_dm_with_softdeleted === TRUE) {
+            // User explicitly called with_softdeleted() - don't filter
+            return;
+        }
+        
+        if (property_exists($model, '_dm_only_softdeleted') && $model->_dm_only_softdeleted === TRUE) {
+            // User explicitly called only_softdeleted()
+            $deleted_col = $this->_get_deleted_at_column($model);
+            if ($deleted_col) {
+                $column_name = !empty($table_prefix) ? $table_prefix . '.' . $deleted_col : $deleted_col;
+                $db->where($column_name . ' IS NOT NULL', NULL, FALSE);
+            }
+            return;
+        }
+        
+        // Soft deletes now require the SoftDeletes trait explicitly
+        if (! DataMapper::uses_trait($model, array('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes'))) {
+            return;
+        }
+
+        $deleted_col = $this->_get_deleted_at_column($model);
+
+        if (! $deleted_col || ! property_exists($model, 'fields') || ! is_array($model->fields) || ! in_array($deleted_col, $model->fields, TRUE)) {
+            return;
+        }
+
+        // Apply the default without_softdeleted() scope
+        if (!empty($table_prefix)) {
+            $deleted_col = $table_prefix . '.' . $deleted_col;
+        }
+
+        $db->where($deleted_col, NULL);
+    }
+
+    /**
+     * Assign an eager-loaded relation while guarding against attribute collisions.
+     *
+     * When an attribute already exists on the model with the same name as the
+     * relation and that value is a scalar (e.g., column "client" and relation
+     * "client"), we stash the original in `_dm_conflicted_attributes` so it can
+     * be inspected later instead of silently discarding it.
+     *
+     * @param DataMapper $model
+     * @param string $relation
+     * @param mixed $value
+     * @return void
+     */
+    protected function _assign_eager_relation($model, $relation, $value)
+    {
+        if (isset($model->{$relation})
+            && $model->{$relation} !== NULL
+            && !$model->{$relation} instanceof DataMapper
+            && !$model->{$relation} instanceof DMZ_Collection)
+        {
+            if (!isset($model->_dm_conflicted_attributes) || !is_array($model->_dm_conflicted_attributes)) {
+                $model->_dm_conflicted_attributes = array();
+            }
+
+            if (!array_key_exists($relation, $model->_dm_conflicted_attributes)) {
+                $model->_dm_conflicted_attributes[$relation] = $model->{$relation};
+
+                dmz_log_message('debug', 'DataMapper eager-load relation name collision detected', array(
+                    'model' => get_class($model),
+                    'relation' => $relation,
+                    'original_type' => gettype($model->{$relation})
+                ));
+            }
+        }
+
+        $model->{$relation} = $value;
+    }
+    
+    /**
+     * Get the deleted_at column name for a model
+     * 
+     * @param DataMapper $model The model instance
+     * @return string|null The column name or null if not found
+     */
+    protected function _get_deleted_at_column($model) {
+        $deleted_col = 'deleted_at';
+        
+        // Get custom column name if specified
+        if (property_exists($model, 'deleted_at_column') && !empty($model->deleted_at_column)) {
+            $deleted_col = $model->deleted_at_column;
+        } elseif (method_exists($model, 'get_deleted_at_column')) {
+            $deleted_col = $model->get_deleted_at_column();
+        } elseif (property_exists($model, 'deletedAtColumn') && !empty($model->deletedAtColumn)) {
+            $deleted_col = $model->deletedAtColumn;
+        } elseif (method_exists($model, 'getDeletedAtColumn')) {
+            $deleted_col = $model->getDeletedAtColumn();
+        }
+        
+        return $deleted_col;
+    }
+    
+    /**
+     * Load nested relations (e.g., 'installation.building.client')
+     * Now properly handles multi-level nesting recursively
+     *
+     * @param DMZ_Collection $results
+     * @param string $relation
+     */
+    protected function _load_nested_relation($results, $relation) {
+        $parts = explode('.', $relation, 2);
+        $first_relation = $parts[0];
+        $nested_relation = $parts[1];
+        
+        // Load the first level relation
+        $this->_load_relation($results, $first_relation);
+        
+        // Collect all loaded related models
+        // Use property_exists to avoid triggering __get() which causes auto-population
+        $related_models = array();
+        foreach ($results->to_array() as $model) {
+            // Check if the property was set by eager loading
+            if (property_exists($model, $first_relation)) {
+                $related = $model->{$first_relation};
+                if ($related instanceof DMZ_Collection) {
+                    foreach ($related->to_array() as $rel_model) {
+                        if ($rel_model instanceof DataMapper) {
+                            $related_models[] = $rel_model;
+                        }
+                    }
+                } elseif ($related instanceof DataMapper && $related->exists()) {
+                    $related_models[] = $related;
+                }
+            }
+        }
+        
+        // Load the nested relation on related models RECURSIVELY
+        if (!empty($related_models)) {
+            $related_collection = new DMZ_Collection($related_models);
+            
+            // Check if there are more levels of nesting
+            if (strpos($nested_relation, '.') !== FALSE) {
+                // Recursively load nested relations
+                $this->_load_nested_relation($related_collection, $nested_relation);
+            } else {
+                // Just one more level, load it directly
+                $this->_load_relation($related_collection, $nested_relation);
+            }
+        }
+    }
+    
+    /**
+     * Magic method to delegate to DataMapper
+     *
+     * @param string $method Method name
+     * @param array $args Method arguments
+     * @return mixed
+     */
+    public function __call($method, $args) {
+        $snake_case = $this->camel_to_snake($method);
+
+        if ($snake_case !== $method && method_exists($this, $snake_case)) {
+            return call_user_func_array(array($this, $snake_case), $args);
+        }
+
+        $result = call_user_func_array(array($this->model, $method), $args);
+        
+        // If result is the model, return this for chaining
+        if ($result === $this->model) {
+            return $this;
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Convert camelCase method names to snake_case for internal delegation.
+     *
+     * @param string $method
+     * @return string
+     */
+    protected function camel_to_snake($method)
+    {
+        return dmz_camel_to_snake($method);
+    }
+}
+
+/**
+ * Collection class for DataMapper results
+ * 
+ * Implements IteratorAggregate and Countable for native PHP iteration.
+ * Compatible with PHP 7.4 - 8.5
+ */
+class DMZ_Collection implements IteratorAggregate, Countable {
+    
+    /**
+     * Collection items
+     * @var array
+     */
+    protected $items = array();
+
+    /**
+     * Source model reference for rebuilding DataMapper instances.
+     * @var DataMapper|null
+     */
+    protected $source_model;
+    
+    /**
+     * Constructor
+     *
+     * @param array $items Initial items
+     */
+    public function __construct($items = array(), $source_model = NULL) {
+        $this->items = is_array($items) ? array_values($items) : array();
+        $this->source_model = ($source_model instanceof DataMapper) ? $source_model : NULL;
+    }
+
+    /**
+     * Create a new collection instance with shared source model.
+     */
+    protected function new_collection($items)
+    {
+        return new DMZ_Collection($items, $this->source_model);
+    }
+
+    /**
+     * Helper to retrieve an item property or array key.
+     */
+    protected function get_value($item, $key, $default = NULL)
+    {
+        if (is_null($key)) {
+            return $item;
+        }
+
+        if (is_array($item)) {
+            return array_key_exists($key, $item) ? $item[$key] : $default;
+        }
+
+        if (is_object($item) && isset($item->{$key})) {
+            return $item->{$key};
+        }
+
+        return $default;
+    }
+
+    /**
+     * Normalize incoming values to an array.
+     */
+    protected function normalize_to_array($value)
+    {
+        if ($value instanceof self) {
+            return $value->to_array();
+        }
+
+        if ($value instanceof Traversable) {
+            return iterator_to_array($value, FALSE);
+        }
+
+        return is_array($value) ? $value : array($value);
+    }
+
+    /**
+     * Build a value retriever callback for aggregations.
+     */
+    protected function value_retriever($value)
+    {
+        if (is_null($value)) {
+            return function($item) {
+                return $item;
+            };
+        }
+
+        if (is_callable($value)) {
+            return $value;
+        }
+
+        return function($item) use ($value) {
+            return $this->get_value($item, $value);
+        };
+    }
+
+    /**
+     * Compare two values using a supported operator.
+     */
+    protected function value_matches($actual, $operator, $expected): bool
+    {
+        switch ($operator) {
+            case '===':
+                return $actual === $expected;
+            case '!==':
+                return $actual !== $expected;
+            case '!=':
+            case '<>':
+                return $actual != $expected;
+            case '>':
+                return $actual > $expected;
+            case '<':
+                return $actual < $expected;
+            case '>=':
+                return $actual >= $expected;
+            case '<=':
+                return $actual <= $expected;
+            case '=':
+            case '==':
+            default:
+                return $actual == $expected;
+        }
+    }
+    
+    /**
+     * Get first item
+     *
+     * @return mixed
+     */
+    public function first($callback = NULL, $default = NULL) {
+        if ($callback === NULL) {
+            return isset($this->items[0]) ? $this->items[0] : $default;
+        }
+
+        foreach ($this->items as $key => $item) {
+            if (call_user_func($callback, $item, $key)) {
+                return $item;
+            }
+        }
+
+        return $default;
+    }
+    
+    /**
+     * Get last item
+     *
+     * @return mixed
+     */
+    public function last($callback = NULL, $default = NULL) {
+        $count = count($this->items);
+
+        if ($callback === NULL) {
+            return $count > 0 ? $this->items[$count - 1] : $default;
+        }
+
+        for ($index = $count - 1; $index >= 0; $index--) {
+            $item = $this->items[$index];
+            if (call_user_func($callback, $item, $index)) {
+                return $item;
+            }
+        }
+
+        return $default;
+    }
+    
+    /**
+     * Check if collection is empty
+     *
+     * @return bool
+     */
+    public function is_empty() {
+        return empty($this->items);
+    }
+
+    /**
+     * Determine if collection has items.
+     */
+    public function is_not_empty() {
+        return !$this->is_empty();
+    }
+    
+    /**
+     * Check if collection has any items (alias for backward compatibility)
+     * 
+     * Mimics DataMapper's exists() method behavior for collections.
+     *
+     * @return bool
+     */
+    public function exists() {
+        return !empty($this->items);
+    }
+    
+    /**
+     * Get count of items (Countable implementation)
+     *
+     * @return int
+     */
+    public function count(): int {
+        return count($this->items);
+    }
+    
+    /**
+     * Convert to array
+     *
+     * @return array
+     */
+    public function to_array() {
+        return $this->items;
+    }
+    
+    /**
+     * No-op conversion to collection (already a collection)
+     * 
+     * LEGACY COMPATIBILITY: Maintains chaining safety for old code that calls
+     * ->to_collection() on what might be a collection or a single model.
+     * 
+     * Example:
+     *   $result = $model->get();  // Now returns DMZ_Collection
+     *   $collection = $result->to_collection();  // Safe no-op, returns $this
+     *
+     * @return DMZ_Collection Returns self
+     */
+    public function to_collection() {
+        return $this;
+    }
+    
+    /**
+     * Get specific field values from all items
+     * 
+     * Returns a plain array of extracted values from each item in the collection.
+     * 
+     * Examples:
+     *   $ids = $collection->pluck('id');      // Returns array [1, 2, 3]
+     *   $emails = $collection->pluck('email'); // Returns array of emails
+     *
+     * @param string $field Field name
+     * @return array Array of values
+     */
+    public function pluck($field) {
+        $values = array();
+        foreach ($this->items as $item) {
+            if (is_object($item) && isset($item->{$field})) {
+                $values[] = $item->{$field};
+            } elseif (is_array($item) && isset($item[$field])) {
+                $values[] = $item[$field];
+            }
+        }
+        return $values;
+    }
+    
+    /**
+     * Convenience alias that mirrors to_array()/all() naming.
+     *
+     * Keeping the method lightweight means existing array-based
+     * utilities can stay untouched while still letting teams call the
+     * intent out explicitly in their code.
+     *
+     * @param string $field Field name
+     * @return array Array of values
+     */
+    public function values() {
+        return $this->items;
+    }
+
+    /**
+     * Filter collection by key/value pairs or callback.
+     */
+    public function where($key, $operator = NULL, $value = NULL) {
+        if (is_callable($key)) {
+            return $this->filter($key);
+        }
+
+        if (is_array($key)) {
+            $filtered = $this;
+            foreach ($key as $k => $v) {
+                $filtered = $filtered->where($k, '=', $v);
+            }
+            return $filtered;
+        }
+
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        if ($operator === NULL) {
+            $operator = '=';
+        }
+
+        $operator = strtoupper($operator);
+
+        $items = array();
+        foreach ($this->items as $item) {
+            $actual = $this->get_value($item, $key);
+            if ($this->value_matches($actual, $operator, $value)) {
+                $items[] = $item;
+            }
+        }
+
+        return $this->new_collection($items);
+    }
+
+    /**
+     * Filter collection where key is in given values.
+     */
+    public function where_in($key, $values) {
+        $values = $this->normalize_to_array($values);
+
+        return $this->filter(function($item) use ($key, $values) {
+            $actual = $this->get_value($item, $key);
+            return in_array($actual, $values);
+        });
+    }
+
+    /**
+     * Filter collection where key is not in given values.
+     */
+    public function where_not_in($key, $values) {
+        $values = $this->normalize_to_array($values);
+
+        return $this->filter(function($item) use ($key, $values) {
+            $actual = $this->get_value($item, $key);
+            return !in_array($actual, $values);
+        });
+    }
+
+    /**
+     * Filter collection where key is NULL.
+     */
+    public function where_null($key) {
+        return $this->filter(function($item) use ($key) {
+            return $this->get_value($item, $key) === NULL;
+        });
+    }
+
+    /**
+     * Filter collection where key is not NULL.
+     */
+    public function where_not_null($key) {
+        return $this->filter(function($item) use ($key) {
+            return $this->get_value($item, $key) !== NULL;
+        });
+    }
+
+    /**
+     * Filter values within a range.
+     */
+    public function where_between($key, $start, $end = NULL) {
+        if (is_array($start)) {
+            $end = $start[1] ?? NULL;
+            $start = $start[0] ?? NULL;
+        }
+
+        if ($start === NULL || $end === NULL) {
+            return $this->new_collection(array());
+        }
+
+        return $this->filter(function($item) use ($key, $start, $end) {
+            $value = $this->get_value($item, $key);
+            return $value >= $start && $value <= $end;
+        });
+    }
+    
+    /**
+     * Filter items using callback
+     *
+     * @param callable $callback Filter function
+     * @return DMZ_Collection
+     */
+    public function filter($callback = NULL) {
+        if ($callback === NULL) {
+            $callback = function($item) {
+                return !empty($item);
+            };
+        }
+        return $this->new_collection(array_filter($this->items, $callback));
+    }
+    
+    /**
+     * Apply callback to each item
+     *
+     * @param callable $callback Map function
+     * @return DMZ_Collection
+     */
+    public function map($callback) {
+        return $this->new_collection(array_map($callback, $this->items));
+    }
+
+    /**
+     * Map and flatten the results into a single collection.
+     */
+    public function flat_map($callback) {
+        $results = array();
+
+        foreach ($this->items as $key => $item) {
+            $mapped = call_user_func($callback, $item, $key);
+            $values = $this->normalize_to_array($mapped);
+
+            foreach ($values as $value) {
+                $results[] = $value;
+            }
+        }
+
+        return $this->new_collection($results);
+    }
+
+    /**
+     * Transform items in-place.
+     */
+    public function transform($callback) {
+        foreach ($this->items as $key => $item) {
+            $this->items[$key] = call_user_func($callback, $item, $key);
+        }
+
+        return $this;
+    }
+    
+    /**
+     * Execute callback for each item
+     *
+     * @param callable $callback Function to execute
+     * @return DMZ_Collection
+     */
+    public function each($callback) {
+        foreach ($this->items as $key => $item) {
+            $result = call_user_func($callback, $item, $key);
+            if ($result === FALSE) {
+                break;
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Call a callback with the collection and return self.
+     */
+    public function tap($callback) {
+        call_user_func($callback, $this);
+        return $this;
+    }
+
+    /**
+     * Pass the collection to the callback and return the result.
+     */
+    public function pipe($callback) {
+        return call_user_func($callback, $this);
+    }
+
+    /**
+     * Partition items into truthy and falsy buckets.
+     */
+    public function partition($callback) {
+        $truthy = array();
+        $falsy = array();
+
+        foreach ($this->items as $key => $item) {
+            if (call_user_func($callback, $item, $key)) {
+                $truthy[] = $item;
+            } else {
+                $falsy[] = $item;
+            }
+        }
+
+        return array($this->new_collection($truthy), $this->new_collection($falsy));
+    }
+    
+    /**
+     * Merge with another collection
+     *
+     * @param DMZ_Collection $collection
+     * @return DMZ_Collection
+     */
+    public function merge($collection) {
+        $items = $collection instanceof DMZ_Collection ? 
+                $collection->to_array() : 
+                (array) $collection;
+        return $this->new_collection(array_merge($this->items, $items));
+    }
+
+    /**
+     * Concatenate additional items onto the collection.
+     */
+    public function concat($items) {
+        $items = $this->normalize_to_array($items);
+        return $this->new_collection(array_merge($this->items, $items));
+    }
+
+    /**
+     * Merge items without duplicates.
+     */
+    public function union($items) {
+        $items = $this->normalize_to_array($items);
+        $existing = array_map('serialize', $this->items);
+        $results = $this->items;
+
+        foreach ($items as $item) {
+            $serialized = serialize($item);
+            if (!in_array($serialized, $existing, TRUE)) {
+                $results[] = $item;
+                $existing[] = $serialized;
+            }
+        }
+
+        return $this->new_collection($results);
+    }
+
+    /**
+     * Zip the collection with other iterables.
+     */
+    public function zip(...$items) {
+        $arrays = array_map(function($value) {
+            return $this->normalize_to_array($value);
+        }, $items);
+
+        $lengths = array_map('count', $arrays);
+        $lengths[] = count($this->items);
+        $max = empty($lengths) ? 0 : max($lengths);
+
+        $results = array();
+
+        for ($index = 0; $index < $max; $index++) {
+            $tuple = array();
+            $tuple[] = array_key_exists($index, $this->items) ? $this->items[$index] : NULL;
+
+            foreach ($arrays as $array) {
+                $tuple[] = array_key_exists($index, $array) ? $array[$index] : NULL;
+            }
+
+            $results[] = $tuple;
+        }
+
+        return $this->new_collection($results);
+    }
+
+    /**
+     * Sum values using key or callback.
+     */
+    public function sum($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $total = 0;
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result !== NULL) {
+                $total += $result;
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * Calculate average value.
+     */
+    public function avg($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $total = 0;
+        $count = 0;
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result !== NULL) {
+                $total += $result;
+                $count++;
+            }
+        }
+
+        return $count === 0 ? NULL : $total / $count;
+    }
+
+    /**
+     * Alias for avg().
+     */
+    public function average($value = NULL) {
+        return $this->avg($value);
+    }
+
+    /**
+     * Minimum value using key or callback.
+     */
+    public function min($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $min = NULL;
+        $initialized = FALSE;
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result === NULL) {
+                continue;
+            }
+
+            if (!$initialized || $result < $min) {
+                $min = $result;
+                $initialized = TRUE;
+            }
+        }
+
+        return $initialized ? $min : NULL;
+    }
+
+    /**
+     * Maximum value using key or callback.
+     */
+    public function max($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $max = NULL;
+        $initialized = FALSE;
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result === NULL) {
+                continue;
+            }
+
+            if (!$initialized || $result > $max) {
+                $max = $result;
+                $initialized = TRUE;
+            }
+        }
+
+        return $initialized ? $max : NULL;
+    }
+
+    /**
+     * Median value using key or callback.
+     */
+    public function median($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $values = array();
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result !== NULL) {
+                $values[] = $result;
+            }
+        }
+
+        $count = count($values);
+        if ($count === 0) {
+            return NULL;
+        }
+
+        sort($values);
+        $middle = (int) floor(($count - 1) / 2);
+
+        if ($count % 2) {
+            return $values[$middle];
+        }
+
+        return ($values[$middle] + $values[$middle + 1]) / 2;
+    }
+
+    /**
+     * Mode value using key or callback.
+     */
+    public function mode($value = NULL) {
+        $callback = $this->value_retriever($value);
+        $frequency = array();
+
+        foreach ($this->items as $item) {
+            $result = call_user_func($callback, $item);
+            if ($result === NULL) {
+                continue;
+            }
+
+            $key = is_scalar($result) ? $result : serialize($result);
+            if (!isset($frequency[$key])) {
+                $frequency[$key] = array('value' => $result, 'count' => 0);
+            }
+            $frequency[$key]['count']++;
+        }
+
+        if (empty($frequency)) {
+            return NULL;
+        }
+
+        usort($frequency, function($a, $b) {
+            return $b['count'] <=> $a['count'];
+        });
+
+        return $frequency[0]['value'];
+    }
+    
+    /**
+     * Convert to JSON
+     *
+     * @return string
+     */
+    public function to_json() {
+        $options = 0;
+        $depth = 512;
+
+        $args = func_get_args();
+        if (isset($args[0])) {
+            $options = $args[0];
+        }
+        if (isset($args[1])) {
+            $depth = $args[1];
+        }
+
+        return json_encode($this->items, $options, $depth);
+    }
+    
+    /**
+     * Get iterator for foreach loops (IteratorAggregate implementation)
+     *
+     * @return ArrayIterator
+     */
+    public function getIterator(): \Traversable {
+        return new ArrayIterator($this->items);
+    }
+
+    /**
+     * Dump collection items for debugging.
+     */
+    public function dump() {
+        var_dump($this->items);
+        return $this;
+    }
+
+    /**
+     * Dump collection items and terminate execution.
+     */
+    public function dd() {
+        $this->dump();
+        exit(1);
+    }
+    
+    /**
+     * Get specific item by index
+     *
+     * @param int $index Array index
+     * @return mixed
+     */
+    public function get($index) {
+        return isset($this->items[$index]) ? $this->items[$index] : NULL;
+    }
+    
+    /**
+     * Check if collection contains a specific item or value
+     *
+     * @param mixed $value Value to search for
+     * @param string $key Optional key to search in
+     * @return bool
+     */
+    public function contains($value, $key = NULL) {
+        if (is_callable($value)) {
+            foreach ($this->items as $index => $item) {
+                if (call_user_func($value, $item, $index)) {
+                    return TRUE;
+                }
+            }
+            return FALSE;
+        }
+
+        if ($key !== NULL) {
+            foreach ($this->items as $item) {
+                if ($this->get_value($item, $key) == $value) {
+                    return TRUE;
+                }
+            }
+            return FALSE;
+        }
+
+        return in_array($value, $this->items, TRUE) || in_array($value, $this->items);
+    }
+
+    /**
+     * Determine if all items pass the given test.
+     */
+    public function every($callback) {
+        foreach ($this->items as $index => $item) {
+            if (!call_user_func($callback, $item, $index)) {
+                return FALSE;
+            }
+        }
+
+        return TRUE;
+    }
+
+    /**
+     * Determine if any item passes the given test.
+     */
+    public function some($callback) {
+        foreach ($this->items as $index => $item) {
+            if (call_user_func($callback, $item, $index)) {
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
+    
+    /**
+     * Sort collection by callback or key
+     *
+     * @param callable|string $callback Sort function or key name
+     * @param string $direction ASC or DESC
+     * @return DMZ_Collection
+     */
+    public function sort($callback = NULL, $direction = 'ASC') {
+        $items = $this->items;
+
+        if ($callback === NULL) {
+            $items = $this->items;
+            sort($items);
+            if (strtoupper($direction) === 'DESC') {
+                $items = array_reverse($items);
+            }
+            return $this->new_collection($items);
+        }
+
+        if (is_callable($callback)) {
+            usort($items, $callback);
+            if (strtoupper($direction) === 'DESC') {
+                $items = array_reverse($items);
+            }
+        } else {
+            $key = $callback;
+            usort($items, function($a, $b) use ($key, $direction) {
+                $val_a = NULL;
+                $val_b = NULL;
+
+                if (is_array($a)) {
+                    $val_a = array_key_exists($key, $a) ? $a[$key] : NULL;
+                } elseif (is_object($a) && isset($a->{$key})) {
+                    $val_a = $a->{$key};
+                }
+
+                if (is_array($b)) {
+                    $val_b = array_key_exists($key, $b) ? $b[$key] : NULL;
+                } elseif (is_object($b) && isset($b->{$key})) {
+                    $val_b = $b->{$key};
+                }
+
+                $result = $val_a <=> $val_b;
+                return strtoupper($direction) === 'DESC' ? -$result : $result;
+            });
+        }
+
+        return $this->new_collection($items);
+    }
+
+    /**
+     * Sort collection by key or callback.
+     */
+    public function sort_by($value, $direction = 'ASC') {
+        $items = $this->items;
+        $callback = $this->value_retriever($value);
+
+        usort($items, function($a, $b) use ($callback, $direction) {
+            $val_a = call_user_func($callback, $a);
+            $val_b = call_user_func($callback, $b);
+            $result = $val_a <=> $val_b;
+            return strtoupper($direction) === 'DESC' ? -$result : $result;
+        });
+
+        return $this->new_collection($items);
+    }
+
+    /**
+     * Sort collection descending by value.
+     */
+    public function sort_by_desc($value) {
+        return $this->sort_by($value, 'DESC');
+    }
+
+    /**
+     * Sort collection descending while preserving natural key order.
+     */
+    public function sort_desc($callback = NULL) {
+        return $this->sort($callback, 'DESC');
+    }
+
+    /**
+     * Shuffle items in the collection.
+     */
+    public function shuffle() {
+        $items = $this->items;
+        shuffle($items);
+        return $this->new_collection($items);
+    }
+    
+    /**
+     * Get unique items
+     *
+     * @param string $key Optional key to check uniqueness
+     * @return DMZ_Collection
+     */
+    public function unique($key = NULL) {
+        if ($key === NULL) {
+            return $this->new_collection(array_unique($this->items, SORT_REGULAR));
+        }
+        
+        $seen = array();
+        $unique = array();
+        
+        foreach ($this->items as $item) {
+            $value = is_object($item) ? $item->{$key} : $item[$key];
+            if (!in_array($value, $seen)) {
+                $seen[] = $value;
+                $unique[] = $item;
+            }
+        }
+        
+        return $this->new_collection($unique);
+    }
+    
+    /**
+     * Chunk collection into smaller collections
+     *
+     * @param int $size Chunk size
+     * @return DMZ_Collection Collection of collections
+     */
+    public function chunk($size) {
+        $chunks = array_chunk($this->items, $size);
+        return $this->new_collection(array_map(function($chunk) {
+            return $this->new_collection($chunk);
+        }, $chunks));
+    }
+
+    /**
+     * Split the collection into a given number of chunks.
+     */
+    public function split($number) {
+        $number = (int) $number;
+
+        if ($number <= 0) {
+            return $this->new_collection(array());
+        }
+
+        $count = $this->count();
+        if ($count === 0) {
+            return $this->new_collection(array());
+        }
+
+        $size = (int) ceil($count / $number);
+        $size = max(1, $size);
+
+        return $this->chunk($size);
+    }
+    
+    /**
+     * Take first N items
+     *
+     * @param int $count Number of items to take
+     * @return DMZ_Collection
+     */
+    public function take($count) {
+        return $this->new_collection(array_slice($this->items, 0, $count));
+    }
+    
+    /**
+     * Skip first N items
+     *
+     * @param int $count Number of items to skip
+     * @return DMZ_Collection
+     */
+    public function skip($count) {
+        return $this->new_collection(array_slice($this->items, $count));
+    }
+    
+    /**
+     * Reverse collection order
+     *
+     * @return DMZ_Collection
+     */
+    public function reverse() {
+        return $this->new_collection(array_reverse($this->items));
+    }
+    
+    /**
+     * Get number of items (count alias)
+     * For DataMapper compatibility
+     *
+     * @return int
+     */
+    public function result_count() {
+        return $this->count();
+    }
+    
+    /**
+     * Get values indexed by key
+     *
+     * @param string $key Key to index by
+     * @return array
+     */
+    public function key_by($key) {
+        $result = array();
+        foreach ($this->items as $item) {
+            $key_value = is_object($item) ? $item->{$key} : $item[$key];
+            $result[$key_value] = $item;
+        }
+        return $result;
+    }
+    
+    /**
+     * Group items by key
+     *
+     * @param string $key Key to group by
+     * @return array
+     */
+    public function group_by($key) {
+        $result = array();
+        foreach ($this->items as $item) {
+            $key_value = is_object($item) ? $item->{$key} : $item[$key];
+            if (!isset($result[$key_value])) {
+                $result[$key_value] = array();
+            }
+            $result[$key_value][] = $item;
+        }
+        return $result;
+    }
+    
+    /**
+     * Magic method to proxy calls to the first item in the collection
+     * 
+     * This provides better compatibility when code expects a single model
+     * but receives a collection. If the collection has exactly one item,
+     * method calls are forwarded to that item.
+     * 
+     * IMPORTANT: This is a convenience feature. For better code clarity:
+     * - Use ->first() to get a single model
+     * - Use ->get() when you expect multiple results
+     *
+     * @param string $method Method name
+     * @param array $args Method arguments
+     * @return mixed
+     * @throws BadMethodCallException
+     */
+    public function __call($method, $args) {
+        $snake_case = $this->camel_to_snake($method);
+
+        if ($snake_case !== $method && method_exists($this, $snake_case)) {
+            return call_user_func_array(array($this, $snake_case), $args);
+        }
+
+        // If collection has exactly one item, proxy to it
+        if ($this->count() === 1) {
+            $item = $this->first();
+            if (is_object($item) && method_exists($item, $method)) {
+                return call_user_func_array(array($item, $method), $args);
+            }
+        }
+        
+        // Provide helpful error message
+        $itemCount = $this->count();
+        $suggestion = '';
+        
+        if ($itemCount === 0) {
+            $suggestion = "Collection is empty. Check if your query returned any results with ->exists() or ->count().";
+        } elseif ($itemCount === 1) {
+            $suggestion = "The collection has 1 item, but it doesn't have a method '{$method}'. Use ->first() to get the model and check available methods.";
+        } else {
+            $suggestion = "Collection has {$itemCount} items. Use ->first() to get a single model, or iterate: foreach (\$collection as \$item) { \$item->{$method}(); }";
+        }
+        
+        throw new BadMethodCallException(
+            "Method '{$method}' does not exist on DMZ_Collection. {$suggestion}"
+        );
+    }
+
+    /**
+     * Convert camelCase method names to snake_case for internal delegation.
+     *
+     * @param string $method
+     * @return string
+     */
+    protected function camel_to_snake($method)
+    {
+        return dmz_camel_to_snake($method);
+    }
+    
+    /**
+     * Magic method to proxy property access to the first item
+     * 
+     * If the collection has exactly one item, property access is forwarded to that item.
+     *
+     * @param string $name Property name
+     * @return mixed
+     */
+    public function __get($name) {
+        // If collection has exactly one item, proxy to it
+        if ($this->count() === 1) {
+            $item = $this->first();
+            if (is_object($item) && isset($item->{$name})) {
+                return $item->{$name};
+            }
+        }
+        
+        return NULL;
+    }
+    
+    /**
+     * Magic method to check if property exists on the first item
+     *
+     * @param string $name Property name
+     * @return bool
+     */
+    public function __isset($name) {
+        if ($this->count() === 1) {
+            $item = $this->first();
+            return is_object($item) && isset($item->{$name});
+        }
+        return FALSE;
+    }
+
+    // -------------------------------------------------------------------------
+    // Bulk Operation Methods
+    // -------------------------------------------------------------------------
+
+	/**
+	 * Save all models in the collection
+	 * 
+	 * Example:
+	 *   $users->where('active', 1)->collect()->each(function($user) {
+	 *       $user->last_login = time();
+	 *   })->save_all();
+	 *
+	 * @return array Array of save results (TRUE/FALSE for each model)
+	 */
+	public function save_all() {
+		$results = array();
+		foreach ($this->items as $item) {
+			if (is_object($item) && method_exists($item, 'save')) {
+				$results[] = $item->save();
+			}
+		}
+		return $results;
+	}
+
+	/**
+	 * Delete all models in the collection
+	 * 
+	 * Example:
+	 *   $old_posts->where('created <', strtotime('-1 year'))->collect()->delete_all();
+	 *
+	 * @return array Array of delete results (TRUE/FALSE for each model)
+	 */
+	public function delete_all() {
+		$results = array();
+		foreach ($this->items as $item) {
+			if (is_object($item) && method_exists($item, 'delete')) {
+				$results[] = $item->delete();
+			}
+		}
+		return $results;
+	}
+
+	/**
+	 * Get all items as array
+	 * 
+	 * @return array
+	 */
+	public function all() {
+		return $this->items;
+	}
+
+	/**
+	 * Get items by key-value pairs
+	 * 
+	 * Example:
+	 *   $posts->collect()->where_in_collection('status', 'published');
+	 *
+	 * @param string $key Field name
+	 * @param mixed $value Value to match
+	 * @return DMZ_Collection New filtered collection
+	 */
+	public function where_in_collection($key, $value) {
+        return $this->where($key, '=', $value);
+	}
+
+	/**
+	 * Find a model by its ID
+	 * 
+	 * Example:
+	 *   $post = $posts->collect()->find(5);
+	 *
+	 * @param mixed $id ID value to find
+	 * @param string $id_field Name of the ID field (default: 'id')
+	 * @return mixed The found item or NULL
+	 */
+	public function find($id, $id_field = 'id') {
+		foreach ($this->items as $item) {   
+			if (is_object($item) && isset($item->{$id_field}) && $item->{$id_field} == $id) {
+				return $item;
+			} elseif (is_array($item) && isset($item[$id_field]) && $item[$id_field] == $id) {
+				return $item;
+			}
+		}
+		return NULL;
+	}
+
+	/**
+	 * Get a collection of IDs
+	 * 
+	 * Convenience method, same as pluck('id')
+	 * 
+	 * Example:
+	 *   $ids = $posts->collect()->ids();
+	 *
+	 * @param string $id_field Name of the ID field (default: 'id')
+	 * @return array Array of IDs
+	 */
+	public function ids($id_field = 'id') {
+		return $this->pluck($id_field);
+	}
+
+    /**
+     * Convert collection back into a DataMapper instance.
+     */
+    public function to_data_mapper() {
+        if ($this->is_empty()) {
+            if ($this->source_model instanceof DataMapper) {
+                $empty = $this->source_model->get_clone(TRUE);
+                $empty->clear();
+                return $empty;
+            }
+            return NULL;
+        }
+
+        $first = $this->first();
+
+        if ($this->source_model instanceof DataMapper) {
+            $template = $this->source_model->get_clone(TRUE);
+        } elseif ($first instanceof DataMapper) {
+            $template = $first->get_clone(TRUE);
+        } else {
+            return NULL;
+        }
+
+        $template->clear();
+
+        $container = clone $template;
+        $result_items = array();
+
+        foreach ($this->items as $item) {
+            if ($item instanceof DataMapper) {
+                $result_items[] = clone $item;
+                continue;
+            }
+
+            $model = clone $template;
+
+            if (is_object($item)) {
+                foreach (get_object_vars($item) as $property => $value) {
+                    $model->{$property} = $value;
+                }
+            } elseif (is_array($item)) {
+                foreach ($item as $property => $value) {
+                    $model->{$property} = $value;
+                }
+            } else {
+                return NULL;
+            }
+
+            $result_items[] = $model;
+        }
+
+        $container->all = $result_items;
+
+        return $container;
+    }
+
+	// -------------------------------------------------------------------------
+	// Soft Delete Methods (DataMapper 2.0)
+	// -------------------------------------------------------------------------
+
+    /**
+     * Include soft-deleted records in query results.
+     *
+     * @return DMZ_QueryBuilder Returns self for method chaining
+     */
+    public function with_softdeleted() {
+        $this->model->with_softdeleted();
+        return $this;
+    }
+
+    /**
+     * Get only soft-deleted records.
+     *
+     * @return DMZ_QueryBuilder Returns self for method chaining
+     */
+    public function only_softdeleted() {
+        $this->model->only_softdeleted();
+        return $this;
+    }
+
+    /**
+     * Exclude soft-deleted records (default behavior).
+     *
+     * @return DMZ_QueryBuilder Returns self for method chaining
+     */
+    public function without_softdeleted() {
+        $this->model->without_softdeleted();
+        return $this;
+    }
+
+    
+}
+
+/**
+ * Database Query Constraint Wrapper
+ * 
+ * Provides a DataMapper-style interface for applying constraints to CI's DB query builder.
+ * Used primarily for many-to-many eager loading where the code works directly with DB queries.
+ * 
+ * @package DataMapper
+ * @category Extensions
+ * @author DataMapper Team
+ */
+class DMZ_DB_Constraint_Wrapper {
+	
+	/**
+	 * CI Database query builder instance
+	 * @var CI_DB_query_builder
+	 */
+	protected $db;
+	
+	/**
+	 * Table prefix for qualified column names
+	 * @var string
+	 */
+	protected $table_prefix;
+	
+    /**
+     * Soft delete scope state
+     * @var string 'active'|'with_softdeleted'|'only_softdeleted'
+     */
+    protected $soft_delete_scope = 'active';
+	
+	/**
+	 * Constructor
+	 * 
+	 * @param CI_DB_query_builder $db Database query builder
+	 * @param string $table_prefix Table name to prefix columns (e.g., 'users' for 'users.active')
+	 */
+	public function __construct($db, $table_prefix = '') {
+		$this->db = $db;
+		$this->table_prefix = $table_prefix;
+	}
+	
+	/**
+	 * Add WHERE clause
+	 * 
+	 * Automatically prefixes column names with table name for many-to-many joins.
+	 * 
+	 * @param string|array $key Column name or associative array of key => value
+	 * @param mixed $value Value to compare (optional if $key is array)
+	 * @param bool $escape Whether to escape values (default TRUE)
+	 * @return DMZ_DB_Constraint_Wrapper
+	 */
+	public function where($key, $value = NULL, $escape = TRUE) {
+		// Prefix column name with table if not already qualified
+		if (is_string($key) && !empty($this->table_prefix) && strpos($key, '.') === FALSE) {
+			$key = $this->table_prefix . '.' . $key;
+		}
+		
+		$this->db->where($key, $value, $escape);
+		return $this;
+	}
+	
+	/**
+	 * Add WHERE IN clause
+	 * 
+	 * @param string $key Column name
+	 * @param array $values Array of values
+	 * @param bool $escape Whether to escape values
+	 * @return DMZ_DB_Constraint_Wrapper
+	 */
+	public function where_in($key, $values, $escape = TRUE) {
+		if (!empty($this->table_prefix) && strpos($key, '.') === FALSE) {
+			$key = $this->table_prefix . '.' . $key;
+		}
+		
+		$this->db->where_in($key, $values, $escape);
+		return $this;
+	}
+	
+	/**
+	 * Add WHERE NOT IN clause
+	 * 
+	 * @param string $key Column name
+	 * @param array $values Array of values
+	 * @param bool $escape Whether to escape values
+	 * @return DMZ_DB_Constraint_Wrapper
+	 */
+	public function where_not_in($key, $values, $escape = TRUE) {
+		if (!empty($this->table_prefix) && strpos($key, '.') === FALSE) {
+			$key = $this->table_prefix . '.' . $key;
+		}
+		
+		$this->db->where_not_in($key, $values, $escape);
+		return $this;
+	}
+	
+	/**
+	 * Add OR WHERE clause
+	 * 
+	 * @param string|array $key Column name or associative array
+	 * @param mixed $value Value to compare
+	 * @param bool $escape Whether to escape values
+	 * @return DMZ_DB_Constraint_Wrapper
+	 */
+	public function or_where($key, $value = NULL, $escape = TRUE) {
+		if (is_string($key) && !empty($this->table_prefix) && strpos($key, '.') === FALSE) {
+			$key = $this->table_prefix . '.' . $key;
+		}
+		
+		$this->db->or_where($key, $value, $escape);
+		return $this;
+	}
+	
+	/**
+	 * Add ORDER BY clause
+	 * 
+	 * @param string $orderby Column name
+	 * @param string $direction Direction (ASC or DESC)
+	 * @param bool $escape Whether to escape column name
+	 * @return DMZ_DB_Constraint_Wrapper
+	 */
+	public function order_by($orderby, $direction = '', $escape = TRUE) {
+		if (!empty($this->table_prefix) && strpos($orderby, '.') === FALSE && strpos($orderby, ',') === FALSE) {
+			$orderby = $this->table_prefix . '.' . $orderby;
+		}
+		
+		$this->db->order_by($orderby, $direction, $escape);
+		return $this;
+	}
+	
+	/**
+	 * Add LIMIT clause
+	 * 
+	 * @param int $value Number of rows
+	 * @param int $offset Offset (optional)
+	 * @return DMZ_DB_Constraint_Wrapper
+	 */
+	public function limit($value, $offset = NULL) {
+		$this->db->limit($value, $offset);
+		return $this;
+	}
+	
+	/**
+	 * Add GROUP BY clause
+	 * 
+	 * @param string $by Column name
+	 * @return DMZ_DB_Constraint_Wrapper
+	 */
+	public function group_by($by) {
+		if (!empty($this->table_prefix) && strpos($by, '.') === FALSE) {
+			$by = $this->table_prefix . '.' . $by;
+		}
+		
+		$this->db->group_by($by);
+		return $this;
+	}
+	
+	/**
+	 * Add HAVING clause
+	 * 
+	 * @param string $key Column name
+	 * @param mixed $value Value to compare
+	 * @param bool $escape Whether to escape values
+	 * @return DMZ_DB_Constraint_Wrapper
+	 */
+	public function having($key, $value = NULL, $escape = TRUE) {
+		if (!empty($this->table_prefix) && strpos($key, '.') === FALSE) {
+			$key = $this->table_prefix . '.' . $key;
+		}
+		
+		$this->db->having($key, $value, $escape);
+		return $this;
+	}
+	
+	// ============================================================
+	// Soft Delete Methods
+	// ============================================================
+	
+    /**
+     * Include soft-deleted records (disable deleted_at filter)
+     * 
+     * @return DMZ_DB_Constraint_Wrapper
+     */
+    public function with_softdeleted() {
+        $this->soft_delete_scope = 'with_softdeleted';
+		return $this;
+	}
+
+    
+    /**
+     * Exclude soft-deleted records (default behavior)
+	 * Apply deleted_at IS NULL filter
+	 * 
+	 * @return DMZ_DB_Constraint_Wrapper
+	 */
+    public function without_softdeleted() {
+        $this->soft_delete_scope = 'active';
+        return $this;
+    }
+
+    
+    /**
+     * Get ONLY soft-deleted records
+	 * Apply deleted_at IS NOT NULL filter
+	 * 
+	 * @return DMZ_DB_Constraint_Wrapper
+	 */
+    public function only_softdeleted() {
+        $this->soft_delete_scope = 'only_softdeleted';
+		return $this;
+	}
+
+	
+	/**
+	 * Get the current soft delete scope state
+	 * Used internally by eager loading to apply the correct WHERE clause
+	 * 
+     * @return string 'active'|'with_softdeleted'|'only_softdeleted'
+	 */
+    public function get_soft_delete_scope() {
+        return $this->soft_delete_scope;
+    }
+	
+	/**
+	 * Magic method to proxy other methods to the DB instance
+    * 
+    * Provides access to other CI DB query builder methods for chaining.
+    * 
+	 * @param string $method Method name
+	 * @param array $args Method arguments
+	 * @return mixed
+	 */
+    public function __call($method, $args) {
+        $snake_case_method = strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $method));
+
+        if ($snake_case_method !== $method && method_exists($this, $snake_case_method)) {
+            return call_user_func_array(array($this, $snake_case_method), $args);
+        }
+
+        // Provide helpful error for common mistakes
+        if ($method === 'with' || $snake_case_method === 'with') {
+            throw new BadMethodCallException(
+                "Cannot call with() inside an eager loading constraint callback. " .
+                "Nested eager loading should use dot notation on the parent query: " .
+                "->with('parent.child') instead of ->with('parent', fn(\$q) => \$q->with('child'))"
+            );
+        }
+
+        $result = call_user_func_array(array($this->db, $method), $args);
+		
+		// Return self for chaining if DB returned itself
+		if ($result === $this->db) {
+			return $this;
+		}
+		
+		return $result;
+	}
+}
+
+/* End of file querybuilder.php */
+/* Location: ./application/datamapper/querybuilder.php */

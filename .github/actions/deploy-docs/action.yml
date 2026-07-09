@@ -1,0 +1,41 @@
+name: Deploy Docs Bundle
+description: Upload built documentation via rsync over SSH
+inputs:
+  host:
+    description: Target host for deployment
+    required: true
+  user:
+    description: SSH username
+    required: true
+  port:
+    description: SSH port
+    required: true
+  path:
+    description: Remote path for documentation files
+    required: true
+  ssh_key:
+    description: SSH private key used for deployment
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+
+        host="${{ inputs.host }}"
+        user="${{ inputs.user }}"
+        port="${{ inputs.port }}"
+        path="${{ inputs.path }}"
+        ssh_key="${{ inputs.ssh_key }}"
+
+        mkdir -p "$HOME/.ssh"
+        printf '%s\n' "$ssh_key" > "$HOME/.ssh/id_rsa"
+        chmod 600 "$HOME/.ssh/id_rsa"
+
+        if ! ssh-keygen -F "$host" >/dev/null 2>&1; then
+          ssh-keyscan -p "$port" -H "$host" >> "$HOME/.ssh/known_hosts"
+        fi
+
+        rsync -az --delete -e "ssh -p $port -i $HOME/.ssh/id_rsa -o StrictHostKeyChecking=yes" \
+          docs/.vitepress/dist/ "$user@$host:$path/"

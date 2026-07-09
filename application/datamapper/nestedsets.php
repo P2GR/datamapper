@@ -11,7 +11,8 @@
  * @author  	WanWizard
  * @info		Based on nstrees by Rolf Brugger, edutech
  * 				http://www.edutech.ch/contribution/nstrees
- * @version 	1.0
+ * @link    	https://github.com/P2GR/datamapper2
+ * @version 	2.0.0
  */
 
 // --------------------------------------------------------------------------
@@ -1176,12 +1177,12 @@ class DMZ_Nestedsets {
 					// prefix based on requested type
 					switch ($type)
 					{
-						case 'tab';
+						case 'tab':
 							$convert .= str_repeat("\t", $value['__level'] * 4 );
 							break;
-						case 'csv';
+						case 'csv':
 							break;
-						case 'html';
+						case 'html':
 							$convert .= str_repeat("&nbsp;", $value['__level'] * 4 );
 							break;
 					}
@@ -1210,13 +1211,13 @@ class DMZ_Nestedsets {
 					// postfix based on requested type
 					switch ($type)
 					{
-						case 'tab';
+						case 'tab':
 							$convert .= "\n";
 							break;
-						case 'csv';
+						case 'csv':
 							$convert .= "\n";
 							break;
-						case 'html';
+						case 'html':
 							$convert .= "<br />";
 							break;
 					}
