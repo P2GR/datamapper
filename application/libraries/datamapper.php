@@ -12,7 +12,7 @@
  * @author  	Phil DeJarnett (up to v1.7.1)
  * @author  	Simon Stenhouse (up to v1.6.0)
  * @link		http://datamapper.wanwizard.eu/
- * @version 	2.0.0-beta1
+ * @version 	2.0.0
  */
 
 /**
@@ -6662,12 +6662,15 @@ class DataMapper implements IteratorAggregate {
 	}
 
 	/**
-	 * Legacy version of include_related
-	 * @deprecated 2.0.0 Use include_related() instead. Will be removed in a future release.
+	 * Join a related model into the current query as extra columns.
+	 *
+	 * @param	mixed  $related_field Related field or object
+	 * @param	mixed  $fields        Fields to include (NULL = all)
+	 * @param	bool   $append_name   Whether to prefix column names with the relationship name
+	 * @return	DataMapper Returns self for method chaining.
 	 */
 	public function join_related($related_field, $fields = NULL, $append_name = TRUE)
 	{
-		trigger_error('join_related() is deprecated. Use include_related() instead.', E_USER_DEPRECATED);
 		return $this->include_related($related_field, $fields, $append_name);
 	}
 
