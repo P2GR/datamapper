@@ -155,11 +155,6 @@ class DMZ_QueryBuilder {
      * @param string $field Field name
      * @return DMZ_QueryBuilder
      */
-    public function where_not_null($field) {
-        $this->model->where($field . ' IS NOT NULL', NULL, FALSE);
-        return $this;
-    }
-
     /**
      * Conditionally apply query constraints.
      *
@@ -221,6 +216,11 @@ class DMZ_QueryBuilder {
             }
             $this->model->or_where($field, $value);
         }
+        return $this;
+    }
+
+    public function where_not_null($field) {
+        $this->model->where($field . ' IS NOT NULL', NULL, FALSE);
         return $this;
     }
     
@@ -2259,6 +2259,10 @@ class DMZ_QueryBuilder {
         // Check if user explicitly set soft delete scope in constraint callback
         if ($wrapper !== NULL) {
             $scope = $wrapper->get_soft_delete_scope();
+
+            if ($wrapper->has_soft_delete_where()) {
+                return;
+            }
 			
             // If user called with_softdeleted(), don't apply any deleted_at filter
             if ($scope === 'with_softdeleted' || $scope === 'with_deleted') {
@@ -3788,6 +3792,7 @@ class DMZ_DB_Constraint_Wrapper {
      * @var string 'active'|'with_softdeleted'|'only_softdeleted'
      */
     protected $soft_delete_scope = 'active';
+    protected $soft_delete_where = FALSE;
 	
 	/**
 	 * Constructor
@@ -3811,6 +3816,7 @@ class DMZ_DB_Constraint_Wrapper {
 	 * @return DMZ_DB_Constraint_Wrapper
 	 */
 	public function where($key, $value = NULL, $escape = TRUE) {
+        $this->mark_soft_delete_where($key);
 		// Prefix column name with table if not already qualified
 		if (is_string($key) && !empty($this->table_prefix) && strpos($key, '.') === FALSE) {
 			$key = $this->table_prefix . '.' . $key;
@@ -3829,6 +3835,7 @@ class DMZ_DB_Constraint_Wrapper {
 	 * @return DMZ_DB_Constraint_Wrapper
 	 */
 	public function where_in($key, $values, $escape = TRUE) {
+        $this->mark_soft_delete_where($key);
 		if (!empty($this->table_prefix) && strpos($key, '.') === FALSE) {
 			$key = $this->table_prefix . '.' . $key;
 		}
@@ -3846,6 +3853,7 @@ class DMZ_DB_Constraint_Wrapper {
 	 * @return DMZ_DB_Constraint_Wrapper
 	 */
 	public function where_not_in($key, $values, $escape = TRUE) {
+        $this->mark_soft_delete_where($key);
 		if (!empty($this->table_prefix) && strpos($key, '.') === FALSE) {
 			$key = $this->table_prefix . '.' . $key;
 		}
@@ -3863,6 +3871,7 @@ class DMZ_DB_Constraint_Wrapper {
 	 * @return DMZ_DB_Constraint_Wrapper
 	 */
 	public function or_where($key, $value = NULL, $escape = TRUE) {
+        $this->mark_soft_delete_where($key);
 		if (is_string($key) && !empty($this->table_prefix) && strpos($key, '.') === FALSE) {
 			$key = $this->table_prefix . '.' . $key;
 		}
@@ -3870,6 +3879,11 @@ class DMZ_DB_Constraint_Wrapper {
 		$this->db->or_where($key, $value, $escape);
 		return $this;
 	}
+
+    public function where_not_null($key) {
+        $this->mark_soft_delete_where($key);
+        return $this->where($key . ' IS NOT NULL', NULL, FALSE);
+    }
 	
 	/**
 	 * Add ORDER BY clause
@@ -3979,6 +3993,21 @@ class DMZ_DB_Constraint_Wrapper {
 	 */
     public function get_soft_delete_scope() {
         return $this->soft_delete_scope;
+    }
+
+    /**
+     * Whether callback added an explicit deleted-column predicate.
+     *
+     * @return bool
+     */
+    public function has_soft_delete_where() {
+        return $this->soft_delete_where;
+    }
+
+    protected function mark_soft_delete_where($key) {
+        if (is_string($key) && preg_match('/(^|[^a-zA-Z0-9_])(?:[a-zA-Z0-9_]+\\.)?deleted_at([^a-zA-Z0-9_]|$)/i', $key)) {
+            $this->soft_delete_where = TRUE;
+        }
     }
 	
 	/**

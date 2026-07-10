@@ -99,11 +99,24 @@ class SoftDeleteBehaviorTest extends TestCase
 
         $this->assertSame(array(), $model->where_log);
     }
+
+    public function testTraitDoesNotEnableSoftDeleteWritesByDefault(): void
+    {
+        $model = new SoftDeleteDefaultWriteModelStub();
+        $model->id = 42;
+
+        $this->assertFalse($model->soft_delete_writes_enabled());
+        $this->assertFalse($model->restore());
+        $this->assertTrue($model->delete());
+        $this->assertTrue($model->db->delete_called);
+    }
 }
 
 class SoftDeleteModelStub extends DataMapper
 {
     use SoftDeletes;
+
+    protected $soft_delete_writes = TRUE;
 
     public $model = 'soft_delete_stub';
     public $table = 'soft_delete_stubs';
@@ -165,6 +178,21 @@ class SoftDeleteModelStub extends DataMapper
     }
 }
 
+class SoftDeleteDefaultWriteModelStub extends SoftDeleteModelStub
+{
+    protected $soft_delete_writes = FALSE;
+
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    public function clear()
+    {
+        return $this;
+    }
+}
+
 class SoftDeleteDisabledModelStub extends SoftDeleteModelStub
 {
     /**
@@ -183,6 +211,7 @@ class SoftDeleteDbStub
 {
     /** @var array<int, array<int, mixed>> */
     public $qb_where = array();
+    public $delete_called = FALSE;
 
     public function dm_get($key)
     {
@@ -191,6 +220,12 @@ class SoftDeleteDbStub
         }
 
         return array();
+    }
+
+    public function delete($table)
+    {
+        $this->delete_called = TRUE;
+        return TRUE;
     }
 
     public function __call($name, $arguments)

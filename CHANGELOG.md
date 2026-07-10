@@ -5,6 +5,20 @@ All notable changes to DataMapper ORM will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-07-10
+
+### Changed
+- Soft-delete reads now apply consistently across direct, validated, related, aggregate, QueryBuilder, and eager-loaded queries.
+- Trait-based soft deletes no longer change delete behavior implicitly; models must declare `protected $soft_delete_writes = true` to enable soft-delete writes.
+
+### Fixed
+- Prevented deleted rows from leaking into `get_by_*`, `count()`, `count_distinct()`, `pluck()`, `value()`, `exists()`, `sum()`, `avg()`, `min()`, `max()`, and eager-loaded relations.
+- Preserved explicit `with_softdeleted()`, `only_softdeleted()`, and `where('deleted_at', ...)` overrides without duplicate scope predicates.
+- Ensured `force_delete()` remains a hard delete and `restore()` requires explicit soft-delete write opt-in.
+
+### Tests
+- Full PHPUnit suite passes: 116 tests, 288 assertions.
+
 ## [2.0.0] - 2026-07-09
 
 ### Added

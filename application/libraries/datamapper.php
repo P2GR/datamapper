@@ -12,7 +12,7 @@
  * @author  	Phil DeJarnett (up to v1.7.1)
  * @author  	Simon Stenhouse (up to v1.6.0)
  * @link		http://datamapper.wanwizard.eu/
- * @version 	2.0.0
+ * @version 	2.0.1
  */
 
 /**
@@ -23,7 +23,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '2.0.0');
+define('DMZ_VERSION', '2.0.1');
 
 // Define APPPATH when running outside of CodeIgniter bootstrap (e.g., CLI tooling)
 if (!defined('APPPATH')) {
@@ -448,6 +448,7 @@ class DataMapper implements IteratorAggregate {
 	 * @var bool
 	 */
 	protected $_force_delete_in_progress = FALSE;
+	protected $_dm_soft_delete_scope_applied = FALSE;
 
 	/**
 	 * Internal soft delete scope flags for query builder coordination.
@@ -815,6 +816,9 @@ class DataMapper implements IteratorAggregate {
 
 				$this->_field_tracking['intval'] = array_values(array_unique($this->_field_tracking['intval']));
 				$this->_field_tracking['floatval'] = array_values(array_unique($this->_field_tracking['floatval']));
+
+				// Validate trait-required columns exist in the database table
+				$this->_validate_trait_columns();
 
 				// allow subclasses to add initializations
 				if(method_exists($this, 'post_model_init'))
@@ -1793,7 +1797,13 @@ class DataMapper implements IteratorAggregate {
 				$this->_handle_default_order_by();
 
 				// Get by objects properties
-				$query = $this->db->get_where($this->table, $data, $limit, $offset);
+				$this->db->from($this->table);
+				foreach ($data as $field => $value)
+				{
+					$this->db->where($field, $value);
+				}
+				$this->_apply_soft_delete_scope();
+				$query = $this->db->get(NULL, $limit, $offset);
 			}
 		}
 		else
@@ -1874,6 +1884,7 @@ class DataMapper implements IteratorAggregate {
 
 		$this->db->dm_call_method('_track_aliases', $this->table);
 		$this->db->from($this->table);
+		$this->_apply_soft_delete_scope();
 
 		$this->_handle_default_order_by();
 
@@ -1904,6 +1915,7 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		$this->_handle_default_order_by();
+		$this->_apply_soft_delete_scope();
 
 		$query = $this->db->get($this->table, $limit, $offset);
 		$this->_clear_after_query();
@@ -2520,7 +2532,7 @@ class DataMapper implements IteratorAggregate {
 
 				// DataMapper 2.0 - Soft Delete
 				// Skip soft deletes when force delete has been requested
-				if ( ! $this->_force_delete_in_progress && $this->_soft_delete_is_enabled())
+				if ( ! $this->_force_delete_in_progress && $this->_soft_delete_writes_enabled())
 				{
 					// Get column name
 					$deleted_col = $this->_get_deleted_at_column();
@@ -3297,7 +3309,7 @@ class DataMapper implements IteratorAggregate {
 		$instance = new $class();
 
 		// If soft deletes are enabled, perform soft delete
-		if ($instance->_soft_delete_is_enabled())
+		if ($instance->_soft_delete_writes_enabled())
 		{
 			$deleted_col = $instance->_get_deleted_at_column();
 
@@ -3408,6 +3420,8 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function clear()
 	{
+		$this->_dm_soft_delete_scope_applied = FALSE;
+
 		// Clear the all list
 		$this->all = array();
 
@@ -3462,6 +3476,7 @@ class DataMapper implements IteratorAggregate {
 
 		// Clear the query related list (Thanks to TheJim)
 		$this->_query_related = array();
+		$this->_dm_soft_delete_scope_applied = FALSE;
 
 		// Clear the saved iterator
 		unset($this->_dm_dataset_iterator);
@@ -3553,6 +3568,8 @@ class DataMapper implements IteratorAggregate {
 			}
 			$column = $this->add_table_name($column);
 		}
+
+		$this->_apply_soft_delete_scope();
 
 		// Manually overridden to allow for COUNT(DISTINCT COLUMN)
 		$select = $this->db->dm_get('_count_string');
@@ -10244,17 +10261,47 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _soft_delete_is_enabled()
 	{
-		if (property_exists($this, 'soft_delete') && $this->soft_delete !== NULL)
+		if (!self::uses_trait($this, array('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes')))
 		{
-			return (bool) $this->soft_delete;
+			return FALSE;
 		}
 
-		if (property_exists($this, 'softDelete') && $this->softDelete !== NULL)
+		foreach (array('soft_delete', 'softDelete') as $property)
 		{
-			return (bool) $this->softDelete;
+			if ($this->_has_declared_model_property($property))
+			{
+				$reflection = new ReflectionProperty($this, $property);
+				$reflection->setAccessible(TRUE);
+				return (bool) $reflection->getValue($this);
+			}
 		}
 
-		return self::uses_trait($this, array('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes'));
+		return TRUE;
+	}
+
+	/**
+	 * Determine whether this model explicitly opts into soft-delete writes.
+	 *
+	 * @return bool
+	 */
+	protected function _soft_delete_writes_enabled()
+	{
+		if (method_exists($this, 'soft_delete_writes_enabled'))
+		{
+			return (bool) $this->soft_delete_writes_enabled();
+		}
+
+		foreach (array('soft_delete_writes', 'softDeleteWrites') as $property)
+		{
+			if (property_exists($this, $property))
+			{
+				$reflection = new ReflectionProperty($this, $property);
+				$reflection->setAccessible(TRUE);
+				return (bool) $reflection->getValue($this);
+			}
+		}
+
+		return FALSE;
 	}
 
 	/**
@@ -10307,9 +10354,28 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _soft_delete_settings()
 	{
-		$explicit = $this->_resolve_model_property(array('soft_delete', 'softDelete')) !== NULL;
+		$explicit = $this->_has_declared_model_property('soft_delete') || $this->_has_declared_model_property('softDelete');
 		$enabled = $this->_soft_delete_is_enabled();
 		return array($enabled, $explicit);
+	}
+
+	/**
+	 * Check for a property declared by the model, not a dynamic config value.
+	 *
+	 * @param string $property
+	 * @return bool
+	 */
+	protected function _has_declared_model_property($property)
+	{
+		try
+		{
+			$reflection = new ReflectionProperty($this, $property);
+			return $reflection->getDeclaringClass()->getName() !== __CLASS__;
+		}
+		catch (ReflectionException $exception)
+		{
+			return FALSE;
+		}
 	}
 
 	/**
@@ -10330,6 +10396,71 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		return $default;
+	}
+
+	/**
+	 * Validate that trait-required columns exist in the database table.
+	 *
+	 * Throws a clear exception at model initialization time when a model uses
+	 * the SoftDeletes or HasTimestamps trait but the corresponding database
+	 * column is missing. This prevents silent fallback to hard-delete (SoftDeletes)
+	 * or obscure SQL errors at save time (HasTimestamps).
+	 *
+	 * Called once during the non-cached model initialization path, after
+	 * $this->fields has been populated from the database schema.
+	 *
+	 * @return void
+	 * @throws DataMapper_Exception When a trait-required column is missing from the table.
+	 */
+	protected function _validate_trait_columns()
+	{
+		// --- SoftDeletes trait column check ---
+		if ($this->_soft_delete_is_enabled())
+		{
+			$col = $this->_get_deleted_at_column();
+
+			if ($col !== NULL && ! $this->_field_in_fields($col, $this->fields))
+			{
+				throw new DataMapper_Exception(
+					"DataMapper: Model '" . get_class($this) . "' uses the SoftDeletes trait but column '{$col}' " .
+					"does not exist in table '{$this->table}'. " .
+					"Add the column via a database migration, or set the correct column name " .
+					"with \$deleted_at_column in your model."
+				);
+			}
+		}
+
+		// --- HasTimestamps trait column check ---
+		if ($this->_timestamps_is_enabled())
+		{
+			$created_col = method_exists($this, 'get_created_at_column')
+				? $this->get_created_at_column()
+				: 'created_at';
+
+			$updated_col = method_exists($this, 'get_updated_at_column')
+				? $this->get_updated_at_column()
+				: 'updated_at';
+
+			if (! $this->_field_in_fields($created_col, $this->fields))
+			{
+				throw new DataMapper_Exception(
+					"DataMapper: Model '" . get_class($this) . "' uses the HasTimestamps trait but column '{$created_col}' " .
+					"does not exist in table '{$this->table}'. " .
+					"Add the column via a database migration, or set the correct column name " .
+					"with \$created_at_column in your model."
+				);
+			}
+
+			if (! $this->_field_in_fields($updated_col, $this->fields))
+			{
+				throw new DataMapper_Exception(
+					"DataMapper: Model '" . get_class($this) . "' uses the HasTimestamps trait but column '{$updated_col}' " .
+					"does not exist in table '{$this->table}'. " .
+					"Add the column via a database migration, or set the correct column name " .
+					"with \$updated_at_column in your model."
+				);
+			}
+		}
 	}
 
 	/**
@@ -10567,6 +10698,12 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _apply_soft_delete_scope()
 	{
+		if ($this->_dm_soft_delete_scope_applied)
+		{
+			return;
+		}
+		$this->_dm_soft_delete_scope_applied = TRUE;
+
 		// Only apply scopes when the SoftDeletes trait is actually in use
 		if ( ! $this->_soft_delete_is_enabled())
 		{
@@ -10590,36 +10727,69 @@ class DataMapper implements IteratorAggregate {
 			return;
 		}
 		
-		// Check if user already manually added a deleted_at condition
-		$existing_where = $this->db->dm_get('qb_where');
-		if (!empty($existing_where))
+		if ($this->_soft_delete_where_exists($deleted_col))
 		{
-			foreach ($existing_where as $where_clause)
-			{
-				// WHERE clause can be array or string - handle both
-				$where_string = is_array($where_clause) ? implode(' ', $where_clause) : (string)$where_clause;
-				
-				// Check if deleted_at is already in any WHERE condition
-				if (stripos($where_string, $deleted_col) !== FALSE)
-				{
-					return;  // User manually set deleted_at condition, don't override
-				}
-			}
+			return;
+		}
+
+		$column = $deleted_col;
+		$joins = $this->db->dm_get('qb_join');
+		if (!empty($joins) || !empty($this->parent))
+		{
+			$column = $this->table . '.' . $deleted_col;
 		}
 		
 		// Apply scope based on flags
 		if ($this->_only_trashed)
 		{
 			// Get only deleted records
-			$this->where($deleted_col . ' IS NOT NULL', NULL, FALSE);
+			$this->where($column . ' IS NOT NULL', NULL, FALSE);
 		}
 		else if (!$this->_include_trashed)
 		{
 			// Exclude deleted records (default behavior)
 			// This matches the query builder default: without_softdeleted()
-			$this->where($deleted_col, NULL);
+			$this->where($column, NULL);
 		}
 		// else: _include_trashed = TRUE, no filter applied (with_softdeleted() was called)
+	}
+
+	/**
+	 * Check query-builder WHERE metadata for an explicit deleted-column clause.
+	 *
+	 * @param string $column
+	 * @return bool
+	 */
+	protected function _soft_delete_where_exists($column)
+	{
+		$where = $this->db->dm_get('qb_where');
+		if (empty($where))
+		{
+			return FALSE;
+		}
+
+		$columns = array($column, $this->table . '.' . $column);
+		foreach ($where as $clause)
+		{
+			$condition = is_array($clause) && isset($clause['condition'])
+				? $clause['condition']
+				: (is_array($clause) && isset($clause[0]) ? $clause[0] : $clause);
+			if (!is_string($condition))
+			{
+				continue;
+			}
+
+			$condition = str_replace('`', '', trim($condition));
+			foreach ($columns as $candidate)
+			{
+				if (preg_match('/(^|[^a-zA-Z0-9_])' . preg_quote($candidate, '/') . '([^a-zA-Z0-9_]|$)/i', $condition))
+				{
+					return TRUE;
+				}
+			}
+		}
+
+		return FALSE;
 	}
 	
 	/**
@@ -10655,7 +10825,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function restore()
 	{
-		$soft_delete_enabled = $this->_soft_delete_is_enabled();
+		$soft_delete_enabled = $this->_soft_delete_writes_enabled();
 	
 		if (!$soft_delete_enabled || empty($this->id))
 		{

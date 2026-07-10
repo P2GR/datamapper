@@ -35,6 +35,26 @@ namespace DataMapper\Traits {
 trait SoftDeletes
 {
 	/**
+	 * Determine whether delete() may write deleted_at.
+	 *
+	 * @return bool
+	 */
+	public function soft_delete_writes_enabled()
+	{
+		foreach (array('soft_delete_writes', 'softDeleteWrites') as $property)
+		{
+			if (property_exists($this, $property))
+			{
+				$reflection = new \ReflectionProperty($this, $property);
+				$reflection->setAccessible(TRUE);
+				return (bool) $reflection->getValue($this);
+			}
+		}
+
+		return FALSE;
+	}
+
+	/**
 	 * The name of the "deleted at" column.
 	 * Override in your model to customize.
 	 *
