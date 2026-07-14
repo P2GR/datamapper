@@ -45,7 +45,8 @@ Thumbs.db
 .env.*
 *.tmp
 *.temp
+datamapper.code-workspace
 
 # Local documentation notes
 copilot/
-TODO_PRODUCTION_READINESS.md
+
