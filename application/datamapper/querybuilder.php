@@ -2014,12 +2014,12 @@ class DMZ_QueryBuilder {
         
         // Apply eager loading constraints FIRST (to capture soft delete scope from user)
         // For many-to-many, we pass the DB instance directly since we're using manual queries
-        $wrapper = $this->_apply_eager_constraints_to_db($db, $relation, $related_table);
+        $related_instance = new $related_class();
+        $wrapper = $this->_apply_eager_constraints_to_db($db, $relation, $related_table, $this->_get_deleted_at_column($related_instance));
         
         // Apply DataMapper 2.0 soft delete scope automatically
         // Check if the related model has soft deletes enabled (either trait or built-in)
         // Pass wrapper so we can respect with_softdeleted()/only_softdeleted() flags from constraint callbacks
-        $related_instance = new $related_class();
         $this->_apply_soft_delete_scope_to_db($db, $related_instance, $related_table, $wrapper);
         
         // Execute query
@@ -2225,7 +2225,7 @@ class DMZ_QueryBuilder {
      * @param string $table_prefix Optional table prefix for WHERE clauses
      * @return DMZ_DB_Constraint_Wrapper|null The wrapper instance (to check soft delete scope)
      */
-    protected function _apply_eager_constraints_to_db($db, $relation, $table_prefix = '') {
+    protected function _apply_eager_constraints_to_db($db, $relation, $table_prefix = '', $soft_delete_column = 'deleted_at') {
         if (!isset($this->eager_constraints[$relation])) {
             return NULL; // No constraints for this relation
         }
@@ -2234,7 +2234,7 @@ class DMZ_QueryBuilder {
         
         if (is_callable($constraint)) {
             // Create a temporary wrapper to provide DataMapper-like interface to DB
-            $wrapper = new DMZ_DB_Constraint_Wrapper($db, $table_prefix);
+            $wrapper = new DMZ_DB_Constraint_Wrapper($db, $table_prefix, $soft_delete_column);
             call_user_func($constraint, $wrapper);
             return $wrapper; // Return wrapper so caller can check soft delete scope
         }
@@ -2256,6 +2256,11 @@ class DMZ_QueryBuilder {
      * @return void
      */
     protected function _apply_soft_delete_scope_to_db($db, $model, $table_prefix = '', $wrapper = NULL) {
+        // Match direct DataMapper queries, including an explicit model opt-out.
+        if (!$this->_soft_delete_model_is_enabled($model)) {
+            return;
+        }
+
         // Check if user explicitly set soft delete scope in constraint callback
         if ($wrapper !== NULL) {
             $scope = $wrapper->get_soft_delete_scope();
@@ -2299,11 +2304,6 @@ class DMZ_QueryBuilder {
             return;
         }
         
-        // Soft deletes now require the SoftDeletes trait explicitly
-        if (! DataMapper::uses_trait($model, array('DataMapper\\Traits\\SoftDeletes', 'SoftDeletes'))) {
-            return;
-        }
-
         $deleted_col = $this->_get_deleted_at_column($model);
 
         if (! $deleted_col || ! property_exists($model, 'fields') || ! is_array($model->fields) || ! in_array($deleted_col, $model->fields, TRUE)) {
@@ -2316,6 +2316,23 @@ class DMZ_QueryBuilder {
         }
 
         $db->where($deleted_col, NULL);
+    }
+
+    /**
+     * Resolve soft-delete enablement using the model's own protected helper.
+     * This keeps eager-loading behavior identical to direct model queries.
+     *
+     * @param DataMapper $model
+     * @return bool
+     */
+    protected function _soft_delete_model_is_enabled($model) {
+        if (!method_exists($model, '_soft_delete_is_enabled')) {
+            return FALSE;
+        }
+
+        $method = new ReflectionMethod($model, '_soft_delete_is_enabled');
+        $method->setAccessible(TRUE);
+        return (bool) $method->invoke($model);
     }
 
     /**
@@ -3793,6 +3810,7 @@ class DMZ_DB_Constraint_Wrapper {
      */
     protected $soft_delete_scope = 'active';
     protected $soft_delete_where = FALSE;
+    protected $soft_delete_column = 'deleted_at';
 	
 	/**
 	 * Constructor
@@ -3800,9 +3818,12 @@ class DMZ_DB_Constraint_Wrapper {
 	 * @param CI_DB_query_builder $db Database query builder
 	 * @param string $table_prefix Table name to prefix columns (e.g., 'users' for 'users.active')
 	 */
-	public function __construct($db, $table_prefix = '') {
+    public function __construct($db, $table_prefix = '', $soft_delete_column = 'deleted_at') {
 		$this->db = $db;
 		$this->table_prefix = $table_prefix;
+        if (!empty($soft_delete_column)) {
+            $this->soft_delete_column = $soft_delete_column;
+        }
 	}
 	
 	/**
@@ -4005,7 +4026,7 @@ class DMZ_DB_Constraint_Wrapper {
     }
 
     protected function mark_soft_delete_where($key) {
-        if (is_string($key) && preg_match('/(^|[^a-zA-Z0-9_])(?:[a-zA-Z0-9_]+\\.)?deleted_at([^a-zA-Z0-9_]|$)/i', $key)) {
+        if (is_string($key) && preg_match('/(^|[^a-zA-Z0-9_])(?:[a-zA-Z0-9_]+\\.)?' . preg_quote($this->soft_delete_column, '/') . '([^a-zA-Z0-9_]|$)/i', $key)) {
             $this->soft_delete_where = TRUE;
         }
     }

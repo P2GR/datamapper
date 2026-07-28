@@ -1,6 +1,7 @@
 <?php
 
 require_once APPPATH . 'datamapper/SoftDeletes.php';
+require_once APPPATH . 'datamapper/querybuilder.php';
 
 use PHPUnit\Framework\TestCase;
 
@@ -73,6 +74,28 @@ class SoftDeleteBehaviorTest extends TestCase
         $this->assertSame(array(), $model->where_log);
     }
 
+    public function testScopeCanBeAppliedAfterWithDeletedOnReusedModel(): void
+    {
+        $model = new SoftDeleteModelStub();
+
+        $model->with_softdeleted();
+        $model->apply_soft_delete_scope();
+        $model->without_softdeleted();
+        $model->apply_soft_delete_scope();
+
+        $this->assertCount(1, $model->where_log);
+        $this->assertSame('archived_at', $model->where_log[0][0]);
+    }
+
+    public function testEagerConstraintTracksCustomDeletedColumn(): void
+    {
+        $wrapper = new DMZ_DB_Constraint_Wrapper(new SoftDeleteDbStub(), 'soft_delete_stubs', 'archived_at');
+
+        $wrapper->where('archived_at', NULL);
+
+        $this->assertTrue($wrapper->has_soft_delete_where());
+    }
+
     public function testCamelCaseHelperStillWorks(): void
     {
         $model = new SoftDeleteModelStub();
@@ -98,6 +121,42 @@ class SoftDeleteBehaviorTest extends TestCase
         $model->apply_soft_delete_scope();
 
         $this->assertSame(array(), $model->where_log);
+    }
+
+    public function testEagerScopeHonorsModelOptOut(): void
+    {
+        $builder = (new ReflectionClass('DMZ_QueryBuilder'))->newInstanceWithoutConstructor();
+        $apply_scope = new ReflectionMethod($builder, '_apply_soft_delete_scope_to_db');
+        $apply_scope->setAccessible(TRUE);
+        $db = new SoftDeleteDbStub();
+
+        $apply_scope->invoke($builder, $db, new SoftDeleteDisabledModelStub(), 'soft_delete_stubs');
+
+        $this->assertSame(array(), $db->where_log);
+    }
+
+    public function testSqliteRowsRespectActiveAndDeletedScopes(): void
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->exec('CREATE TABLE soft_delete_stubs (id INTEGER PRIMARY KEY, archived_at TEXT NULL)');
+        $pdo->exec("INSERT INTO soft_delete_stubs (id, archived_at) VALUES (1, NULL), (2, '2025-11-19 00:00:00')");
+
+        $active = new SoftDeleteModelStub();
+        $active->apply_soft_delete_scope();
+        $this->assertSame('archived_at', $active->where_log[0][0]);
+        $this->assertSame(1, (int) $pdo->query('SELECT COUNT(*) FROM soft_delete_stubs WHERE archived_at IS NULL')->fetchColumn());
+
+        $with_deleted = new SoftDeleteModelStub();
+        $with_deleted->with_softdeleted();
+        $with_deleted->apply_soft_delete_scope();
+        $this->assertSame(array(), $with_deleted->where_log);
+        $this->assertSame(2, (int) $pdo->query('SELECT COUNT(*) FROM soft_delete_stubs')->fetchColumn());
+
+        $only_deleted = new SoftDeleteModelStub();
+        $only_deleted->only_softdeleted();
+        $only_deleted->apply_soft_delete_scope();
+        $this->assertSame('archived_at IS NOT NULL', $only_deleted->where_log[0][0]);
+        $this->assertSame(1, (int) $pdo->query('SELECT COUNT(*) FROM soft_delete_stubs WHERE archived_at IS NOT NULL')->fetchColumn());
     }
 
     public function testTraitDoesNotEnableSoftDeleteWritesByDefault(): void
@@ -212,6 +271,7 @@ class SoftDeleteDbStub
     /** @var array<int, array<int, mixed>> */
     public $qb_where = array();
     public $delete_called = FALSE;
+    public $where_log = array();
 
     public function dm_get($key)
     {
@@ -226,6 +286,12 @@ class SoftDeleteDbStub
     {
         $this->delete_called = TRUE;
         return TRUE;
+    }
+
+    public function where($field, $value = NULL, $escape = TRUE)
+    {
+        $this->where_log[] = array($field, $value, $escape);
+        return $this;
     }
 
     public function __call($name, $arguments)
