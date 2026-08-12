@@ -12,7 +12,7 @@
  * @author  	Phil DeJarnett (up to v1.7.1)
  * @author  	Simon Stenhouse (up to v1.6.0)
  * @link		http://datamapper.wanwizard.eu/
- * @version 	2.0.1
+ * @version 	2.0.3
  */
 
 /**
@@ -23,7 +23,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '2.0.2');
+define('DMZ_VERSION', '2.0.3');
 
 // Define APPPATH when running outside of CodeIgniter bootstrap (e.g., CLI tooling)
 if (!defined('APPPATH')) {
@@ -2082,8 +2082,10 @@ class DataMapper implements IteratorAggregate {
 		// If validation passed
 		if ($this->valid)
 		{
+			$primary_key = $this->primary_key;
+
 			// Determine if this is a create or an update
-			$is_new = ($this->_force_save_as_new || empty($this->id));
+			$is_new = ($this->_force_save_as_new || empty($this->{$primary_key}));
 
 			// --- Model Events: before_save / before_create / before_update ---
 			if ($this->_fire_event('before_save') === FALSE)
@@ -2144,7 +2146,7 @@ class DataMapper implements IteratorAggregate {
 
 			if ( ! empty($data))
 			{
-				if ( ! $this->_force_save_as_new && ! empty($data['id']))
+				if ( ! $this->_force_save_as_new && ! empty($data[$primary_key]))
 				{
 					// Prepare data to send only changed fields
 					foreach ($data as $field => $value)
@@ -2174,7 +2176,7 @@ class DataMapper implements IteratorAggregate {
 					else
 					{
 						// Update existing record
-						$this->db->where('id', $this->id);
+						$this->db->where($primary_key, $this->{$primary_key});
 						$result[] = $this->db->update($this->table, $data);
 
 						$trans_complete_label[] = 'update';
@@ -2205,7 +2207,7 @@ class DataMapper implements IteratorAggregate {
 						if ( ! $this->_force_save_as_new)
 						{
 							// Assign new ID
-							$this->id = $this->db->insert_id();
+							$this->{$primary_key} = $this->db->insert_id();
 						}
 					}
 

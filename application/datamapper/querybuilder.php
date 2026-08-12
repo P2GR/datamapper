@@ -12,7 +12,7 @@
  * @author     DataMapper Development Team
  * @license    MIT License
  * @link       http://datamapper.wanwizard.eu/
- * @version    2.0.0
+ * @version    2.0.3
  */
 
 if (!function_exists('dmz_log_message')) {
@@ -2485,7 +2485,7 @@ class DMZ_QueryBuilder {
  * Collection class for DataMapper results
  * 
  * Implements IteratorAggregate and Countable for native PHP iteration.
- * Compatible with PHP 7.4 - 8.5
+ * Compatible with PHP 8.0 - 8.5
  */
 class DMZ_Collection implements IteratorAggregate, Countable {
     

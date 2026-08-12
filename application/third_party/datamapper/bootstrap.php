@@ -9,7 +9,7 @@
  * @category    DataMapper ORM
  * @author      Harro "WanWizard" Verton
  * @link        http://datamapper.wanwizard.eu/
- * @version     2.0.0
+ * @version     2.0.3
  */
 
 // make sure we have a DATAMAPPERPATH
