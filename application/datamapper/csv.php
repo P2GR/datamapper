@@ -32,7 +32,7 @@ if (!function_exists('dmz_log_message')) {
  * @category	DMZ
  * @author  	Phil DeJarnett
  * @link    	https://github.com/P2GR/datamapper2
- * @version 	2.0.3
+ * @version 	2.0.4
  */
 
 // --------------------------------------------------------------------------
