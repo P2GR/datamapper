@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-09-03
+
 ### Fixed
 
 - Closed remaining custom-primary-key gaps in model construction, relation subqueries/counts, collections, and legacy extensions.
@@ -250,7 +252,8 @@ Key changes:
 
 | Version | PHP Version | CI Version | Support Status |
 |---------|-------------|------------|----------------|
-| 2.0.x   | 7.2 - 8.3   | 3.1.0+     | Active |
+| 2.1.x   | 8.0 - 8.5   | 3.1.0+     | Active |
+| 2.0.x   | 7.2 - 8.3   | 3.1.0+     | Maintenance |
 | 1.8.x   | 5.3 - 7.4   | 2.x, 3.x   | Security Only |
 | 1.7.x   | 5.2 - 7.4   | 2.x        | End of Life |
 | 1.6.x   | 5.2 - 7.4   | 2.x        | End of Life |

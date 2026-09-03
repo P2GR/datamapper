@@ -10,7 +10,7 @@
  * @category	DMZ
  * @author  	Phil DeJarnett
  * @link    	https://github.com/P2GR/datamapper2
- * @version 	2.1.0
+ * @version 	2.1.1
  */
 
 // --------------------------------------------------------------------------

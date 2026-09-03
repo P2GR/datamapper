@@ -27,7 +27,7 @@ The suite now executes the production eager-loading implementation for custom pa
 | Relationships | Eager hydration now consumes normalized DataMapper aliases and configured keys; per-parent limits are applied after batched loading. |
 | Streaming | `lazy()` clones mutable CI query state and disables cache per chunk; `lazy_by_id()` provides keyset progression for mutable datasets. |
 | Caching | `cache_relations()` stores hydrated graphs under relation-specific keys and graph entries are invalidated on model writes. Constrained eager loads deliberately bypass graph caching. |
-| Release hygiene | Runtime, package metadata, changelogs, and shipped source annotations are prepared for `2.1.0`; remaining older markers are limited to legacy instructions and historical documentation. |
+| Release hygiene | Runtime, package metadata, changelogs, and shipped source annotations are prepared for `2.1.1`; remaining older markers are limited to legacy instructions and historical documentation. |
 
 ## Completed P0 Remediation
 
@@ -67,7 +67,7 @@ Relationship hydration and the audited model utilities now resolve configured pr
 | Finding | Evidence | Action |
 | --- | --- | --- |
 | Cache configuration conflict | The Copilot guide previously documented unsupported top-level cache flags. | Updated the guide to use `cache_driver` and driver-specific `cache_config`. |
-| Version drift | Runtime and shipped source annotations are 2.1.0; legacy Copilot instructions and historical documentation intentionally retain older release markers. | Establish one release version source and validate public version strings in CI. |
+| Version drift | Runtime and shipped source annotations are 2.1.1; legacy Copilot instructions and historical documentation intentionally retain older release markers. | Establish one release version source and validate public version strings in CI. |
 | Unsupported performance language | Public docs used unqualified query and memory-reduction percentages. | Replaced the percentages with contextual behavior descriptions; benchmark claims still require reproducible scenarios before publication. |
 | Eager-limit semantics | Eager-loading limits now apply per parent in PHP after the batched related query. | Add database-backed ordering/limit fixtures for every relationship storage type. |
 | Composer package metadata is incomplete | `composer.json` requires PHP 8.x but has no CodeIgniter requirement and identifies itself as a testing harness project. | Publish a proper library package contract, or document that Composer is development-only. |

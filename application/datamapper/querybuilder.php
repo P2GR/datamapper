@@ -12,7 +12,7 @@
  * @author     DataMapper Development Team
  * @license    MIT License
  * @link       http://datamapper.wanwizard.eu/
- * @version    2.1.0
+ * @version    2.1.1
  */
 
 if (!function_exists('dmz_log_message')) {

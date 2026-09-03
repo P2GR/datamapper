@@ -10,7 +10,7 @@
  * @package    DataMapper ORM
  * @category   Configuration
  * @author     DataMapper Development Team
- * @version    2.1.0
+ * @version    2.1.1
  */
 
 /*

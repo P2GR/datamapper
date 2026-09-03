@@ -122,7 +122,7 @@ $user->where('preferences->theme', 'dark')->get();
 - [ ] Beta release
 - [ ] Stable release
 
-Timing will be set after the 2.1 release stabilizes.
+Timing will be set after the 2.1 release stabilizes; the 2.1 line is now released and maintained through patch updates.
 
 ---
 
@@ -366,7 +366,7 @@ Want to influence the roadmap?
 
 Features from the roadmap that have been completed:
 
-### Version 2.1 (Soon to be released)
+### Version 2.1 (Released)
 
 - [x] Query Builder
 - [x] Eager Loading

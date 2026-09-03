@@ -95,7 +95,7 @@ export default defineConfig({
       },
       { text: 'API Reference', link: '/reference/quick-reference' },
       { 
-        text: 'v2.0.0',
+        text: 'v2.1.1',
         items: [
           { text: 'Changelog', link: '/help/changelog' },
           { text: 'Contributing', link: '/help/contributing' },

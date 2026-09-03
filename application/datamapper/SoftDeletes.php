@@ -30,7 +30,7 @@ namespace DataMapper\Traits {
  *
  * @package DataMapper
  * @category Traits
- * @version 2.1.0
+ * @version 2.1.1
  */
 trait SoftDeletes
 {

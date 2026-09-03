@@ -1,4 +1,4 @@
-# DataMapper ORM v2.1.0
+# DataMapper ORM v2.1.1
 
 [![CI](https://img.shields.io/github/actions/workflow/status/P2GR/datamapper/ci.yml?branch=master&label=CI&logo=github)](https://github.com/P2GR/datamapper/actions/workflows/ci.yml)
 [![PHP Version](https://img.shields.io/badge/PHP-8.0--8.5-blue)](https://php.net)
