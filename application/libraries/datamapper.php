@@ -12,7 +12,7 @@
  * @author  	Phil DeJarnett (up to v1.7.1)
  * @author  	Simon Stenhouse (up to v1.6.0)
  * @link		http://datamapper.wanwizard.eu/
- * @version 	2.0.4
+ * @version 	2.0.5
  */
 
 /**
@@ -23,7 +23,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '2.0.4');
+define('DMZ_VERSION', '2.0.5');
 
 // Define APPPATH when running outside of CodeIgniter bootstrap (e.g., CLI tooling)
 if (!defined('APPPATH')) {

@@ -10,7 +10,7 @@
  * @category	DataMapper ORM
  * @author  	Harro "WanWizard" Verton
  * @link		http://datamapper.wanwizard.eu/
- * @version 	2.0.4
+ * @version 	2.0.5
  */
 
 // determine our driver alias name
