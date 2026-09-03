@@ -5,7 +5,7 @@
 [![CodeIgniter](https://img.shields.io/badge/CodeIgniter-3.x-orange)](https://codeigniter.com)
 [![License](https://img.shields.io/badge/License-MIT-green)](license.txt)
 
-A powerful Object-Relational Mapper (ORM) for CodeIgniter 3 with modern features and 100% backward compatibility.
+A powerful Object-Relational Mapper (ORM) for CodeIgniter 3 with modern features and backward-compatible legacy APIs.
 
 ## About
 
@@ -15,7 +15,7 @@ DataMapper ORM provides an elegant Active Record implementation for CodeIgniter 
 
 ### Query & Performance
 - **[Query Builder](https://datamapper.mss54.com/guide/datamapper-2/query-builder)** — Modern chainable query syntax
-- **[Eager Loading](https://datamapper.mss54.com/guide/datamapper-2/eager-loading)** — Eliminate N+1 problems with `with()` (96%+ query reduction)
+- **[Eager Loading](https://datamapper.mss54.com/guide/datamapper-2/eager-loading)** — Eliminate repeated relation queries with `with()`
 - **[Collections](https://datamapper.mss54.com/guide/datamapper-2/collections)** — `collect()`, `pluck()`, `value()`, `first()`, map/filter/reduce
 - **[Streaming & Chunking](https://datamapper.mss54.com/guide/datamapper-2/streaming)** — Process millions of rows with `chunk()` and `lazy()`
 - **[Query Caching](https://datamapper.mss54.com/guide/datamapper-2/caching)** — Built-in File, Redis, and Memcached support
@@ -23,7 +23,7 @@ DataMapper ORM provides an elegant Active Record implementation for CodeIgniter 
 
 ### Data Management
 - **[Attribute Casting](https://datamapper.mss54.com/guide/datamapper-2/casting)** — Automatic type conversion (int, bool, float, array, json, datetime)
-- **[Soft Deletes](https://datamapper.mss54.com/guide/datamapper-2/soft-deletes)** — Trait-based soft deletion with `deleted_at` timestamps
+- **[Soft Deletes](https://datamapper.mss54.com/guide/datamapper-2/soft-deletes)** — Trait-based soft-delete scopes with opt-in `deleted_at` writes
 - **[Timestamps](https://datamapper.mss54.com/guide/datamapper-2/timestamps)** — Automatic `created_at`/`updated_at` management
 - **[Dirty Tracking](https://datamapper.mss54.com/guide/datamapper-2/dirty-tracking)** — `is_dirty()`, `is_clean()`, `get_dirty()`, `get_original()`, `was_changed()`
 - **[Serialization Control](https://datamapper.mss54.com/guide/datamapper-2/serialization)** — `$hidden`, `$visible`, `$appends` for API-safe output
@@ -54,6 +54,8 @@ Copy the contents of `application/` into your CodeIgniter `application/` folder.
 ```php
 class User extends DataMapper {
     use HasTimestamps, SoftDeletes;
+
+    protected $soft_delete_writes = TRUE;
 
     public $has_many = array('post', 'comment');
 }
@@ -161,7 +163,7 @@ $post->increment('views');
 $post->decrement('stock', 5);
 
 // Clone a record
-$draft = $post->replicate(['id', 'published_at']);
+$draft = $post->replicate(array($post->primary_key, 'published_at'));
 $draft->status = 'draft';
 $draft->save();
 

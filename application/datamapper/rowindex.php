@@ -61,12 +61,13 @@ class DMZ_RowIndex {
 		if(!is_array($ids)) {
 			$ids = array($ids);
 		}
+		$primary_key = $object->primary_key;
 		$new_ids = array();
 		foreach($ids as $id) {
 			if(is_object($id)) {
-				$new_ids[] = $id->id;
+				$new_ids[] = $id->{$id->primary_key};
 			} else {
-				$new_ids[] = intval($id);
+				$new_ids[] = $id;
 			}
 		}
 		if(!is_array($leave_select)) {
@@ -97,10 +98,10 @@ class DMZ_RowIndex {
 			// to ensure unique items we must DISTINCT ON the same list as the ORDER BY list.
 			$distinct = 'DISTINCT ON (' . preg_replace("/\s+(asc|desc)/i", "", implode(",", $object->db->ar_orderby)) . ') ';
 
-			// add in the DISTINCT ON and the $table.id column.  The FALSE prevents the items from being escaped
-			$object->select($distinct . $object->table.'.id', FALSE);
+			// add in the DISTINCT ON and the configured primary-key column. The FALSE prevents escaping.
+			$object->select($distinct . $object->table.'.'.$primary_key, FALSE);
 		} else {
-			$object->select('id');
+			$object->select($primary_key);
 		}
 		// this ensures that the DISTINCT ON is first, since it must be
 		$object->db->ar_select = array_merge($object->db->ar_select, $ar_select);
@@ -108,7 +109,7 @@ class DMZ_RowIndex {
 		// run the query
 		$query = $object->get_raw();
 		foreach($query->result() as $index => $row) {
-			$id = intval($row->id);
+			$id = $row->{$primary_key};
 			if(in_array($id, $new_ids)) {
 				$row_indices[$index] = $id;
 				if($this->first_only) {

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Closed remaining custom-primary-key gaps in model construction, relation subqueries/counts, collections, and legacy extensions.
+- Prevented failed in-table relationship cleanup from persisting the base model row.
+- Made bulk updates and direct save timestamps honor custom `HasTimestamps` columns.
+- Made keyset iteration fail clearly when the selected key is missing instead of repeating a chunk.
+- Made Redis `flush()` report scan/delete failures instead of always returning success.
+- Made file-cache `flush()` report failed file removals instead of always returning success.
+- Corrected soft-delete examples and cache configuration guidance for the 2.1 API.
+
+### Tests
+
+- Full PHPUnit suite passes: 167 tests, 431 assertions.
+
 ## [2.1.0] - 2026-08-12
 
 ### Added

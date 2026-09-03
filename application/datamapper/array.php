@@ -56,7 +56,7 @@ class DMZ_Array {
 				$rels = array();
 				foreach($object->{$f} as $item)
 				{
-					$rels[] = $item->id;
+					$rels[] = $item->{$item->primary_key};
 				}
 				$result[$f] = $rels;
 			}
@@ -111,7 +111,7 @@ class DMZ_Array {
 		{
 			foreach($object as $o)
 			{
-				isset($o->{$field}) and $result[$o->id] = $o->{$field};
+				isset($o->{$field}) and $result[$o->{$o->primary_key}] = $o->{$field};
 			}
 		}
 		return $result;
@@ -177,16 +177,18 @@ class DMZ_Array {
 					if(empty($ids))
 					{
 						// if no IDs were provided, delete all old relationships.
-						$object->delete($object->{$f}->select('id')->get()->all);
+						$object->delete($object->{$f}->select($object->{$f}->primary_key)->get()->all);
 					}
 					else
 					{
 						// Otherwise, get the new ones...
-						$rels->where_in('id', $ids)->select('id')->get();
+						$related_primary_key = $rels->primary_key;
+						$rels->where_in($related_primary_key, $ids)->select($related_primary_key)->get();
 						// Store them...
 						$new_related_objects[$f] = $rels->all;
 						// And delete any old ones that do not exist.
-						$old_rels = $object->{$f}->where_not_in('id', $ids)->select('id')->get();
+						$related_primary_key = $object->{$f}->primary_key;
+						$old_rels = $object->{$f}->where_not_in($related_primary_key, $ids)->select($related_primary_key)->get();
 						$object->delete($old_rels->all);
 					}
 				}
@@ -250,15 +252,16 @@ class DMZ_Array {
 			}
 
 			// and store it in the object
-			if ($object->all_array_uses_ids && isset($row['id']))
+			$primary_key = $object->primary_key;
+			if ($object->all_array_uses_ids && isset($row[$primary_key]))
 			{
 				if ($first)
 				{
-					$object->all[$row['id']] =& $object;
+					$object->all[$row[$primary_key]] =& $object;
 				}
 				else
 				{
-					$object->all[$row['id']] = $new;
+					$object->all[$row[$primary_key]] = $new;
 				}
 			}
 			else

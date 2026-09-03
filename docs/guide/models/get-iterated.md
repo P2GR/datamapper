@@ -68,7 +68,7 @@ $user->get_iterated();
 ```
 
 ::: tip Memory Savings
-For 10,000 records, `get_iterated()` can reduce memory usage by **90-99%** compared to regular `get()`.
+Memory usage depends on the database driver, row size, and consumer. In general, `get_iterated()` keeps only the current row and iterator state in memory instead of materializing the full result set.
 :::
 
 ## Complete Example

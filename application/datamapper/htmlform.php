@@ -117,11 +117,12 @@ class DMZ_HTMLForm {
 				else
 				{
 					// load the related object(s)
-					$sel = $object->{$field}->select('id')->get();
+					$related_primary_key = $object->{$field}->primary_key;
+					$sel = $object->{$field}->select($related_primary_key)->get();
 					if($one)
 					{
 						// only a single value is allowed
-						$value = $sel->id;
+						$value = $sel->{$related_primary_key};
 					}
 					else
 					{
@@ -129,7 +130,7 @@ class DMZ_HTMLForm {
 						$value = array();
 						foreach($sel as $s)
 						{
-							$value[] = $s->id;
+							$value[] = $s->{$s->primary_key};
 						}
 					}
 				}
@@ -171,7 +172,7 @@ class DMZ_HTMLForm {
 				foreach($total_items as $item)
 				{
 					// use the __toString value of the item for the label
-					$list[$item->id] = (string)$item;
+					$list[$item->{$item->primary_key}] = (string)$item;
 				}
 				$options['list'] = $list;
 			}

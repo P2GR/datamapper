@@ -36,6 +36,17 @@ class TimestampBehaviorTest extends TestCase
         $this->assertNull($model->created_at);
         $this->assertSame('new-timestamp', $model->updated_at);
     }
+
+    public function test_increment_uses_custom_updated_timestamp_column(): void
+    {
+        $model = new CustomTimestampColumnModelStub();
+
+        $this->assertTrue($model->increment('counter'));
+        $this->assertSame(array(
+            'counter' => 'counter + 1',
+            'modified_on' => 'new-timestamp',
+        ), $model->db->set_data);
+    }
 }
 
 class TimestampModelStub extends DataMapper
@@ -86,5 +97,42 @@ class TimestampDatabaseStub
     {
         $this->updated_data = $data;
         return $this->update_result;
+    }
+}
+
+class CustomTimestampColumnModelStub extends TimestampModelStub
+{
+    public $fields = array('user_id', 'created_on', 'modified_on', 'counter');
+    public $updated_at_column = 'modified_on';
+    public $counter = 0;
+
+    public function __construct()
+    {
+        $this->db = new CustomTimestampDatabaseStub();
+        $this->stored = (object) array(
+            'user_id' => 42,
+            'created_on' => NULL,
+            'modified_on' => 'old-timestamp',
+            'counter' => 0,
+        );
+        $this->user_id = 42;
+        $this->modified_on = 'old-timestamp';
+        $this->_field_tracking = array('matches' => array());
+    }
+}
+
+class CustomTimestampDatabaseStub extends TimestampDatabaseStub
+{
+    public $set_data = array();
+
+    public function set($field, $value, $escape = TRUE)
+    {
+        $this->set_data[$field] = $value;
+        return $this;
+    }
+
+    public function update($table, $data = NULL)
+    {
+        return TRUE;
     }
 }

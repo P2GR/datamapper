@@ -3726,10 +3726,22 @@ class DMZ_Collection implements IteratorAggregate, Countable {
 	 *   $post = $posts->collect()->find(5);
 	 *
 	 * @param mixed $id ID value to find
-	 * @param string $id_field Name of the ID field (default: 'id')
+	 * @param string|null $id_field Name of the ID field (defaults to the source model's primary key)
 	 * @return mixed The found item or NULL
 	 */
-	public function find($id, $id_field = 'id') {
+	public function find($id, $id_field = NULL) {
+		if ($id_field === NULL && $this->source_model instanceof DataMapper) {
+			$id_field = $this->source_model->primary_key;
+		}
+		if ($id_field === NULL) {
+			foreach ($this->items as $item) {
+				if ($item instanceof DataMapper) {
+					$id_field = $item->primary_key;
+					break;
+				}
+			}
+		}
+		$id_field = $id_field === NULL ? 'id' : $id_field;
 		foreach ($this->items as $item) {   
 			if (is_object($item) && isset($item->{$id_field}) && $item->{$id_field} == $id) {
 				return $item;
@@ -3743,15 +3755,27 @@ class DMZ_Collection implements IteratorAggregate, Countable {
 	/**
 	 * Get a collection of IDs
 	 * 
-	 * Convenience method, same as pluck('id')
+	 * Convenience method, same as pluck() of the model's primary key
 	 * 
 	 * Example:
 	 *   $ids = $posts->collect()->ids();
 	 *
-	 * @param string $id_field Name of the ID field (default: 'id')
+	 * @param string|null $id_field Name of the ID field (defaults to the source model's primary key)
 	 * @return array Array of IDs
 	 */
-	public function ids($id_field = 'id') {
+	public function ids($id_field = NULL) {
+		if ($id_field === NULL && $this->source_model instanceof DataMapper) {
+			$id_field = $this->source_model->primary_key;
+		}
+		if ($id_field === NULL) {
+			foreach ($this->items as $item) {
+				if ($item instanceof DataMapper) {
+					$id_field = $item->primary_key;
+					break;
+				}
+			}
+		}
+		$id_field = $id_field === NULL ? 'id' : $id_field;
 		return $this->pluck($id_field);
 	}
 

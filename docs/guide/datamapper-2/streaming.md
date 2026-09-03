@@ -2,12 +2,12 @@
 
 Process large datasets efficiently without loading all records into memory. Perfect for handling millions of records with minimal memory footprint.
 
-**DataMapper 2.1:** These methods allow you to process large datasets in batches or one-by-one, reducing memory usage by up to **99%**.
+**DataMapper 2.1:** These methods allow you to process large datasets in batches or one-by-one, reducing memory usage compared with loading the full result set.
 
 Available Methods:
 
 - **chunk()** - Process results in configurable batches
-- **chunk_by_id()** - ID-based chunking for better performance
+- **chunk_by_id()** - Primary-key-based chunking for better performance
 - **cursor()** - Iterate one record at a time using PHP Generators
 - **lazy()** - Lazy collection with chainable operations
 - **lazy_by_id()** - Mutation-safe lazy collection using keyset progression
@@ -75,6 +75,8 @@ $u->chunk(100, function($users) {
 More reliable and faster than offset-based chunking for large tables. Uses WHERE id > $lastId instead of OFFSET.
 
 By default DataMapper now uses your model's `primary_key` when no column is provided, which means `chunk_by_id()` works out of the box for custom keys—just make sure the key is monotonically increasing.
+
+The key column must be selected in every result. The method throws a `RuntimeException` if it is missing rather than repeating a chunk indefinitely.
 
 ### Basic Usage
 

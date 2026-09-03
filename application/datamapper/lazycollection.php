@@ -192,6 +192,13 @@ class DMZ_LazyCollection implements IteratorAggregate
 			if (empty($chunk_query->all)) {
 				break;
 			}
+
+			if ($this->keyset_column !== NULL) {
+				$last_item = end($chunk_query->all);
+				if (!is_object($last_item) || !isset($last_item->{$this->keyset_column})) {
+					throw new RuntimeException('Keyset lazy iteration requires the selected key column in every result.');
+				}
+			}
 			
 			// Process each item in chunk
 			foreach ($chunk_query->all as $item) {
@@ -226,10 +233,6 @@ class DMZ_LazyCollection implements IteratorAggregate
 			
 			// Move to next chunk
 			if ($this->keyset_column !== NULL) {
-				$last_item = end($chunk_query->all);
-				if (!is_object($last_item) || !isset($last_item->{$this->keyset_column})) {
-					throw new RuntimeException('Keyset lazy iteration requires the selected key column in every result.');
-				}
 				$last_key = $last_item->{$this->keyset_column};
 			} else {
 				$offset += $this->chunk_size;

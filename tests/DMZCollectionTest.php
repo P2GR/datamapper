@@ -90,4 +90,22 @@ class DMZCollectionTest extends TestCase
 
         $this->assertSame(17, $collection->sum('total'));
     }
+
+    public function test_find_and_ids_use_an_item_model_primary_key_by_default(): void
+    {
+        $mapper = new CustomKeyCollectionMapper(array(
+            array('user_uuid' => 'u-1', 'name' => 'First'),
+            array('user_uuid' => 'u-2', 'name' => 'Second'),
+        ));
+
+        $collection = $mapper->collect();
+
+        $this->assertSame('First', $collection->find('u-1')->name);
+        $this->assertSame(array('u-1', 'u-2'), $collection->ids());
+    }
+}
+
+class CustomKeyCollectionMapper extends FakeDataMapper
+{
+    public $primary_key = 'user_uuid';
 }

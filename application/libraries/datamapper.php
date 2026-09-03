@@ -880,9 +880,9 @@ class DataMapper implements IteratorAggregate {
 		// Clear object properties to set at default values
 		$this->clear();
 
-		if( ! empty($id) && is_numeric($id))
+		if ($id !== NULL && $id !== '' && is_scalar($id))
 		{
-			$this->where($this->primary_key, intval($id))->get(1);
+			$this->where($this->primary_key, $id)->get(1);
 		}
 	}
 
@@ -2177,20 +2177,26 @@ class DataMapper implements IteratorAggregate {
 				if ($this->_save_itfk($object, $related_field) === FALSE)
 				{
 					$result[] = FALSE;
+					$this->_validated = FALSE;
 				}
 			}
 
-			// Convert this object to array
-			$data = $this->_to_array();
+			// Convert this object to array only after in-table relationship cleanup
+			// succeeds. A failed cleanup must not still persist the new foreign key.
+			$data = array();
 			$base_write_succeeded = FALSE;
 
 			// Track changed fields for was_changed()
 			$this->_dm_changed = array();
 
-			if ( ! empty($data))
+			if (!in_array(FALSE, $result, TRUE))
 			{
-				if (!$is_new)
+				$data = $this->_to_array();
+
+				if ( ! empty($data))
 				{
+					if (!$is_new)
+					{
 					// Prepare data to send only changed fields
 					foreach ($data as $field => $value)
 					{
@@ -2202,10 +2208,13 @@ class DataMapper implements IteratorAggregate {
 					}
 
 					// if there are changes, check if we need to update the update timestamp
-					if (count($data) && in_array($this->updated_field, $this->fields) && ! isset($data[$this->updated_field]))
+					$updated_field = $this->_timestamps_is_enabled()
+						? $this->_get_updated_at_column()
+						: $this->updated_field;
+					if (count($data) && in_array($updated_field, $this->fields) && ! isset($data[$updated_field]))
 					{
 						// update it now
-						$data[$this->updated_field] = $this->{$this->updated_field} = $timestamp;
+						$data[$updated_field] = $this->{$updated_field} = $timestamp;
 					}
 
 					// Record which fields changed
@@ -2263,6 +2272,7 @@ class DataMapper implements IteratorAggregate {
 					// Reset validated
 					$this->_validated = FALSE;
 				}
+			}
 			}
 
 			// Check if a relationship is being saved
@@ -2509,8 +2519,11 @@ class DataMapper implements IteratorAggregate {
 			throw new DataMapper_Validation_Exception("Nothing was provided to update.");
 		}
 
-		// Check if object has an 'updated' field
-		if (in_array($this->updated_field, $this->fields))
+		// Check if object has an updated timestamp field
+		$updated_field = $this->_timestamps_is_enabled()
+			? $this->_get_updated_at_column()
+			: $this->updated_field;
+		if (in_array($updated_field, $this->fields))
 		{
 			$timestamp = $this->_get_generated_timestamp();
 			if( ! $escape_values)
@@ -2518,7 +2531,7 @@ class DataMapper implements IteratorAggregate {
 				$timestamp = $this->db->escape($timestamp);
 			}
 			// Update updated datetime
-			$field[$this->updated_field] = $timestamp;
+			$field[$updated_field] = $timestamp;
 		}
 
 		foreach($field as $k => $v)
@@ -2635,9 +2648,7 @@ class DataMapper implements IteratorAggregate {
 						// Update updated_at if HasTimestamps trait is used
 						if ($this->_timestamps_is_enabled())
 						{
-							$updated_col = property_exists($this, 'updatedAtColumn') && !empty($this->updatedAtColumn) ?
-								$this->updatedAtColumn :
-								(isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
+							$updated_col = $this->_get_updated_at_column();
 							
 							if (in_array($updated_col, $this->fields))
 							{
@@ -3375,9 +3386,7 @@ class DataMapper implements IteratorAggregate {
 		// Update updated_at timestamp if applicable
 		if ($this->_timestamps_is_enabled())
 		{
-			$updated_col = property_exists($this, 'updatedAtColumn') && ! empty($this->updatedAtColumn)
-				? $this->updatedAtColumn
-				: (isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
+			$updated_col = $this->_get_updated_at_column();
 
 			if (in_array($updated_col, $this->fields))
 			{
@@ -3452,9 +3461,7 @@ class DataMapper implements IteratorAggregate {
 				// Update updated_at if timestamps enabled
 				if ($instance->_timestamps_is_enabled())
 				{
-					$updated_col = property_exists($instance, 'updatedAtColumn') && ! empty($instance->updatedAtColumn)
-						? $instance->updatedAtColumn
-						: (isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
+						$updated_col = $instance->_get_updated_at_column();
 
 					if (in_array($updated_col, $instance->fields))
 					{
@@ -6711,7 +6718,16 @@ class DataMapper implements IteratorAggregate {
 			$field = $args[1];
 			$value = $args[2];
 		} else {
-			$field = is_object($rel_object) ? $rel_object->primary_key : 'id';
+			if (is_object($rel_object))
+			{
+				$field = $rel_object->primary_key;
+			}
+			else
+			{
+				$related_properties = $this->_get_related_properties($rel_object, TRUE);
+				$related_class = $related_properties['class'];
+				$field = (new $related_class())->primary_key;
+			}
 			$value = $args[1];
 		}
 		if(is_object($value))
@@ -6925,7 +6941,13 @@ class DataMapper implements IteratorAggregate {
 		$object->select_func('COUNT', '*', 'count');
 		$this_rel = $related_properties['other_field'];
 		$tablename = $object->_add_related_table($this, $this_rel);
-		$object->where($tablename . '.`id` = ', $this->db->escape_identifiers('${parent}.id'), FALSE);
+		$related_primary_key = $object->primary_key;
+		$parent_primary_key = $this->primary_key;
+		$object->where(
+			$tablename . '.`' . $related_primary_key . '` = ',
+			$this->db->escape_identifiers('${parent}.' . $parent_primary_key),
+			FALSE
+		);
 		$this->select_subquery($object, $alias);
 		return $this;
 	}
@@ -9401,6 +9423,9 @@ class DataMapper implements IteratorAggregate {
 		if (!is_callable($callback)) {
 			throw new DataMapper_Exception('chunk_by_id callback must be callable');
 		}
+		if ((int) $size < 1) {
+			throw new InvalidArgumentException('chunk_by_id size must be greater than zero');
+		}
 		
 		$lastId = null;
 		$column = $column ?? $this->primary_key;
@@ -9441,12 +9466,20 @@ class DataMapper implements IteratorAggregate {
 				return false;
 			}
 			
-			// Update last ID
+				// Update last ID
 			$lastItem = $collection->last();
 			if (is_object($lastItem)) {
-				$lastId = isset($lastItem->{$column_name}) ? $lastItem->{$column_name} : null;
+				if (!isset($lastItem->{$column_name})) {
+					throw new RuntimeException('chunk_by_id requires the selected key column in every result.');
+				}
+				$lastId = $lastItem->{$column_name};
 			} elseif (is_array($lastItem)) {
-				$lastId = isset($lastItem[$column_name]) ? $lastItem[$column_name] : null;
+				if (!array_key_exists($column_name, $lastItem) || $lastItem[$column_name] === NULL) {
+					throw new RuntimeException('chunk_by_id requires the selected key column in every result.');
+				}
+				$lastId = $lastItem[$column_name];
+			} else {
+				throw new RuntimeException('chunk_by_id requires the selected key column in every result.');
 			}
 			
 			// Stop if we got less than size (last chunk)
@@ -9530,6 +9563,10 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function lazy($chunkSize = 1000)
 	{
+		if ((int) $chunkSize < 1) {
+			throw new InvalidArgumentException('lazy chunk size must be greater than zero');
+		}
+
 		// Auto-load LazyCollection if not already loaded
 		if (!class_exists('DMZ_LazyCollection', FALSE)) {
 			require_once(APPPATH . 'datamapper/lazycollection.php');
@@ -9547,6 +9584,10 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function lazy_by_id($chunk_size = 1000, $column = NULL)
 	{
+		if ((int) $chunk_size < 1) {
+			throw new InvalidArgumentException('lazy_by_id chunk size must be greater than zero');
+		}
+
 		if (!class_exists('DMZ_LazyCollection', FALSE)) {
 			require_once(APPPATH . 'datamapper/lazycollection.php');
 		}
@@ -10509,8 +10550,7 @@ class DataMapper implements IteratorAggregate {
 		$created_col = $this->_resolve_model_property(array('created_at_column', 'createdAtColumn'),
 			isset(DataMapper::$config['created_at_column']) ? DataMapper::$config['created_at_column'] : 'created_at');
 
-		$updated_col = $this->_resolve_model_property(array('updated_at_column', 'updatedAtColumn'),
-			isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
+		$updated_col = $this->_get_updated_at_column();
 		
 		// Generate fresh timestamp
 		$timestamp = $this->_fresh_timestamp();
@@ -10533,7 +10573,30 @@ class DataMapper implements IteratorAggregate {
 			$this->{$updated_col} = $timestamp;
 		}
 	}
-	
+
+	/**
+	 * Resolve the model's updated-at column, including HasTimestamps overrides.
+	 *
+	 * @return string
+	 */
+	protected function _get_updated_at_column()
+	{
+		if (method_exists($this, 'get_updated_at_column'))
+		{
+			return $this->get_updated_at_column();
+		}
+
+		$column = $this->_resolve_model_property(array('updated_at_column', 'updatedAtColumn'), NULL);
+		if (!empty($column))
+		{
+			return $column;
+		}
+
+		return isset(DataMapper::$config['updated_at_column'])
+			? DataMapper::$config['updated_at_column']
+			: 'updated_at';
+	}
+
 	/**
 	 * Generate a fresh timestamp in the configured format
 	 * 
@@ -10977,9 +11040,7 @@ class DataMapper implements IteratorAggregate {
 			return FALSE;
 		}
 		
-		$updated_col = property_exists($this, 'updatedAtColumn') && !empty($this->updatedAtColumn) ? 
-			$this->updatedAtColumn : 
-			(isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
+		$updated_col = $this->_get_updated_at_column();
 		
 		if (!in_array($updated_col, $this->fields))
 		{
@@ -11148,9 +11209,7 @@ class DataMapper implements IteratorAggregate {
 		// Update updated_at if HasTimestamps trait is used
 		if ($this->_timestamps_is_enabled())
 		{
-			$updated_col = property_exists($this, 'updatedAtColumn') && !empty($this->updatedAtColumn) ? 
-				$this->updatedAtColumn : 
-				(isset(DataMapper::$config['updated_at_column']) ? DataMapper::$config['updated_at_column'] : 'updated_at');
+			$updated_col = $this->_get_updated_at_column();
 			
 			if (in_array($updated_col, $this->fields))
 			{

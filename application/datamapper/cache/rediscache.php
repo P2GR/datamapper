@@ -40,6 +40,9 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		'writes' => 0,
 		'deletes' => 0
 	];
+
+	/** @var bool Whether the most recent pattern deletion encountered an error. */
+	protected $last_pattern_delete_failed = FALSE;
 	
 	/**
 	 * Constructor
@@ -167,9 +170,9 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	public function flush()
 	{
 		// Only flush keys with our prefix
-		$this->delete_pattern('*');
+		$result = $this->delete_pattern('*');
 		
-		return true;
+		return $result !== FALSE && !$this->last_pattern_delete_failed;
 	}
 	
 	/**
@@ -194,16 +197,21 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	public function delete_pattern($pattern)
 	{
 		$deleted = 0;
+		$this->last_pattern_delete_failed = FALSE;
 		$iterator = NULL;
 		
 		// Use SCAN to iterate through keys matching pattern
 		do {
 			$keys = $this->redis->scan($iterator, $this->prefix . $pattern, 100);
 			if ($keys === FALSE) {
+				$this->last_pattern_delete_failed = TRUE;
 				break;
 			}
 			foreach ($keys as $key) {
-				$this->redis->del($key);
+				if ($this->redis->del($key) === FALSE) {
+					$this->last_pattern_delete_failed = TRUE;
+					continue;
+				}
 				$deleted++;
 			}
 		} while ($iterator !== 0 && $iterator !== '0');

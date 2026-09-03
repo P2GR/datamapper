@@ -4,7 +4,7 @@
 
 DataMapper has a substantial modern ORM surface on top of its CodeIgniter 3 and DataMapper 1.x base: query-builder helpers, mass assignment, casts, dirty tracking, model events, soft deletes, timestamps, eager loading, caching, and collection/streaming helpers. This is a credible foundation, but it is not yet safe to present as a uniformly reliable Eloquent-style ORM.
 
-The P0 blockers and the seven P1 correctness items identified in the original audit are fixed in this working tree. The remaining work is broader database-backed relationship coverage, documentation hygiene, and staged ORM improvements.
+The P0 blockers and the original P1 correctness items are fixed in this working tree. This follow-up hardening pass also closes custom-key gaps in constructors, subqueries, counts, collections, and legacy extensions; prevents relationship cleanup failures from writing the base row; validates keyset iteration keys; honors custom timestamp columns; and propagates Redis and file-cache flush failures. The remaining work is broader database-backed relationship coverage and staged ORM improvements.
 
 This audit compares the project against the useful parts of Laravel 13 Eloquent and Query Builder, while preserving the project's actual goal: a backwards-compatible ORM for CodeIgniter 3, not a Laravel clone.
 
@@ -12,7 +12,7 @@ This audit compares the project against the useful parts of Laravel 13 Eloquent 
 
 - Reviewed the DataMapper model, `DMZ_QueryBuilder`, lazy collection, timestamp and soft-delete traits, configuration, public documentation, Copilot instructions, and the relevant PHPUnit tests.
 - Compared capabilities and design priorities with the official [Laravel 13 Eloquent](https://laravel.com/docs/13.x/eloquent), [relationships](https://laravel.com/docs/13.x/eloquent-relationships), and [query builder](https://laravel.com/docs/13.x/queries) documentation.
-- Ran `vendor\bin\phpunit --configuration tests\phpunit.xml`: **161 tests, 418 assertions, passing** on PHP 8.4.3. PHP emitted a non-fatal Imagick/ImageMagick version warning.
+- Ran `vendor\bin\phpunit --configuration tests\phpunit.xml`: **167 tests, 431 assertions, passing** on PHP 8.4.3. PHP emitted a non-fatal Imagick/ImageMagick version warning.
 - Applied P0 and P1 remediation in persistence lifecycle handling, eager loading, relation caching, lazy iteration, timestamps, CI, and current documentation.
 
 The suite now executes the production eager-loading implementation for custom parent/related keys, custom aliases, and per-parent limits. A real CI3 database matrix remains necessary for complete SQL-level confidence across has-one, has-many, and many-to-many variants.
@@ -66,9 +66,9 @@ Relationship hydration and the audited model utilities now resolve configured pr
 
 | Finding | Evidence | Action |
 | --- | --- | --- |
-| Cache configuration conflict | `copilot/DATAMAPPER_2.0_COPILOT_INSTRUCTIONS.md` documents `cache_config.enabled`, `driver`, `ttl`, and `prefix`; source uses `cache_driver` plus driver-specific `cache_config`. | Rewrite the instructions from current source and add a documentation test/snippet check. |
+| Cache configuration conflict | The Copilot guide previously documented unsupported top-level cache flags. | Updated the guide to use `cache_driver` and driver-specific `cache_config`. |
 | Version drift | Runtime and shipped source annotations are 2.1.0; legacy Copilot instructions and historical documentation intentionally retain older release markers. | Establish one release version source and validate public version strings in CI. |
-| Unsupported performance language | README claims `96%+` N+1 reduction; streaming docs claim up to `99%` memory reduction. | Replace with measured benchmark scenarios, database/version/context, and reproducible scripts. |
+| Unsupported performance language | Public docs used unqualified query and memory-reduction percentages. | Replaced the percentages with contextual behavior descriptions; benchmark claims still require reproducible scenarios before publication. |
 | Eager-limit semantics | Eager-loading limits now apply per parent in PHP after the batched related query. | Add database-backed ordering/limit fixtures for every relationship storage type. |
 | Composer package metadata is incomplete | `composer.json` requires PHP 8.x but has no CodeIgniter requirement and identifies itself as a testing harness project. | Publish a proper library package contract, or document that Composer is development-only. |
 

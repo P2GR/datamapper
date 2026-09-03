@@ -14,6 +14,13 @@ class RedisCacheFlushTest extends TestCase
         $this->assertTrue($cache->flush());
         $this->assertSame(array('*'), $cache->patterns);
     }
+
+    public function test_flush_reports_pattern_delete_failure(): void
+    {
+        $cache = new RedisFlushFailureCacheHarness();
+
+        $this->assertFalse($cache->flush());
+    }
 }
 
 class RedisFlushCacheHarness extends DMZ_RedisCache
@@ -28,5 +35,18 @@ class RedisFlushCacheHarness extends DMZ_RedisCache
     {
         $this->patterns[] = $pattern;
         return 0;
+    }
+}
+
+class RedisFlushFailureCacheHarness extends DMZ_RedisCache
+{
+    public function __construct()
+    {
+    }
+
+    public function delete_pattern($pattern)
+    {
+        $this->last_pattern_delete_failed = TRUE;
+        return FALSE;
     }
 }

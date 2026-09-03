@@ -33,13 +33,22 @@ class DataMapperRelationshipSaveTest extends TestCase
         $this->assertTrue($parent->saveItfk($objects, 'entry'));
     }
 
-    public function test_itfk_failure_after_base_write_refreshes_committed_state(): void
+    public function test_itfk_cleanup_failure_skips_base_write_and_success_side_effects(): void
     {
         $parent = new SavingRelationshipParentStub();
 
         $this->assertFalse($parent->save(new RelationshipChildStub(), 'entry'));
-        $this->assertSame('entry-9', $parent->stored->entry_id);
-        $this->assertSame(1, $parent->cache_invalidations);
+        $this->assertSame('old-entry', $parent->stored->entry_id);
+        $this->assertSame(0, $parent->cache_invalidations);
+    }
+
+    public function test_itfk_cleanup_failure_does_not_write_the_base_row(): void
+    {
+        $parent = new SavingRelationshipParentStub();
+
+        $this->assertFalse($parent->save(new RelationshipChildStub(), 'entry'));
+        $this->assertSame(0, $parent->db->update_calls);
+        $this->assertSame('old-entry', $parent->stored->entry_id);
     }
 
     public function test_join_table_write_uses_both_configured_primary_keys(): void
@@ -285,6 +294,7 @@ class RelationshipDatabaseStub
     public $delete_results = array();
     public $inserted_table;
     public $inserted_data;
+    public $update_calls = 0;
 
     public function get_where($table, $data, $limit = NULL, $offset = NULL)
     {
@@ -305,6 +315,7 @@ class RelationshipDatabaseStub
 
     public function update($table, $data)
     {
+        $this->update_calls++;
         return $this->update_result;
     }
 

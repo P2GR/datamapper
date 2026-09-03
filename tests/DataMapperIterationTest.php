@@ -126,6 +126,18 @@ class DataMapperIterationTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $mapper->lazy_by_id(10)->to_array();
     }
+
+    public function testChunkByIdRejectsResultsMissingTheProgressionKey(): void
+    {
+        $mapper = new FakeDataMapper(array(
+            array('name' => 'missing-key'),
+        ));
+
+        $this->expectException(\RuntimeException::class);
+        $mapper->chunk_by_id(10, function () {
+            return TRUE;
+        });
+    }
 }
 
 class LazyCloneTrackingMapper extends FakeDataMapper

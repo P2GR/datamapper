@@ -191,7 +191,7 @@ class DMZ_Nestedsets {
 	function new_root($object)
 	{
 		// set the pointers for the root object
-		$object->id = NULL;
+		$object->{$object->primary_key} = NULL;
 		$object->{$this->_leftindex} = 1;
 		$object->{$this->_rightindex} = 2;
 
@@ -231,7 +231,7 @@ class DMZ_Nestedsets {
 		}
 
 		// set the pointers for the root object
-		$object->id = NULL;
+		$object->{$object->primary_key} = NULL;
 		$object->{$this->_leftindex} = $node->{$this->_leftindex} + 1;
 		$object->{$this->_rightindex} = $node->{$this->_leftindex} + 2;
 
@@ -274,7 +274,7 @@ class DMZ_Nestedsets {
 		}
 
 		// set the pointers for the root object
-		$object->id = NULL;
+		$object->{$object->primary_key} = NULL;
 		$object->{$this->_leftindex} = $node->{$this->_rightindex};
 		$object->{$this->_rightindex} = $node->{$this->_rightindex} + 1;
 
@@ -317,7 +317,7 @@ class DMZ_Nestedsets {
 		}
 
 		// set the pointers for the root object
-		$object->id = NULL;
+		$object->{$object->primary_key} = NULL;
 		$object->{$this->_leftindex} = $node->{$this->_leftindex};
 		$object->{$this->_rightindex} = $node->{$this->_leftindex} + 1;
 
@@ -360,7 +360,7 @@ class DMZ_Nestedsets {
 		}
 
 		// set the pointers for the root object
-		$object->id = NULL;
+		$object->{$object->primary_key} = NULL;
 		$object->{$this->_leftindex} = $node->{$this->_rightindex} + 1;
 		$object->{$this->_rightindex} = $node->{$this->_rightindex} + 2;
 
@@ -753,7 +753,7 @@ class DMZ_Nestedsets {
 		// fetch the parent of our child node
 		$parent = $node->get_clone()->get_parent();
 
-		return ( $parent->id === $object->id );
+		return ( $parent->{$parent->primary_key} === $object->{$object->primary_key} );
 	}
 
 	// -----------------------------------------------------------------
@@ -1094,7 +1094,7 @@ class DMZ_Nestedsets {
 			if ( is_array($attributes) )
 			{
 				// make sure required fields are present
-				$fields = array_merge($attributes, array('id', $this->_leftindex, $this->_rightindex));
+				$fields = array_merge($attributes, array($object->primary_key, $this->_leftindex, $this->_rightindex));
 				if ( ! empty($this->_nodename) && ! isset($fields[$this->_nodename] ) )
 				{
 					$fields[] = $this->_nodename;
@@ -1146,7 +1146,7 @@ class DMZ_Nestedsets {
 			foreach ( $result as $key => $value )
 			{
 				// for now, just store the ID
-				$result[$key]['__id'] = $value['id'];
+				$result[$key]['__id'] = $value[$object->primary_key];
 
 				// calculate the nest level of this node
 				$level += $last_left - $value[$this->_leftindex] + 2;
@@ -1389,7 +1389,7 @@ class DMZ_Nestedsets {
 		$this->_shiftRLValues($object, $right_id + 1, -$treesize);
 
 		// return the object
-		return $object->get_by_id($object->id);
+		return $object->get_by_id($object->{$object->primary_key});
 	}
 
 }

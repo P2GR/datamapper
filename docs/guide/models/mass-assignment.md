@@ -20,7 +20,7 @@ $user->fill($input)->save();
 `fill()` returns the model instance, so you can keep chaining (`$user->fill($payload)->skip_validation()->save();`). Attributes not present in `$fillable` are silently ignored.
 
 ::: warning Default Guard
-The primary key (`id`) is always guarded. Add it to `$fillable` (or remove it from `$guarded`) only when you explicitly want incoming data to overwrite the identifier.
+The configured primary key is always guarded. Add it to `$fillable` (or remove it from `$guarded`) only when you explicitly want incoming data to overwrite the identifier.
 :::
 
 ## Guard Sensitive Columns

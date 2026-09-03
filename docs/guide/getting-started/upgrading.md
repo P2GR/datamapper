@@ -381,6 +381,7 @@ use SoftDeletes;
 
 class User extends DataMapper {
     use SoftDeletes;
+    protected $soft_delete_writes = TRUE;
 }
 ```
 

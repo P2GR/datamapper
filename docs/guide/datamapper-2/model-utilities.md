@@ -132,9 +132,9 @@ $object->replicate($except = array())
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `$except` | array | Additional fields to exclude (besides `id`) |
+| `$except` | array | Additional fields to exclude (besides the configured primary key) |
 
-The replica is a new instance of the same class with all field values copied, except the primary key (`id`) which is set to `NULL` so the next `save()` creates a new record.
+The replica is a new instance of the same class with all field values copied, except the configured primary key, which is set to `NULL` so the next `save()` creates a new record.
 
 ```php
 $template = new Product();

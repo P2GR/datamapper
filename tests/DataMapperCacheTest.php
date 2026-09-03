@@ -47,6 +47,18 @@ class DataMapperCacheTest extends TestCase
         $this->assertNull($harness->fetchFromCache());
     }
 
+    public function testFileCacheFlushClearsEntriesAndReportsSuccess(): void
+    {
+        $state = new FakeQueryState(array('qb_where' => array(array('field' => 'id', 'value' => 1))));
+        $harness = $this->createHarness($state);
+        $driver = $harness->getCacheDriver();
+
+        $this->assertTrue($driver->set('flush-regression', array('value' => TRUE)));
+        $this->assertTrue($driver->has('flush-regression'));
+        $this->assertTrue($driver->flush());
+        $this->assertFalse($driver->has('flush-regression'));
+    }
+
     public function testStoreAndFetchRoundTripsCachedPayload(): void
     {
         $state = new FakeQueryState(array(

@@ -2,7 +2,7 @@
 
 Safely "delete" records by marking them as deleted instead of removing them from the database. This keeps relational data intact, powers undo workflows, and satisfies audit/compliance requirements.
 
-**DataMapper 2.1:** Soft deletes are trait-based. Simply use the `SoftDeletes` trait in your model to enable automatic `deleted_at IS NULL` scopes, set timestamps on `delete()`, and gain access to query builder helpers like `restore()`, `force_delete()`, and `with_softdeleted()`.
+**DataMapper 2.1:** Soft-delete scopes are trait-based. The trait is read-only by default; declare `protected $soft_delete_writes = TRUE` when `delete()` should set `deleted_at` instead of physically removing the row.
 
 ## Why Soft Deletes?
 
@@ -28,10 +28,12 @@ use DataMapper\Traits\SoftDeletes;
 
 class User extends DataMapper {
     use SoftDeletes;
+
+    protected $soft_delete_writes = TRUE;
 }
 ```
 
-That's it! The trait automatically:
+With the opt-in write flag, the model:
 
 1. Sets `deleted_at` when you call `delete()`.
 2. Adds `deleted_at IS NULL` to all queries.

@@ -116,6 +116,7 @@ use SoftDeletes;
 
 class User extends DataMapper {
     use SoftDeletes;
+    protected $soft_delete_writes = TRUE;
 }
 
 // Soft delete (sets deleted_at timestamp)
@@ -446,6 +447,7 @@ use HasTimestamps, SoftDeletes;
 
 class User extends DataMapper {
     use HasTimestamps, SoftDeletes;
+    protected $soft_delete_writes = TRUE;
 }
 ```
 
@@ -488,7 +490,7 @@ foreach ($customers as $customer) {
 ### After DataMapper 2.1
 
 ```php
-// Same functionality, 96% fewer queries!
+// Same functionality, with query count dependent on the relationship graph.
 $customers = (new Customer())
     ->with([
         'order' => function($q) {
