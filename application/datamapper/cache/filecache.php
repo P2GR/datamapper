@@ -189,7 +189,6 @@ class DMZ_FileCache implements DMZ_CacheInterface
 	{
 		// Convert pattern to filesystem glob
 		$pattern = str_replace(':', '_', $pattern);
-		$pattern = str_replace('*', '*', $pattern);
 		
 		$files = glob($this->cache_dir . '/' . $pattern);
 		

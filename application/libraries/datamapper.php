@@ -9405,7 +9405,7 @@ class DataMapper implements IteratorAggregate {
 	 * Chunk by ID for better performance.
 	 * 
 	 * More reliable and faster than offset-based chunking for large tables.
-	 * Uses WHERE id > $lastId instead of OFFSET.
+	 * Uses WHERE the selected key > $lastId instead of OFFSET.
 	 * 
 	 * Example:
 	*   (new User())->chunk_by_id(100, function($users) {
@@ -9414,7 +9414,7 @@ class DataMapper implements IteratorAggregate {
 	 * 
 	 * @param int $size Chunk size
 	 * @param callable $callback Processing callback
-	 * @param string $column Column to chunk by (default: 'id')
+	 * @param string|null $column Column to chunk by (defaults to the configured primary key)
 	 * @param string|null $alias Column alias if needed
 	 * @return bool TRUE if all chunks processed, FALSE if stopped early
 	 */
@@ -9437,12 +9437,12 @@ class DataMapper implements IteratorAggregate {
 			$chunk_query->_cache_enabled = FALSE;
 			$chunk_query->_cache_key = NULL;
 			
-			// Add WHERE id > lastId
+			// Add WHERE selected key > lastId
 			if ($lastId !== null) {
 				$chunk_query->where("{$column_name} >", $lastId);
 			}
 			
-			// Order by ID and limit
+			// Order by selected key and limit
 			$chunk_query->order_by($column_name, 'ASC')->limit($size)->get();
 			
 			// Stop if no results

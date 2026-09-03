@@ -2608,6 +2608,24 @@ class DMZ_Collection implements IteratorAggregate, Countable {
     }
 
     /**
+     * Resolve the default identifier field for model-backed collections.
+     */
+    protected function default_id_field()
+    {
+        if ($this->source_model instanceof DataMapper && !empty($this->source_model->primary_key)) {
+            return $this->source_model->primary_key;
+        }
+
+        foreach ($this->items as $item) {
+            if ($item instanceof DataMapper && !empty($item->primary_key)) {
+                return $item->primary_key;
+            }
+        }
+
+        return 'id';
+    }
+
+    /**
      * Normalize incoming values to an array.
      */
     protected function normalize_to_array($value)
@@ -3730,18 +3748,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
 	 * @return mixed The found item or NULL
 	 */
 	public function find($id, $id_field = NULL) {
-		if ($id_field === NULL && $this->source_model instanceof DataMapper) {
-			$id_field = $this->source_model->primary_key;
-		}
-		if ($id_field === NULL) {
-			foreach ($this->items as $item) {
-				if ($item instanceof DataMapper) {
-					$id_field = $item->primary_key;
-					break;
-				}
-			}
-		}
-		$id_field = $id_field === NULL ? 'id' : $id_field;
+		$id_field = $id_field === NULL ? $this->default_id_field() : $id_field;
 		foreach ($this->items as $item) {   
 			if (is_object($item) && isset($item->{$id_field}) && $item->{$id_field} == $id) {
 				return $item;
@@ -3764,18 +3771,7 @@ class DMZ_Collection implements IteratorAggregate, Countable {
 	 * @return array Array of IDs
 	 */
 	public function ids($id_field = NULL) {
-		if ($id_field === NULL && $this->source_model instanceof DataMapper) {
-			$id_field = $this->source_model->primary_key;
-		}
-		if ($id_field === NULL) {
-			foreach ($this->items as $item) {
-				if ($item instanceof DataMapper) {
-					$id_field = $item->primary_key;
-					break;
-				}
-			}
-		}
-		$id_field = $id_field === NULL ? 'id' : $id_field;
+		$id_field = $id_field === NULL ? $this->default_id_field() : $id_field;
 		return $this->pluck($id_field);
 	}
 
