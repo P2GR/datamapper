@@ -32,7 +32,7 @@ namespace DataMapper\Traits {
  * 
  * @package DataMapper
  * @category Traits
- * @version 2.0
+ * @version 2.1.0
  */
 trait HasTimestamps
 {
@@ -107,11 +107,29 @@ trait HasTimestamps
         }
         
         $updated_column = $this->get_updated_at_column();
-        $this->{$updated_column} = $this->_fresh_timestamp();
+        $had_previous_value = isset($this->{$updated_column});
+        $previous_value = $had_previous_value ? $this->{$updated_column} : NULL;
+        $timestamp = $this->_fresh_timestamp();
+        $this->{$updated_column} = $timestamp;
         
         // Update only the timestamp column
-        $this->db->where($this->primary_key, $this->id);
-        $this->db->update($this->table, array($updated_column => $this->{$updated_column}));
+        $this->db->where($this->primary_key, $this->{$this->primary_key});
+        $success = $this->db->update($this->table, array($updated_column => $timestamp));
+
+        if (!$success) {
+            if ($had_previous_value) {
+                $this->{$updated_column} = $previous_value;
+            } else {
+                unset($this->{$updated_column});
+            }
+            return FALSE;
+        }
+
+        if (isset($this->stored) && is_object($this->stored)) {
+            $this->stored->{$updated_column} = $timestamp;
+        }
+
+        $this->_invalidate_cache();
         
         return TRUE;
     }

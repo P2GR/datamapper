@@ -138,9 +138,9 @@ function process_inactive_users()
 }
 ```
 
-## DataMapper 2.0 Streaming <Badge type="tip" text="2.0" />
+## DataMapper 2.1 Streaming <Badge type="tip" text="2.1" />
 
-For even more advanced streaming capabilities, check out the new [Streaming Results](/guide/datamapper-2/streaming) feature in DataMapper 2.0:
+For even more advanced streaming capabilities, check out the new [Streaming Results](/guide/datamapper-2/streaming) feature in DataMapper 2.1:
 
 ```php
 use DataMapper\Streaming;
@@ -242,7 +242,7 @@ foreach ($user as $u) {
 ```
 
 ::: warning N+1 with Iterated
-Be cautious with relationships when using `get_iterated()`. Consider using DataMapper 2.0's [Eager Loading](/guide/datamapper-2/eager-loading) instead:
+Be cautious with relationships when using `get_iterated()`. Consider using DataMapper 2.1's [Eager Loading](/guide/datamapper-2/eager-loading) instead:
 
 ```php
 $user = new User();
@@ -341,6 +341,6 @@ function migrate_old_data()
 ## See Also
 
 - [Get Methods](/guide/models/get) - Standard data retrieval
-- [Streaming Results](/guide/datamapper-2/streaming) - Advanced streaming (2.0)
-- [Collections](/guide/datamapper-2/collections) - Working with result sets (2.0)
+- [Streaming Results](/guide/datamapper-2/streaming) - Advanced streaming (2.1)
+- [Collections](/guide/datamapper-2/collections) - Working with result sets (2.1)
 - [Query Caching](/guide/datamapper-2/caching) - Speed up repeated queries

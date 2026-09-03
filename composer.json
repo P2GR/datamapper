@@ -1,7 +1,8 @@
 {
     "name": "p2gr/datamapper",
-    "description": "DataMapper ORM testing harness",
-    "type": "project",
+    "description": "DataMapper ORM for CodeIgniter 3",
+    "type": "library",
+    "license": "MIT",
     "require": {
         "php": ">=8.0 <9.0"
     },

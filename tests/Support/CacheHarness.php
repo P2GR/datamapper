@@ -59,6 +59,20 @@ class CacheHarness extends DataMapper
         $this->_invalidate_cache();
     }
 
+    public function storeRelationGraph(array $results, array $relations)
+    {
+        $this->all = $results;
+        $this->cache_relations(60);
+        $this->_prepare_relation_cache($relations);
+        $this->_finalize_relation_cache();
+    }
+
+    public function prepareRelationFetch(array $relations)
+    {
+        $this->cache_relations(60);
+        $this->_prepare_relation_cache($relations);
+    }
+
     public function getCacheKey()
     {
         return $this->_generate_cache_key();

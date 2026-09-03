@@ -1,4 +1,4 @@
-# Local Query Scopes <Badge type="tip" text="2.0" />
+# Local Query Scopes <Badge type="tip" text="2.1" />
 
 Encapsulate reusable query constraints inside your model. Instead of repeating the same `where()` calls across controllers, define a scope once and call it like a first-class method.
 

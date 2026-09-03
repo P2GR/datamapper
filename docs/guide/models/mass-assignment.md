@@ -1,6 +1,6 @@
 # Mass Assignment
 
-Safely populating models from request data is crucial for avoiding privilege escalation bugs. DataMapper 2.0 brings first-class mass-assignment controls inspired by Laravel so you can opt in the attributes you expect and block everything else.
+Safely populating models from request data is crucial for avoiding privilege escalation bugs. DataMapper 2.1 brings first-class mass-assignment controls inspired by Laravel so you can opt in the attributes you expect and block everything else.
 
 ## Define Fillable Attributes
 

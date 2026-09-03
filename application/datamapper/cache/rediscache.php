@@ -194,15 +194,19 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	public function delete_pattern($pattern)
 	{
 		$deleted = 0;
-		$iterator = null;
+		$iterator = NULL;
 		
 		// Use SCAN to iterate through keys matching pattern
-		while ($keys = $this->redis->scan($iterator, $this->prefix . $pattern, 100)) {
+		do {
+			$keys = $this->redis->scan($iterator, $this->prefix . $pattern, 100);
+			if ($keys === FALSE) {
+				break;
+			}
 			foreach ($keys as $key) {
 				$this->redis->del($key);
 				$deleted++;
 			}
-		}
+		} while ($iterator !== 0 && $iterator !== '0');
 		
 		return $deleted;
 	}
@@ -218,10 +222,14 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		
 		// Count keys with our prefix
 		$keyCount = 0;
-		$iterator = null;
-		while ($keys = $this->redis->scan($iterator, $this->prefix . '*', 1000)) {
+		$iterator = NULL;
+		do {
+			$keys = $this->redis->scan($iterator, $this->prefix . '*', 1000);
+			if ($keys === FALSE) {
+				break;
+			}
 			$keyCount += count($keys);
-		}
+		} while ($iterator !== 0 && $iterator !== '0');
 		
 		return array_merge($this->stats, [
 			'entries' => $keyCount,

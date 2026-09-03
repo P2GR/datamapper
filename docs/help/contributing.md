@@ -450,7 +450,7 @@ $user->where('id', 1)->get();
 \```
 
 **Environment**
-- DataMapper Version: 2.0.0
+- DataMapper Version: 2.1.0
 - CodeIgniter Version: 3.1.13
 - PHP Version: 8.1.0
 - Database: MySQL 8.0

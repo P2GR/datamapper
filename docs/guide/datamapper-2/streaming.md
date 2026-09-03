@@ -1,8 +1,8 @@
-# Streaming & Chunking (DataMapper 2.0)
+# Streaming & Chunking (DataMapper 2.1)
 
 Process large datasets efficiently without loading all records into memory. Perfect for handling millions of records with minimal memory footprint.
 
-**New in DataMapper 2.0:** These methods allow you to process large datasets in batches or one-by-one, reducing memory usage by up to **99%**.
+**DataMapper 2.1:** These methods allow you to process large datasets in batches or one-by-one, reducing memory usage by up to **99%**.
 
 Available Methods:
 
@@ -10,6 +10,7 @@ Available Methods:
 - **chunk_by_id()** - ID-based chunking for better performance
 - **cursor()** - Iterate one record at a time using PHP Generators
 - **lazy()** - Lazy collection with chainable operations
+- **lazy_by_id()** - Mutation-safe lazy collection using keyset progression
 
 ## Why Use Streaming?
 
@@ -199,6 +200,25 @@ $report = $u->where('created_at >', '2024-01-01')
 $top_customers = $report->to_array();
 ```
 
+## lazy_by_id() - Keyset Lazy Collections
+
+Use `lazy_by_id()` when rows may be inserted or deleted during iteration. It advances with `WHERE key > last_key` instead of an offset and defaults to the model's configured `primary_key`.
+
+```php
+$users = (new User())
+    ->where('active', 1)
+    ->lazy_by_id(500);
+
+foreach ($users as $user) {
+    $user->process();
+}
+
+// Explicit monotonically increasing key:
+$events = (new Event())->lazy_by_id(1000, 'sequence_number');
+```
+
+The key column must be selected, unique, and monotonically increasing for stable progression.
+
 ## Best Practices
 
 ### Choose the Right Tool
@@ -216,6 +236,7 @@ $u->chunk(100000, $callback); // BAD
 $u->chunk(1000, $callback);     // GOOD: Most cases
 $u->chunk_by_id(5000, $callback); // GOOD: Large tables
 $u->lazy(2000);                 // GOOD: Pipelines
+$u->lazy_by_id(2000);           // GOOD: Mutable datasets
 ```
 
 ### Error Handling
@@ -257,6 +278,12 @@ Returns a Generator that yields one record at a time.
 ### $object->lazy($chunkSize)
 
 Returns a lazy collection with chainable operations.
+
+**Returns:**DMZ_LazyCollection
+
+### $object->lazy_by_id($chunkSize, $column = NULL)
+
+Returns a keyset-backed lazy collection. The column defaults to the configured primary key.
 
 **Returns:**DMZ_LazyCollection
 

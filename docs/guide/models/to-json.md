@@ -183,7 +183,7 @@ echo json_encode($data);
 // }
 ```
 
-::: tip DataMapper 2.0
+::: tip DataMapper 2.1
 With eager loading the same response becomes much simpler:
 
 ```php
@@ -244,7 +244,7 @@ echo json_encode($data, JSON_PRETTY_PRINT);
 
 ## Attribute Casting Integration
 
-::: tip New in DataMapper 2.0
+::: tip New in DataMapper 2.1
 `to_json()` works seamlessly with attribute casting:
 
 ```php

@@ -26,6 +26,9 @@ class DMZ_LazyCollection implements IteratorAggregate
 	 * @var int
 	 */
 	protected $chunkSize;
+
+	/** @var string|null Key column used for keyset iteration. */
+	protected $keyset_column;
 	
 	/**
 	 * @var array Operations to apply to items
@@ -38,11 +41,12 @@ class DMZ_LazyCollection implements IteratorAggregate
 	 * @param DataMapper $query The DataMapper query object
 	 * @param int $chunkSize Chunk size for fetching (default: 1000)
 	 */
-	public function __construct($query, $chunk_size = 1000)
+	public function __construct($query, $chunk_size = 1000, $keyset_column = NULL)
 	{
 		$this->query = $query;
 		$this->chunk_size = $chunk_size;
 		$this->chunkSize =& $this->chunk_size;
+		$this->keyset_column = $keyset_column;
 	}
 	
 	/**
@@ -142,7 +146,12 @@ class DMZ_LazyCollection implements IteratorAggregate
 	 */
 	public function getIterator(): Traversable
 	{
+		if ($this->keyset_column !== NULL && method_exists($this->query->db, 'dm_get') && !empty($this->query->db->dm_get('qb_orderby'))) {
+			throw new InvalidArgumentException('lazy_by_id() requires a query without pre-existing ordering.');
+		}
+
 		$offset = 0;
+		$last_key = NULL;
 		$taken = 0;
 		$skipped = 0;
 		$seen_keys = [];
@@ -166,11 +175,18 @@ class DMZ_LazyCollection implements IteratorAggregate
 				break;
 			}
 			
-			// Clone query for this chunk
-			$chunk_query = clone $this->query;
+			// Clone both model and mutable CI query-builder state for this chunk.
+			$chunk_query = $this->query->get_clone(TRUE)->no_cache();
 			
 			// Fetch chunk
-			$chunk_query->limit($this->chunk_size, $offset)->get();
+			if ($this->keyset_column !== NULL) {
+				if ($last_key !== NULL) {
+					$chunk_query->where($this->keyset_column . ' >', $last_key);
+				}
+				$chunk_query->order_by($this->keyset_column, 'ASC')->limit($this->chunk_size)->get();
+			} else {
+				$chunk_query->limit($this->chunk_size, $offset)->get();
+			}
 			
 			// Stop if no results
 			if (empty($chunk_query->all)) {
@@ -209,7 +225,15 @@ class DMZ_LazyCollection implements IteratorAggregate
 			}
 			
 			// Move to next chunk
-			$offset += $this->chunk_size;
+			if ($this->keyset_column !== NULL) {
+				$last_item = end($chunk_query->all);
+				if (!is_object($last_item) || !isset($last_item->{$this->keyset_column})) {
+					throw new RuntimeException('Keyset lazy iteration requires the selected key column in every result.');
+				}
+				$last_key = $last_item->{$this->keyset_column};
+			} else {
+				$offset += $this->chunk_size;
+			}
 			
 			// Clear memory
 			$chunk_query = null;

@@ -10,7 +10,7 @@
  * @author      DataMapper Development Team
  * @license     MIT License
  * @link        https://github.com/datamapper/datamapper
- * @version     2.0.5
+ * @version     2.1.0
  */
 
 /**

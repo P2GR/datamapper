@@ -8,18 +8,18 @@ Common questions and answers about DataMapper ORM.
 
 DataMapper is an Object-Relational Mapper (ORM) for CodeIgniter 3.x that provides an elegant Active Record implementation. It allows you to interact with your database using object-oriented syntax instead of writing raw SQL.
 
-### Is DataMapper 2.0 backward compatible?
+### Is DataMapper 2.1 backward compatible?
 
-Yes. DataMapper 2.0 keeps the classic DataMapper API available while adding new opt-in helpers.
+Yes. DataMapper 2.1 keeps the classic DataMapper API available while adding new opt-in helpers.
 
 ### Which PHP version do I need?
 
-- **DataMapper 2.0**: PHP 7.4 - 8.3+
+- **DataMapper 2.1**: PHP 8.0 - 8.5
 - **DataMapper 1.8**: PHP 5.6 - 7.4
 
 ### Does it work with CodeIgniter 4?
 
-Not yet. DataMapper 2.0 is designed for CodeIgniter 3.x. CodeIgniter 4 support is planned for a future release.
+Not yet. DataMapper 2.1 is designed for CodeIgniter 3.x. CodeIgniter 4 support is planned for a future release.
 
 ## Installation & Setup
 
@@ -77,7 +77,7 @@ class User extends DataMapper {
 
 ### How do I handle timestamps?
 
-**DataMapper 2.0**: Use the `HasTimestamps` trait:
+**DataMapper 2.1**: Use the `HasTimestamps` trait:
 
 ```php
 use HasTimestamps;
@@ -112,7 +112,7 @@ See [Relationships](/guide/relationships/) for details.
 
 ### How do I avoid N+1 queries?
 
-**DataMapper 2.0**: Use eager loading:
+**DataMapper 2.1**: Use eager loading:
 
 ```php
 $users = (new User())
@@ -124,9 +124,9 @@ This loads users and their posts in just 2 queries instead of N+1.
 
 See [Eager Loading](/guide/datamapper-2/eager-loading).
 
-## DataMapper 2.0
+## DataMapper 2.1
 
-### What's new in 2.0?
+### What's new in 2.1?
 
 Major features:
 - Modern query builder
@@ -140,9 +140,9 @@ Major features:
 
 See [What's New](/guide/datamapper-2/) for details.
 
-### Should I upgrade to 2.0?
+### Should I upgrade to 2.1?
 
-Yes, if you want the 2.0 helpers. You can upgrade existing code first and adopt query-builder, eager-loading, caching, casting, and streaming features gradually.
+Yes, if you want the 2.1 helpers. You can upgrade existing code first and adopt query-builder, eager-loading, caching, casting, and streaming features gradually.
 
 ### How do I use the new query builder syntax?
 
@@ -190,7 +190,7 @@ $users = (new User())->with('post')->get();  // users query + posts query
 
 ### How do I enable caching?
 
-**DataMapper 2.0**: Use the `cache()` method:
+**DataMapper 2.1**: Use the `cache()` method:
 
 ```php
 $users = (new User())
@@ -242,7 +242,7 @@ Instead of permanently deleting records, soft deletes set a `deleted_at` timesta
 
 ### How do I use soft deletes?
 
-**DataMapper 2.0**: Use the `SoftDeletes` trait:
+**DataMapper 2.1**: Use the `SoftDeletes` trait:
 
 ```php
 use SoftDeletes;
@@ -289,7 +289,7 @@ Check:
 
 ### Timestamps aren't updating
 
-**DataMapper 2.0**: Make sure you're using the trait:
+**DataMapper 2.1**: Make sure you're using the trait:
 
 ```php
 use HasTimestamps;

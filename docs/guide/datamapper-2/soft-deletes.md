@@ -1,8 +1,8 @@
-# Soft Deletes (DataMapper 2.0)
+# Soft Deletes (DataMapper 2.1)
 
 Safely "delete" records by marking them as deleted instead of removing them from the database. This keeps relational data intact, powers undo workflows, and satisfies audit/compliance requirements.
 
-**New in DataMapper 2.0:** Soft deletes are now trait-based. Simply use the `SoftDeletes` trait in your model to enable automatic `deleted_at IS NULL` scopes, set timestamps on `delete()`, and gain access to query builder helpers like `restore()`, `force_delete()`, and `with_softdeleted()`.
+**DataMapper 2.1:** Soft deletes are trait-based. Simply use the `SoftDeletes` trait in your model to enable automatic `deleted_at IS NULL` scopes, set timestamps on `delete()`, and gain access to query builder helpers like `restore()`, `force_delete()`, and `with_softdeleted()`.
 
 ## Why Soft Deletes?
 
@@ -48,7 +48,7 @@ class Project extends DataMapper {
 ```
 
 ::: tip Naming
-Use the snake_case helpers (`with_softdeleted()`, `only_softdeleted()`, `without_softdeleted()`, `force_delete()`); camelCase variants are not available in 2.0.
+Use the snake_case helpers (`with_softdeleted()`, `only_softdeleted()`, `without_softdeleted()`, `force_delete()`); camelCase variants are not available in 2.1.
 :::
 
 ## Querying Patterns

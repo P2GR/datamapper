@@ -1,6 +1,6 @@
-# Query Builder & Collections (DataMapper 2.0)
+# Query Builder & Collections (DataMapper 2.1)
 
-DataMapper 2.0 adds chainable query helpers directly to your models. Classic DataMapper calls still work, and you can opt into eager loading, result helpers, and collections where they make the code clearer.
+DataMapper 2.1 adds chainable query helpers directly to your models. Classic DataMapper calls still work, and you can opt into eager loading, result helpers, and collections where they make the code clearer.
 
 ::: tip TL;DR
 - Keep your existing controllers intact while adding builder calls where you need them.

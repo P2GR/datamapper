@@ -1,7 +1,7 @@
-# DataMapper ORM v2.0.0
+# DataMapper ORM v2.1.0
 
-[![CI](https://img.shields.io/github/actions/workflow/status/P2GR/datamapper/ci.yml?branch=2.0.0-beta1&label=CI&logo=github)](https://github.com/P2GR/datamapper/actions/workflows/ci.yml)
-[![PHP Version](https://img.shields.io/badge/PHP-7.4--8.5%2B-blue)](https://php.net)
+[![CI](https://img.shields.io/github/actions/workflow/status/P2GR/datamapper/ci.yml?branch=master&label=CI&logo=github)](https://github.com/P2GR/datamapper/actions/workflows/ci.yml)
+[![PHP Version](https://img.shields.io/badge/PHP-8.0--8.5-blue)](https://php.net)
 [![CodeIgniter](https://img.shields.io/badge/CodeIgniter-3.x-orange)](https://codeigniter.com)
 [![License](https://img.shields.io/badge/License-MIT-green)](license.txt)
 
@@ -9,9 +9,9 @@ A powerful Object-Relational Mapper (ORM) for CodeIgniter 3 with modern features
 
 ## About
 
-DataMapper ORM provides an elegant Active Record implementation for CodeIgniter 3, allowing you to interact with your database using objects instead of writing SQL queries. Version 2.0 introduces modern features while maintaining full compatibility with existing DataMapper 1.x code.
+DataMapper ORM provides an elegant Active Record implementation for CodeIgniter 3, allowing you to interact with your database using objects instead of writing SQL queries. Version 2.1 introduces modern features while maintaining compatibility with existing DataMapper 1.x code.
 
-## What's New in v2.0
+## What's New in v2.1
 
 ### Query & Performance
 - **[Query Builder](https://datamapper.mss54.com/guide/datamapper-2/query-builder)** — Modern chainable query syntax
@@ -35,7 +35,7 @@ DataMapper ORM provides an elegant Active Record implementation for CodeIgniter 
 
 ## Requirements
 
-- PHP 7.4 or higher (tested through PHP 8.5)
+- PHP 8.0 through 8.5
 - CodeIgniter 3.x
 - MySQL, PostgreSQL, SQLite, or any CI-supported database
 
@@ -176,7 +176,7 @@ Full documentation: **[datamapper.mss54.com](https://datamapper.mss54.com)**
 - [Getting Started](https://datamapper.mss54.com/guide/getting-started/installation)
 - [Query Builder](https://datamapper.mss54.com/guide/datamapper-2/query-builder)
 - [Eager Loading](https://datamapper.mss54.com/guide/datamapper-2/eager-loading)
-- [DataMapper 2.0 Features](https://datamapper.mss54.com/guide/datamapper-2/)
+- [DataMapper 2.1 Features](https://datamapper.mss54.com/guide/datamapper-2/)
 - [Quick Reference](https://datamapper.mss54.com/reference/quick-reference)
 
 ## Credits
@@ -186,10 +186,10 @@ Full documentation: **[datamapper.mss54.com](https://datamapper.mss54.com)**
 - **Simon Stenhouse (Stensi)** — Original DataMapper creator
 - **Harro Verton (WanWizard)** — DataMapper 1.x maintenance and improvements
 
-### DataMapper 2.0
+### DataMapper 2.1
 
-- **[P2GR](https://github.com/P2GR)** — Version 2.0 development and maintenance
-- **[KayElliot](https://github.com/kayelliot)** — Version 2.0 development and maintenance
+- **[P2GR](https://github.com/P2GR)** — Version 2.1 development and maintenance
+- **[KayElliot](https://github.com/kayelliot)** — Version 2.1 development and maintenance
 
 ## License
 

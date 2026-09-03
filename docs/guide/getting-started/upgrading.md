@@ -2,14 +2,14 @@
 
 Guide to upgrading DataMapper to the latest version safely.
 
-## Version 2.0 Upgrade
+## Version 2.1 Upgrade
 
-### What's New in 2.0
+### What's New in 2.1
 
-DataMapper 2.0 adds opt-in query, collection, cache, casting, timestamp, soft-delete, and streaming helpers while keeping the classic DataMapper API available.
+DataMapper 2.1 adds opt-in query, collection, cache, casting, timestamp, soft-delete, and streaming helpers while keeping the classic DataMapper API available.
 
 ::: tip Backward Compatible
-Existing DataMapper-style models and controllers can continue to use the classic API while you adopt 2.0 features gradually.
+Existing DataMapper-style models and controllers can continue to use the classic API while you adopt 2.1 features gradually.
 :::
 
 **New Features:**
@@ -26,7 +26,7 @@ Existing DataMapper-style models and controllers can continue to use the classic
 
 | Version | PHP | CodeIgniter |
 |---------|-----|-------------|
-| **2.0.x** | 7.4 - 8.3+ | 3.1.x |
+| **2.1.x** | 8.0 - 8.5 | 3.1.x |
 | **1.8.x** | 5.6 - 7.4 | 2.x / 3.x |
 
 ### Upgrade Steps
@@ -45,7 +45,7 @@ cp -r application/models models_backup
 cp -r application/libraries/datamapper.php datamapper_backup.php
 ```
 
-#### 3. Download DataMapper 2.0
+#### 3. Download DataMapper 2.1
 
 ```bash
 # Via Git
@@ -58,7 +58,7 @@ git checkout datamapper2
 
 #### 4. Replace Core Files
 
-Replace these files with 2.0 versions:
+Replace these files with 2.1 versions:
 
 ```
 application/libraries/
@@ -97,7 +97,7 @@ foreach ($user->post as $post) {
 
 #### 6. Gradually Adopt New Features
 
-You can now use 2.0 features alongside old syntax:
+You can now use 2.1 features alongside old syntax:
 
 ```php
 // Old syntax still works
@@ -181,7 +181,7 @@ foreach ($users as $user) {
 
 ### Key Differences from 1.x (What to Update)
 
-| Legacy pattern | 2.0 replacement | Benefit |
+| Legacy pattern | 2.1 replacement | Benefit |
 |----------------|-----------------|---------|
 | `$post->include_related('user', 'name')` to copy columns onto the base model | `(new Post())->with('user')` and read `$post->user->name` | Keeps models normalized, supports constraints, avoids column collisions |
 | Chaining `include_related()` multiple times to join through relationships | Nested eager loading: `with('user.company', fn($q) => ...)` | One round-trip per relation, can filter/limit at the DB level |
@@ -190,14 +190,14 @@ foreach ($users as $user) {
 | Writing log wrappers and calling `DMZ_Logger::debug()` | Call `dmz_log_message()` which proxies to CodeIgniter’s `log_message()` | Honors CI thresholds/handlers and removes duplicate log pipelines |
 | Manually updating `created_at`/`updated_at` fields | Add the `HasTimestamps` trait | Consistent timestamp management without boilerplate |
 
-The legacy APIs still work, but updating to the new patterns unlocks the biggest performance wins of 2.0.
+The legacy APIs still work, but updating to the new patterns unlocks the biggest performance wins of 2.1.
 
 ## Breaking Changes
 
 While most 1.x projects continue to run unchanged, a few small breaking differences are worth calling out:
 
 - **`create()` is now static** – call `User::create([...])` instead of `$user->create([...])`. The new mass-assignment helper lives on the class so it can spin up a fresh instance internally.
-- **Minimum PHP & CI versions** – PHP 7.4+ and CodeIgniter 3.1+ are required to run 2.0.
+- **Minimum PHP & CI versions** – PHP 8.0+ and CodeIgniter 3.1+ are required to run 2.1.
 
 ### Deprecated Features
 

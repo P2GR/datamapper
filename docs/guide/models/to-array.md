@@ -90,8 +90,8 @@ foreach ($users as $user) {
 print_r($result);
 ```
 
-::: tip DataMapper 2.0
-Prefer the new eager-loading syntax when you need related data in 2.0:
+::: tip DataMapper 2.1
+Prefer the new eager-loading syntax when you need related data in 2.1:
 
 ```php
 $user = (new User())
@@ -218,7 +218,7 @@ foreach ($user->post as $post) {
 
 ## Attribute Casting Integration
 
-::: tip New in DataMapper 2.0
+::: tip New in DataMapper 2.1
 `to_array()` exports **casted values**, not raw database values:
 
 ```php

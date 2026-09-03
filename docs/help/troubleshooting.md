@@ -239,7 +239,7 @@ foreach ($user->post as $post) {
 
 **Problem**: Loading relationships in loops causes too many queries.
 
-**Solution**: Use eager loading (DataMapper 2.0):
+**Solution**: Use eager loading (DataMapper 2.1):
 
 ```php
 // Inefficient N+1 problem (101 queries)
@@ -340,7 +340,7 @@ public $validation = [
 ];
 ```
 
-## DataMapper 2.0 Issues
+## DataMapper 2.1 Issues
 
 ### Traits not working (HasTimestamps, SoftDeletes)
 
@@ -371,7 +371,7 @@ ADD COLUMN deleted_at DATETIME NULL;
 ```
 
 3. **Check PHP version**:
-    - DataMapper 2.0 requires PHP 7.4+ (traits are available in all supported versions)
+    - DataMapper 2.1 requires PHP 8.0+
 
 ### Query builder chaining not working
 
@@ -379,7 +379,7 @@ ADD COLUMN deleted_at DATETIME NULL;
 
 **Solutions**:
 
-1. **Verify DataMapper 2.0 installed**:
+1. **Verify DataMapper 2.1 installed**:
 ```php
 // Confirm datamapper/querybuilder.php is present and autoloaded
 ```
@@ -418,7 +418,7 @@ class User extends DataMapper {
 }
 ```
 
-3. **Use DataMapper 2.0 query builder syntax**:
+3. **Use DataMapper 2.1 query builder syntax**:
 ```php
 // Traditional syntax doesn't support with()
 $user = new User();
@@ -467,7 +467,7 @@ $users = (new User())
 $config['production_cache'] = TRUE;
 ```
 
-5. **Use query caching** (DataMapper 2.0):
+5. **Use query caching** (DataMapper 2.1):
 ```php
 $users = (new User())
     ->where('active', 1)
@@ -477,7 +477,7 @@ $users = (new User())
 
 ### Memory issues with large datasets
 
-**Solution**: Use streaming (DataMapper 2.0):
+**Solution**: Use streaming (DataMapper 2.1):
 
 ```php
 // Instead of loading all at once

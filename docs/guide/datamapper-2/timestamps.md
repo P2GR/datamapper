@@ -1,8 +1,8 @@
-# Timestamps (DataMapper 2.0)
+# Timestamps (DataMapper 2.1)
 
 Automatically track when records are created and updated. The `HasTimestamps` trait adds `created_at` and `updated_at` columns that are managed automatically.
 
-**New in DataMapper 2.0:** Simply use the `HasTimestamps` trait in your model for zero-configuration automatic timestamps with full customization options.
+**DataMapper 2.1:** Simply use the `HasTimestamps` trait in your model for zero-configuration automatic timestamps with full customization options.
 
 ## Why Timestamps?
 

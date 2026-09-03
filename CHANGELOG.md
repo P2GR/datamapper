@@ -5,6 +5,46 @@ All notable changes to DataMapper ORM will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [2.1.0] - 2026-08-12
+
+### Added
+- Added `lazy_by_id()` keyset iteration using the configured primary key by default.
+- Added production eager-loader, write-failure, relation-cache, lazy iteration, timestamp, Redis, and Memcached regressions.
+
+### Fixed
+- Made eager loading honor normalized relationship aliases, custom parent/related primary keys, and per-parent limits.
+- Made failed writes and rollbacks suppress success events while keeping non-transactional partial-commit state coherent.
+- Made relationship writes propagate database failures.
+- Made custom primary keys consistent across persistence, relationships, counts, model utilities, and legacy relation joins.
+- Made `cache_relations()` store hydrated relation graphs and invalidate graph caches after model writes.
+- Made `lazy()` clone CI query state and disable per-chunk caching.
+- Made `touch()` honor custom primary keys, propagate failures, restore failed in-memory state, and invalidate cache after success.
+- Made automatic timestamps determine new records from the configured primary key.
+- Made Redis flush/pattern deletion continue across empty nonterminal `SCAN` pages without double-prefixing keys.
+- Made Memcached flush and pattern invalidation namespace-safe, including batch and counter operations.
+
+### Tests
+- Full PHPUnit suite passes: 161 tests, 418 assertions.
+
+## [2.0.4] - 2026-08-12
+
+### Fixed
+- Resolved PHP 8.0 CI installation failures by locking Composer dependencies against the PHP 8.0 platform; PHPUnit now uses `doctrine/instantiator` 1.5.0 instead of the PHP 8.1-only 2.0.0 release.
+
+## [2.0.3] - 2026-08-12
+
+### Changed
+- Declared PHP 8.0 through 8.5 as the supported runtime range in Composer, CI, source annotations, and current documentation.
+- Updated all shipped PHP version annotations and the documentation-site package metadata to 2.0.3.
+
+### Fixed
+- Made `DataMapper::save()` use the model's configured `primary_key` for existing-record detection, update predicates, and generated insert-ID assignment.
+
+### Tests
+- Added custom-primary-key save regression coverage and expanded the PHPUnit suite to 122 tests with 308 assertions.
+
 ## [2.0.1] - 2026-07-10
 
 ### Changed

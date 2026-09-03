@@ -1,6 +1,6 @@
-# Attribute Casting, Accessors and Mutators (DataMapper 2.0)
+# Attribute Casting, Accessors and Mutators (DataMapper 2.1)
 
-DataMapper 2.0 includes opt-in attribute casting, accessors and mutators directly in the core model. Existing models without `$casts`, accessors or mutators continue to behave as before.
+DataMapper 2.1 includes opt-in attribute casting, accessors and mutators directly in the core model. Existing models without `$casts`, accessors or mutators continue to behave as before.
 
 ## Table of Contents
 

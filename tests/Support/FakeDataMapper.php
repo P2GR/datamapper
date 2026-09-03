@@ -84,6 +84,7 @@ class FakeDataMapper extends DataMapper
     public function get($limit = NULL, $offset = NULL)
     {
         $this->getCalls++;
+		$this->_last_query_succeeded = TRUE;
         if ($limit === NULL && $this->lastLimit !== NULL) {
             $limit = $this->lastLimit;
         }

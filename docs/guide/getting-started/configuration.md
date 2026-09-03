@@ -49,7 +49,7 @@ $config['extensions_path'] = 'datamapper'; // Extensions folder
 
 ## Configuration Options
 
-### Logging (DataMapper 2.0)
+### Logging (DataMapper 2.1)
 
 DataMapper now delegates all log output to CodeIgniter's native `log_message()` via the `dmz_log_message()` helper. No extra bootstrap is required—the log level, path, and thresholds are controlled by your standard CodeIgniter configuration.
 
@@ -98,7 +98,7 @@ $config['updated_field'] = 'updated_at';
 $config['timestamp_format'] = 'Y-m-d H:i:s';
 ```
 
-**DataMapper 2.0**: Use the `HasTimestamps` trait:
+**DataMapper 2.1**: Use the `HasTimestamps` trait:
 
 ```php
 use HasTimestamps;
@@ -151,7 +151,7 @@ $config['auto_populate_has_one'] = FALSE;
 $config['auto_populate_has_many'] = FALSE;
 ```
 
-::: info DataMapper 2.0
+::: info DataMapper 2.1
 Leave auto-populate switched off and opt in with the chainable `with()` eager-loading API when you actually need related data. This keeps N+1 queries under control and lets you add per-relation constraints.
 :::
 
@@ -287,7 +287,7 @@ class User extends DataMapper {
 
 ## Caching Configuration
 
-### Query Caching (DataMapper 2.0)
+### Query Caching (DataMapper 2.1)
 
 ```php
 // Enable query result caching
@@ -359,7 +359,7 @@ print_r($CI->config->item('prefix'));
 $config['created_field'] = 'created_at';
 $config['updated_field'] = 'updated_at';
 
-// Or use trait (DataMapper 2.0)
+// Or use trait (DataMapper 2.1)
 use HasTimestamps;
 
 class User extends DataMapper {
@@ -382,7 +382,7 @@ echo $user->table; // Should be 'app_users'
 
 - [Database Setup](/guide/getting-started/database) - Configure your database
 - [Controllers](/guide/getting-started/controllers) - Use DataMapper in controllers
-- [Logging & Error Handling](#logging-datamapper-20) - Configure logging (2.0)
+- [Logging & Error Handling](#logging-datamapper-21) - Configure logging (2.1)
 - [Production Cache](/guide/advanced/production-cache) - Optimize for production
 
 ::: tip Best Practices

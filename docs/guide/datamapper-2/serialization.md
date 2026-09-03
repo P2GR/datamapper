@@ -1,4 +1,4 @@
-# Serialization Control <Badge type="tip" text="2.0" />
+# Serialization Control <Badge type="tip" text="2.1" />
 
 Control which fields appear when a model is converted to an array or JSON. Hide sensitive data, whitelist public fields, and append computed attributes — all declaratively on the model.
 

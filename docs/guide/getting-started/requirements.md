@@ -1,13 +1,13 @@
 # Server Requirements
 
-DataMapper ORM 2.0 requires:
+DataMapper ORM 2.1 requires:
 
-- **[PHP](http://php.net/)** version **7.4 or newer** (PHP 8.0, 8.1, 8.2, and 8.3 are fully supported)
+- **[PHP](http://php.net/)** version **8.0 through 8.5**
 - **[CodeIgniter](http://codeigniter.com/)** version **3.1.13 or newer**
 - A database supported by CodeIgniter (MySQL, PostgreSQL, SQLite, etc.)
 
 ::: tip Recommended
-- PHP 8.1+
+- PHP 8.0+
 - CodeIgniter 3.1.13 (latest stable version)
 - 
 - MySQL 5.7+ or PostgreSQL 10+
@@ -17,13 +17,13 @@ DataMapper ORM 2.0 requires:
 
 | PHP Version | Support Status |
 |-------------|----------------|
-| 7.4 - 8.3   |  Fully Supported |
-| 7.0 - 7.3   |  Not Supported |
+| 8.0 - 8.5   |  Fully Supported |
+| 7.4 and earlier | Not Supported |
 | 5.x         |  Not Supported |
 
 ## CodeIgniter Version Support
 
-DataMapper ORM 2.0 is designed specifically for **CodeIgniter 3.x**. 
+DataMapper ORM 2.1 is designed specifically for **CodeIgniter 3.x**.
 
 ::: tip Recommended Fork
 For modern PHP 8+ support and active maintenance, we recommend using the [pocketarc CodeIgniter 3 fork](https://github.com/pocketarc/codeigniter), which includes PHP 8.1 - PHP 8.5 compatibility and continued updates.

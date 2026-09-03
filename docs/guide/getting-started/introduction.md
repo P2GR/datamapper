@@ -1,6 +1,6 @@
 # Introduction
 
-Welcome to **DataMapper ORM 2.0**, an Active Record ORM for CodeIgniter 3.x with chainable queries, eager loading, collections, casting, caching, and streaming helpers.
+Welcome to **DataMapper ORM 2.1**, an Active Record ORM for CodeIgniter 3.x with chainable queries, eager loading, collections, casting, caching, and streaming helpers.
 
 ## What is DataMapper?
 
@@ -42,10 +42,10 @@ Unlike generic ORMs, DataMapper is designed specifically for CodeIgniter 3.x. It
 - **Transactions** - ACID compliance
 - **Subqueries** - Complex query building
 
-## DataMapper 2.0 Highlights
+## DataMapper 2.1 Highlights
 
-::: info What's New in 2.0
-Version 2.0 adds focused query, collection, cache, casting, and streaming helpers while maintaining backward compatibility with classic DataMapper usage.
+::: info What's New in 2.1
+Version 2.1 adds focused query, collection, cache, casting, timestamp, soft-delete, and streaming helpers while maintaining backward compatibility with classic DataMapper usage.
 :::
 
 ### Modern Query Builder
@@ -121,7 +121,7 @@ $post->restore();
 
 ## Quick Comparison
 
-| Feature | DataMapper 2.0 | CodeIgniter Query Builder | Laravel |
+| Feature | DataMapper 2.1 | CodeIgniter Query Builder | Laravel |
 |---------|----------------|---------------------------|---------|
 | **Query Builder Syntax** | Yes | Basic | Yes |
 | **Relationships** | Full | Manual | Full |
@@ -183,7 +183,7 @@ Ready to get started? Here's your path:
 ::: steps
 
 ### 1. Check Requirements
-Make sure you have PHP 7.4+ and CodeIgniter 3.x installed.
+Make sure you have PHP 8.0+ and CodeIgniter 3.x installed.
 [View Requirements →](/guide/getting-started/requirements)
 
 ### 2. Install DataMapper
@@ -213,7 +213,7 @@ Dive into advanced features like eager loading and caching.
 
 ### Start Building Better Apps Today
 
-DataMapper 2.0 makes database operations simple, fast, and enjoyable.
+DataMapper 2.1 makes database operations simple, fast, and enjoyable.
 
 [Get Started](/guide/getting-started/installation){ .vp-button .brand style="margin: 0 0.5rem;" }
 [View Usage Guides](/guide/datamapper-2/index){ .vp-button .alt style="margin: 0 0.5rem;" }

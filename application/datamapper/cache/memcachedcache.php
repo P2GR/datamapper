@@ -52,7 +52,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 * @var string Key prefix
 	 */
 	protected $prefix = 'dmz:';
-	
+
 	/**
 	 * @var array Cache statistics
 	 */
@@ -122,7 +122,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 */
 	public function get($key)
 	{
-		$value = $this->memcached->get($this->prefix . $key);
+		$value = $this->memcached->get($this->physical_key($key));
 		
 		if ($this->memcached->getResultCode() === constant($this->memcached_class . '::RES_NOTFOUND')) {
 			$this->stats['misses']++;
@@ -149,7 +149,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	public function set($key, $value, $ttl = 3600)
 	{
 		$result = $this->memcached->set(
-			$this->prefix . $key,
+			$this->physical_key($key),
 			$value,
 			time() + $ttl
 		);
@@ -169,7 +169,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 */
 	public function delete($key)
 	{
-		$result = $this->memcached->delete($this->prefix . $key);
+		$result = $this->memcached->delete($this->physical_key($key));
 		
 		if ($result || $this->memcached->getResultCode() === constant($this->memcached_class . '::RES_NOTFOUND')) {
 			$this->stats['deletes']++;
@@ -180,16 +180,22 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	}
 	
 	/**
-	 * Clear all cache entries
+	 * Clear all DataMapper cache entries.
 	 *
-	 * NOTE: This flushes the ENTIRE Memcached server, not just our keys!
-	 * Use with caution in shared environments.
+	 * Uses namespace generations so shared Memcached data is preserved.
 	 *
 	 * @return bool TRUE on success, FALSE on failure
 	 */
 	public function flush()
 	{
-		return $this->memcached->flush();
+		// Invalidate DataMapper's namespace without flushing shared Memcached data.
+		$generation = $this->memcached->increment($this->global_generation_key(), 1, 2);
+		if ($generation === FALSE) {
+			return FALSE;
+		}
+
+		$this->stats['deletes']++;
+		return TRUE;
 	}
 	
 	/**
@@ -200,7 +206,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 */
 	public function has($key)
 	{
-		$this->memcached->get($this->prefix . $key);
+		$this->memcached->get($this->physical_key($key));
 		return $this->memcached->getResultCode() === constant($this->memcached_class . '::RES_SUCCESS');
 	}
 	
@@ -215,13 +221,63 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 */
 	public function delete_pattern($pattern)
 	{
-		// Memcached doesn't support pattern deletion natively
-		// We would need to maintain a separate index of keys
-		// For now, return 0 and log a warning
-		
-		dmz_log_message('warning', 'DataMapper Memcached Cache: Pattern deletion not supported. Consider using Redis for this feature.');
-		
-		return 0;
+		$supported = ($pattern === 'relation-query:*' || preg_match('/^query:[^:*?\[]+:\*$/', $pattern));
+		if (!$supported) {
+			dmz_log_message('warning', 'DataMapper Memcached Cache: pattern is outside a supported cache namespace.');
+			return 0;
+		}
+
+		$namespace = substr($pattern, 0, -1);
+		$generation = $this->memcached->increment($this->generation_key($namespace), 1, 2);
+		if ($generation === FALSE) {
+			return 0;
+		}
+
+		$this->stats['deletes']++;
+		return 1;
+	}
+
+	protected function physical_key($key)
+	{
+		$global_generation = $this->read_generation($this->global_generation_key());
+		$namespace = $this->cache_namespace($key);
+		$generation = $this->read_generation($this->generation_key($namespace));
+		return $this->prefix . $global_generation . ':' . $generation . ':' . $key;
+	}
+
+	protected function read_generation($generation_key)
+	{
+		$generation = $this->memcached->get($generation_key);
+		if (!is_int($generation)) {
+			$this->memcached->add($generation_key, 1, 0);
+			$generation = $this->memcached->get($generation_key);
+			if (!is_int($generation)) {
+				$generation = 1;
+			}
+		}
+		return $generation;
+	}
+
+	protected function cache_namespace($key)
+	{
+		if (strpos($key, 'relation-query:') === 0) {
+			return 'relation-query:';
+		}
+		if (strpos($key, 'query:') === 0) {
+			$parts = explode(':', $key, 3);
+			return count($parts) > 1 ? 'query:' . $parts[1] . ':' : 'query:';
+		}
+		return '';
+	}
+
+	protected function generation_key($namespace)
+	{
+		return $this->prefix . '__generation:' . md5($namespace);
+	}
+
+	protected function global_generation_key()
+	{
+		return $this->prefix . '__generation:global';
 	}
 
 	/**
@@ -270,7 +326,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 */
 	public function increment($key, $offset = 1)
 	{
-		return $this->memcached->increment($this->prefix . $key, $offset);
+		return $this->memcached->increment($this->physical_key($key), $offset);
 	}
 	
 	/**
@@ -282,7 +338,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 */
 	public function decrement($key, $offset = 1)
 	{
-		return $this->memcached->decrement($this->prefix . $key, $offset);
+		return $this->memcached->decrement($this->physical_key($key), $offset);
 	}
 	
 	/**
@@ -293,20 +349,27 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	 */
 	public function get_multiple(array $keys)
 	{
-		$prefixed = array_map(function($key) {
-			return $this->prefix . $key;
-		}, $keys);
+		$physical_keys = array();
+		$physical_to_original = array();
+		foreach ($keys as $key) {
+			$physical_key = $this->physical_key($key);
+			$physical_keys[] = $physical_key;
+			$physical_to_original[$physical_key] = $key;
+		}
 		
-		$values = $this->memcached->getMulti($prefixed);
+		$values = $this->memcached->getMulti($physical_keys);
 		
 		if ($values === false) {
 			return [];
 		}
 		
-		// Remove prefix from keys
+		// Restore caller-facing keys from their physical Memcached keys.
 		$result = [];
-		foreach ($values as $key => $value) {
-			$original_key = str_replace($this->prefix, '', $key);
+		foreach ($values as $physical_key => $value) {
+			if (!array_key_exists($physical_key, $physical_to_original)) {
+				continue;
+			}
+			$original_key = $physical_to_original[$physical_key];
 			$result[$original_key] = $value;
 			$this->stats['hits']++;
 		}
@@ -329,7 +392,7 @@ class DMZ_MemcachedCache implements DMZ_CacheInterface
 	{
 		$prefixed = [];
 		foreach ($items as $key => $value) {
-			$prefixed[$this->prefix . $key] = $value;
+			$prefixed[$this->physical_key($key)] = $value;
 		}
 		
 		$result = $this->memcached->setMulti($prefixed, time() + $ttl);

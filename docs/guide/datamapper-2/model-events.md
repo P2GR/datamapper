@@ -1,4 +1,4 @@
-# Model Events <Badge type="tip" text="2.0" />
+# Model Events <Badge type="tip" text="2.1" />
 
 Hook into the model lifecycle to run logic before or after saving, creating, updating, or deleting records. Model events let you keep business rules inside the model without cluttering controllers.
 

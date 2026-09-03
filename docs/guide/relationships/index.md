@@ -115,7 +115,7 @@ foreach ($user->post as $post) {
 }
 ```
 
-## DataMapper 2.0: Eager Loading
+## DataMapper 2.1: Eager Loading
 
 Eliminate N+1 query problems with eager loading:
 
@@ -357,7 +357,7 @@ Dive deeper into relationships:
 
 <div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 1.5rem;">
     <h3>Eager Loading</h3>
-  <p>Optimize with DataMapper 2.0</p>
+  <p>Optimize with DataMapper 2.1</p>
   <a href="/guide/datamapper-2/eager-loading">Optimize Queries →</a>
 </div>
 

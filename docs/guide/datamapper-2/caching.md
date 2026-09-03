@@ -1,4 +1,4 @@
-# Query Caching (DataMapper 2.0)
+# Query Caching (DataMapper 2.1)
 
 DataMapper can cache the result of a `get()` query through the configured cache driver. Caching is opt-in per query: call `cache()` before `get()` or before a result helper that executes the query.
 
@@ -56,6 +56,8 @@ $config['cache_config'] = array(
 ```
 
 The Memcached driver requires the PHP Memcached extension.
+
+Memcached invalidation uses DataMapper namespace generations, so `flush()` and supported pattern clears do not flush unrelated applications sharing the same server. Batch reads/writes and atomic counters use the same generated namespace as ordinary cache operations.
 
 ## Basic Usage
 
@@ -118,7 +120,7 @@ $account->where('user_id', $user_id)
 
 ## Relationship Payloads
 
-`cache_relations($ttl = 3600)` enables the same query cache path and stores the hydrated result payload, including eager-loaded relation data that is present on the result set.
+`cache_relations($ttl = 3600)` defers cache storage until eager loading completes, then stores the hydrated graph under a `relation-query:{model}:...` key. The eager relation paths are part of the generated cache identity.
 
 ```php
 $posts = (new Post())
@@ -129,6 +131,8 @@ $posts = (new Post())
 ```
 
 `cache_relations()` does not accept a relation list. Use `with()` to decide which relations are loaded.
+
+Constrained eager loads bypass relation caching because callback behavior cannot be represented safely in a portable cache key. Ordinary `cache()` remains base-result caching and does not suppress eager queries on a cache hit.
 
 ## Clearing Cache
 
@@ -150,7 +154,7 @@ The number returned is the count reported by the configured driver.
 
 ## Automatic Invalidation
 
-DataMapper invalidates model query cache entries after writes such as `save()`, `delete()`, and `delete_all()`.
+DataMapper invalidates model query cache entries after writes such as `save()`, `delete()`, and `delete_all()`. It also invalidates all `relation-query:*` entries because the changed model may be nested in any cached graph.
 
 ```php
 $user = new User();

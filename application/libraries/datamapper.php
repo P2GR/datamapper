@@ -12,7 +12,7 @@
  * @author  	Phil DeJarnett (up to v1.7.1)
  * @author  	Simon Stenhouse (up to v1.6.0)
  * @link		http://datamapper.wanwizard.eu/
- * @version 	2.0.5
+ * @version 	2.1.0
  */
 
 /**
@@ -23,7 +23,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '2.0.5');
+define('DMZ_VERSION', '2.1.0');
 
 // Define APPPATH when running outside of CodeIgniter bootstrap (e.g., CLI tooling)
 if (!defined('APPPATH')) {
@@ -882,7 +882,7 @@ class DataMapper implements IteratorAggregate {
 
 		if( ! empty($id) && is_numeric($id))
 		{
-			$this->get_by_id(intval($id));
+			$this->where($this->primary_key, intval($id))->get(1);
 		}
 	}
 
@@ -1414,8 +1414,13 @@ class DataMapper implements IteratorAggregate {
 			$class = $related_properties['class'];
 			$this->{$name} = new $class();
 
-			// Store parent data
-			$this->{$name}->parent = array('model' => $related_properties['other_field'], 'id' => $this->id);
+			// Store parent data, including the parent's configured key field.
+			$parent_key = $this->primary_key;
+			$this->{$name}->parent = array(
+				'model' => $related_properties['other_field'],
+				'id' => $this->{$parent_key},
+				'field' => $parent_key
+			);
 
 			// Check if Auto Populate for "has many" or "has one" is on
 			// (but only if this object exists in the DB, and we aren't instantiating)
@@ -1758,6 +1763,12 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function get($limit = NULL, $offset = NULL)
 	{
+		$this->_cache_was_hit = FALSE;
+		$this->_last_query_succeeded = FALSE;
+		$direct_relation_cache = $this->_cache_relations_enabled && empty($this->_cache_relation_context);
+
+		try
+		{
 
 		// Check if this is a related object and if so, perform a related get
 		if (! $this->_handle_related())
@@ -1769,6 +1780,11 @@ class DataMapper implements IteratorAggregate {
 		$cached = $this->_get_from_cache();
 		if ($cached !== NULL) {
 			$this->_hydrate_cached_results($cached);
+			$this->_cache_was_hit = TRUE;
+			$this->_last_query_succeeded = TRUE;
+			if ($this->_cache_relations_enabled && empty($this->_cache_relation_context)) {
+				$this->_finalize_relation_cache(FALSE);
+			}
 			
 			// Reset cache flags
 			$this->_cache_enabled = FALSE;
@@ -1824,8 +1840,11 @@ class DataMapper implements IteratorAggregate {
 		if($query)
 		{
 			$this->_process_query($query);
+			$this->_last_query_succeeded = TRUE;
 			
-			if ($this->_cache_enabled) {
+			if ($this->_cache_enabled && $this->_cache_relations_enabled && empty($this->_cache_relation_context)) {
+				$this->_finalize_relation_cache();
+			} elseif ($this->_cache_enabled && !$this->_cache_relations_enabled) {
 				$this->_store_in_cache($this->all);
 				
 				// Reset cache flags
@@ -1833,9 +1852,26 @@ class DataMapper implements IteratorAggregate {
 				$this->_cache_key = null;
 			}
 		}
+		elseif ($this->_cache_relations_enabled && empty($this->_cache_relation_context))
+		{
+			$this->_finalize_relation_cache(FALSE);
+		}
 
 		// For method chaining
 		return $this;
+		}
+		finally
+		{
+			if ($direct_relation_cache && $this->_cache_relations_enabled)
+			{
+				$this->_finalize_relation_cache($this->_last_query_succeeded);
+			}
+		}
+	}
+
+	public function _query_was_successful()
+	{
+		return $this->_last_query_succeeded;
 	}
 
 	// --------------------------------------------------------------------
@@ -2083,9 +2119,12 @@ class DataMapper implements IteratorAggregate {
 		if ($this->valid)
 		{
 			$primary_key = $this->primary_key;
+			$had_original_primary_key = isset($this->{$primary_key});
+			$original_primary_key = $had_original_primary_key ? $this->{$primary_key} : NULL;
+			$has_primary_key = $had_original_primary_key && $this->{$primary_key} !== '';
 
 			// Determine if this is a create or an update
-			$is_new = ($this->_force_save_as_new || empty($this->{$primary_key}));
+			$is_new = ($this->_force_save_as_new || !$has_primary_key);
 
 			// --- Model Events: before_save / before_create / before_update ---
 			if ($this->_fire_event('before_save') === FALSE)
@@ -2135,18 +2174,22 @@ class DataMapper implements IteratorAggregate {
 				{
 					$object = array($object);
 				}
-				$this->_save_itfk($object, $related_field);
+				if ($this->_save_itfk($object, $related_field) === FALSE)
+				{
+					$result[] = FALSE;
+				}
 			}
 
 			// Convert this object to array
 			$data = $this->_to_array();
+			$base_write_succeeded = FALSE;
 
 			// Track changed fields for was_changed()
 			$this->_dm_changed = array();
 
 			if ( ! empty($data))
 			{
-				if ( ! $this->_force_save_as_new && ! empty($data[$primary_key]))
+				if (!$is_new)
 				{
 					// Prepare data to send only changed fields
 					foreach ($data as $field => $value)
@@ -2172,12 +2215,14 @@ class DataMapper implements IteratorAggregate {
 					if (empty($data))
 					{
 						$result[] = TRUE;
+						$base_write_succeeded = TRUE;
 					}
 					else
 					{
 						// Update existing record
 						$this->db->where($primary_key, $this->{$primary_key});
-						$result[] = $this->db->update($this->table, $data);
+						$base_write_succeeded = $this->db->update($this->table, $data);
+						$result[] = $base_write_succeeded;
 
 						$trans_complete_label[] = 'update';
 					}
@@ -2202,9 +2247,11 @@ class DataMapper implements IteratorAggregate {
 					$this->_dm_changed = $data;
 
 					// Create new record
-					if ($result[] = $this->db->insert($this->table, $data))
+					$base_write_succeeded = $this->db->insert($this->table, $data);
+					$result[] = $base_write_succeeded;
+					if ($base_write_succeeded)
 					{
-						if ( ! $this->_force_save_as_new)
+						if ( ! $this->_force_save_as_new && (!isset($this->{$primary_key}) || $this->{$primary_key} === ''))
 						{
 							// Assign new ID
 							$this->{$primary_key} = $this->db->insert_id();
@@ -2218,18 +2265,11 @@ class DataMapper implements IteratorAggregate {
 				}
 			}
 
-			$this->_refresh_stored_values();
-
-			if (!empty($this->_field_tracking['get_rules']))
-			{
-				$this->_run_get_rules();
-			}
-
 			// Check if a relationship is being saved
-			if ( ! empty($object))
+			if ( ! empty($object) && ! in_array(FALSE, $result, TRUE))
 			{
 				// save recursively
-				$this->_save_related_recursive($object, $related_field);
+				$result[] = $this->_save_related_recursive($object, $related_field);
 
 				$trans_complete_label[] = 'relationships';
 			}
@@ -2243,27 +2283,63 @@ class DataMapper implements IteratorAggregate {
 				$trans_complete_label = '-nothing done-';
 			}
 
-			$this->_auto_trans_complete($trans_complete_label);
-
-			// --- Model Events: after_create / after_update / after_save ---
-			if ($is_new)
+			$write_success = !in_array(FALSE, $result, TRUE);
+			if ($this->auto_transaction && !$write_success)
 			{
-				$this->_fire_event('after_create');
+				$this->trans_rollback();
+				$this->valid = FALSE;
 			}
 			else
 			{
-				$this->_fire_event('after_update');
+				$this->_auto_trans_complete($trans_complete_label);
 			}
-			$this->_fire_event('after_save');
+			$success = ( ! empty($result) && ! in_array(FALSE, $result, TRUE) && $this->valid);
+
+			if ($success)
+			{
+				$this->_refresh_stored_values();
+
+				if (!empty($this->_field_tracking['get_rules']))
+				{
+					$this->_run_get_rules();
+				}
+
+				// --- Model Events: after_create / after_update / after_save ---
+				if ($is_new)
+				{
+					$this->_fire_event('after_create');
+				}
+				else
+				{
+					$this->_fire_event('after_update');
+				}
+				$this->_fire_event('after_save');
+				$this->_invalidate_cache();
+			}
+			elseif ($base_write_succeeded && !$this->auto_transaction)
+			{
+				// The base row committed even though a later relationship write failed.
+				$this->_refresh_stored_values();
+				$this->_invalidate_cache();
+			}
+
+			if (!$success && $is_new && (!$base_write_succeeded || $this->auto_transaction))
+			{
+				if ($had_original_primary_key)
+				{
+					$this->{$primary_key} = $original_primary_key;
+				}
+				else
+				{
+					unset($this->{$primary_key});
+				}
+			}
 		}
 
 		$this->_force_save_as_new = FALSE;
 
-		// Invalidate cache after save
-		$this->_invalidate_cache();
-
 		// If no failure was recorded, return TRUE
-		return ( ! empty($result) && ! in_array(FALSE, $result));
+		return isset($success) ? $success : FALSE;
 	}
 
 	// --------------------------------------------------------------------
@@ -2276,6 +2352,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _save_itfk( &$objects, $related_field)
 	{
+		$success = TRUE;
 		foreach($objects as $index => $o)
 		{
 			if(is_int($index))
@@ -2288,7 +2365,7 @@ class DataMapper implements IteratorAggregate {
 			}
 			if(is_array($o))
 			{
-				$this->_save_itfk($o, $rf);
+				$success = $this->_save_itfk($o, $rf) && $success;
 				if(empty($o))
 				{
 					unset($objects[$index]);
@@ -2303,20 +2380,24 @@ class DataMapper implements IteratorAggregate {
 				$other_column = $related_properties['join_other_as'] . '_id';
 				if(isset($this->has_one[$rf]) && $this->_field_in_fields($other_column, $this->fields))
 				{
+					$object_primary_key = $o->primary_key;
+					$object_key_value = $o->{$object_primary_key};
 					// unset, so that it doesn't get re-saved later.
 					unset($objects[$index]);
 
-					if($this->{$other_column} != $o->id)
+					if($this->{$other_column} != $object_key_value)
 					{
 						// ITFK: store on the table
-						$this->{$other_column} = $o->id;
+						$this->{$other_column} = $object_key_value;
 
 						// Remove reverse relationships for one-to-ones
-						$this->_remove_other_one_to_one($rf, $o);
+						$cleanup_result = $this->_remove_other_one_to_one($rf, $o);
+						$success = ($cleanup_result === FALSE) ? FALSE : $success;
 					}
 				}
 			}
 		}
+		return $success;
 	}
 
 	/**
@@ -2374,7 +2455,7 @@ class DataMapper implements IteratorAggregate {
 					$rk = $related_field;
 				}
 				$rec_success = $this->_save_related_recursive($o, $rk);
-				$success = $success && $rec_success;
+				$success = ($rec_success === FALSE) ? FALSE : $success;
 			}
 			return $success;
 		}
@@ -2469,7 +2550,11 @@ class DataMapper implements IteratorAggregate {
 		$ids = array();
 		foreach($this->all as $object)
 		{
-			$ids[] = $object->id;
+			$object_primary_key = $object->primary_key;
+			if (isset($object->{$object_primary_key}) && $object->{$object_primary_key} !== '')
+			{
+				$ids[] = $object->{$object_primary_key};
+			}
 		}
 		if(empty($ids))
 		{
@@ -2483,7 +2568,7 @@ class DataMapper implements IteratorAggregate {
 
 		foreach ($chunks as $chunk)
 		{
-			$this->where_in('id', $chunk);
+			$this->where_in($this->primary_key, $chunk);
 			if ( ! $this->update($field, $value, $escape_values))
 			{
 				$success = FALSE;
@@ -2524,7 +2609,9 @@ class DataMapper implements IteratorAggregate {
 	{
 		if (empty($object) && ! is_array($object))
 		{
-			if ( ! empty($this->id))
+			$primary_key = $this->primary_key;
+			$primary_key_value = isset($this->{$primary_key}) ? $this->{$primary_key} : NULL;
+			if ($primary_key_value !== NULL && $primary_key_value !== '')
 			{
 				// --- Model Event: before_delete ---
 				if ($this->_fire_event('before_delete') === FALSE)
@@ -2574,6 +2661,7 @@ class DataMapper implements IteratorAggregate {
 				
 				// Begin auto transaction
 				$this->_auto_trans_begin();
+				$delete_success = TRUE;
 
 				// Delete all "has many" and "has one" relations for this object first
 				foreach (array('has_many', 'has_one') as $type)
@@ -2604,28 +2692,51 @@ class DataMapper implements IteratorAggregate {
 								$data = array($this_model . '_id' => NULL);
 
 								// Update table to remove relationships
-								$this->db->where($this_model . '_id', $this->id);
-								$this->db->update($object->table, $data);
+								$this->db->where($this_model . '_id', $primary_key_value);
+								$delete_success = $this->db->update($object->table, $data) && $delete_success;
 							}
 							else if ($relationship_table != $this->table)
 							{
 
-								$data = array($this_model . '_id' => $this->id);
+								$data = array($this_model . '_id' => $primary_key_value);
 
 								// Delete relation
-								$this->db->delete($relationship_table, $data);
+								$delete_success = $this->db->delete($relationship_table, $data) && $delete_success;
 							}
 							// Else, no reason to delete the relationships on this table
 						}
 					}
 				}
 
+				if (!$delete_success)
+				{
+					if ($this->auto_transaction)
+					{
+						$this->trans_rollback();
+					}
+					$this->valid = FALSE;
+					return FALSE;
+				}
+
 				// Delete the object itself
-				$this->db->where('id', $this->id);
-				$this->db->delete($this->table);
+				$this->db->where($primary_key, $primary_key_value);
+				$delete_success = $this->db->delete($this->table);
+
+				if (!$delete_success)
+				{
+					if ($this->auto_transaction)
+					{
+						$this->trans_rollback();
+					}
+					$this->valid = FALSE;
+					return FALSE;
+				}
 
 				// Complete auto transaction
-				$this->_auto_trans_complete('delete');
+				if ($this->_auto_trans_complete('delete') === FALSE)
+				{
+					return FALSE;
+				}
 
 				// Invalidate cache after delete
 				$this->_invalidate_cache();
@@ -2670,11 +2781,19 @@ class DataMapper implements IteratorAggregate {
 				}
 			}
 
-			// Complete auto transaction
-			$this->_auto_trans_complete('delete (relationship)');
+			$delete_success = !in_array(FALSE, $result, TRUE);
+			if ($this->auto_transaction && !$delete_success)
+			{
+				$this->trans_rollback();
+				$this->valid = FALSE;
+			}
+			else
+			{
+				$transaction_success = $this->_auto_trans_complete('delete (relationship)');
+			}
 
 			// If no failure was recorded, return TRUE
-			if ( ! in_array(FALSE, $result))
+			if ($delete_success && (!isset($transaction_success) || $transaction_success !== FALSE))
 			{
 				return TRUE;
 			}
@@ -2687,10 +2806,17 @@ class DataMapper implements IteratorAggregate {
 			// Temporarily store the success/failure
 			$result = $this->_delete_relation($object, $related_field);
 
-			// Complete auto transaction
-			$this->_auto_trans_complete('delete (relationship)');
+			if ($this->auto_transaction && $result === FALSE)
+			{
+				$this->trans_rollback();
+				$this->valid = FALSE;
+				return FALSE;
+			}
 
-			return $result;
+			// Complete auto transaction
+			$transaction_success = $this->_auto_trans_complete('delete (relationship)');
+
+			return $result && $transaction_success !== FALSE;
 		}
 
 		return FALSE;
@@ -2727,7 +2853,8 @@ class DataMapper implements IteratorAggregate {
 		$success = TRUE;
 		foreach($this as $item)
 		{
-			if ( ! empty($item->id))
+			$primary_key = $item->primary_key;
+			if (isset($item->{$primary_key}) && $item->{$primary_key} !== '')
 			{
 				$success_temp = $item->delete();
 				$success = $success && $success_temp;
@@ -2823,7 +2950,8 @@ class DataMapper implements IteratorAggregate {
 
 			foreach ($this->all as $item)
 			{
-				if ( ! empty($item->id))
+				$primary_key = $item->primary_key;
+				if (isset($item->{$primary_key}) && $item->{$primary_key} !== '')
 				{
 					$all[] = $item;
 				}
@@ -3179,7 +3307,8 @@ class DataMapper implements IteratorAggregate {
 
 		$class = get_class($this);
 		$fresh = new $class();
-		$fresh->get_by_id($this->id);
+		$primary_key = $this->primary_key;
+		$fresh->where($primary_key, $this->{$primary_key})->get(1);
 
 		return $fresh->exists() ? $fresh : NULL;
 	}
@@ -3200,7 +3329,8 @@ class DataMapper implements IteratorAggregate {
 
 		$class = get_class($this);
 		$fresh = new $class();
-		$fresh->get_by_id($this->id);
+		$primary_key = $this->primary_key;
+		$fresh->where($primary_key, $this->{$primary_key})->get(1);
 
 		if ($fresh->exists())
 		{
@@ -3255,7 +3385,7 @@ class DataMapper implements IteratorAggregate {
 			}
 		}
 
-		$this->db->where($this->primary_key, $this->id);
+		$this->db->where($this->primary_key, $this->{$this->primary_key});
 		$result = $this->db->update($this->table);
 
 		if ($result)
@@ -3353,9 +3483,16 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function is($model)
 	{
-		return ! is_null($model) &&
-			$this->id == $model->id &&
-			$this->table === $model->table;
+		if ( ! $model instanceof DataMapper || $this->table !== $model->table)
+		{
+			return FALSE;
+		}
+
+		$primary_key = $this->primary_key;
+		$model_primary_key = $model->primary_key;
+		return isset($this->{$primary_key}) && $this->{$primary_key} !== '' &&
+			isset($model->{$model_primary_key}) && $model->{$model_primary_key} !== '' &&
+			$this->{$primary_key} == $model->{$model_primary_key};
 	}
 
 	/**
@@ -3500,6 +3637,7 @@ class DataMapper implements IteratorAggregate {
 		// Check if related object
 		if ( ! empty($this->parent))
 		{
+			$parent_key = isset($this->parent['field']) ? $this->parent['field'] : 'id';
 			// Prepare model
 			$related_field = $this->parent['model'];
 			$related_properties = $this->_get_related_properties($related_field);
@@ -3518,7 +3656,7 @@ class DataMapper implements IteratorAggregate {
 				// if the relationship table is different from our table, include our table in the count query
 				if ($relationship_table != $this->table)
 				{
-					$this->db->join($this->table, $this->table . '.id = ' . $relationship_table . '.' . $this_model.'_id', 'LEFT OUTER');
+					$this->db->join($this->table, $this->table . '.' . $parent_key . ' = ' . $relationship_table . '.' . $this_model.'_id', 'LEFT OUTER');
 				}
 
 				$arwhere = $this->db->dm_get('qb_where');
@@ -3536,7 +3674,7 @@ class DataMapper implements IteratorAggregate {
 					)
 			{
 				// ITFK on the other object's table
-				$this->db->where('id', $this->parent['id'])->where($this_model . '_id IS NOT NULL');
+				$this->db->where($parent_key, $this->parent['id'])->where($this_model . '_id IS NOT NULL');
 			}
 			else
 			{
@@ -3551,7 +3689,7 @@ class DataMapper implements IteratorAggregate {
 			{
 				$column = $relationship_table . '.' . $this_model . '_id';
 			}
-			if(!empty($related_id))
+			if($related_id !== NULL && $related_id !== '')
 			{
 				$this->db->where($this_model . '_id', $related_id);
 			}
@@ -3578,7 +3716,7 @@ class DataMapper implements IteratorAggregate {
 				}
 				if (!$joined)
 				{
-					$this->db->join($this->table, $this->table . '.id = ' . $relationship_table . '.' . $this_model . '_id', 'LEFT OUTER');
+					$this->db->join($this->table, $this->table . '.' . $this->primary_key . ' = ' . $relationship_table . '.' . $this_model . '_id', 'LEFT OUTER');
 				}
 			}
 		}
@@ -3587,11 +3725,11 @@ class DataMapper implements IteratorAggregate {
 			$this->db->from($this->table);
 			if(!empty($exclude_ids))
 			{
-				$this->db->where_not_in('id', $exclude_ids);
+			$this->db->where_not_in($this->primary_key, $exclude_ids);
 			}
-			if(!empty($related_id))
+			if($related_id !== NULL && $related_id !== '')
 			{
-				$this->db->where('id', $related_id);
+				$this->db->where($this->primary_key, $related_id);
 			}
 			$column = $this->add_table_name($column);
 		}
@@ -3668,7 +3806,8 @@ class DataMapper implements IteratorAggregate {
 		// non-empty-string value (this correctly treats a legitimate
 		// primary key of 0 or "0" as existing, unlike empty()), OR
 		// there are items in the ALL array.
-		if (isset($this->id) && $this->id !== '')
+		$primary_key = $this->primary_key;
+		if (isset($this->{$primary_key}) && $this->{$primary_key} !== '')
 		{
 			return TRUE;
 		}
@@ -3954,7 +4093,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		$copy = $this->get_clone($force_db);
 
-		$copy->id = NULL;
+		$copy->{$copy->primary_key} = NULL;
 
 		return $copy;
 	}
@@ -4024,7 +4163,11 @@ class DataMapper implements IteratorAggregate {
 			// If this is a "has many" or "has one" related item
 			if ($has_many || $has_one)
 			{
-				if( ! $this->_get_relation($this->parent['model'], $this->parent['id']))
+				if( ! $this->_get_relation(
+					$this->parent['model'],
+					$this->parent['id'],
+					isset($this->parent['field']) ? $this->parent['field'] : 'id'
+				))
 				{
 					return FALSE;
 				}
@@ -5364,7 +5507,8 @@ class DataMapper implements IteratorAggregate {
 			$arr = array();
 			foreach ($values as $value)
 			{
-				$arr[] = $value->id;
+				$primary_key = $value->primary_key;
+				$arr[] = $value->{$primary_key};
 			}
 			$values = $arr;
 		}
@@ -6032,12 +6176,14 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _auto_trans_complete($label = 'complete')
 	{
+		$success = TRUE;
 		// Complete auto transaction
 		if ($this->auto_transaction)
 		{
 			// Check if successful
 			if (!$this->trans_complete())
 			{
+				$success = FALSE;
 				$rule = 'transaction';
 
 				// Get corresponding error from language file
@@ -6053,6 +6199,8 @@ class DataMapper implements IteratorAggregate {
 				$this->valid = FALSE;
 			}
 		}
+
+		return $success;
 	}
 
 	// --------------------------------------------------------------------
@@ -6305,6 +6453,8 @@ class DataMapper implements IteratorAggregate {
 
 		$other_column = $other_model . '_id';
 		$this_column = $this_model . '_id' ;
+		$object_primary_key = $object->primary_key;
+		$this_primary_key = $this->primary_key;
 
 
 		if(is_null($db)) {
@@ -6328,7 +6478,7 @@ class DataMapper implements IteratorAggregate {
 			}
 			else if ( ! in_array($object_as, $query_related))
 			{
-				$db->join($object->table . ' ' .$object_as, $object_as . '.id = ' . $this_table . '.' . $other_column, 'LEFT OUTER');
+				$db->join($object->table . ' ' .$object_as, $object_as . '.' . $object_primary_key . ' = ' . $this_table . '.' . $other_column, 'LEFT OUTER');
 				$query_related[] = $object_as;
 			}
 		}
@@ -6338,13 +6488,13 @@ class DataMapper implements IteratorAggregate {
 			// has_one relationship without a join table
 			if ( ! in_array($object_as, $query_related))
 			{
-				$db->join($object->table . ' ' .$object_as, $this_table . '.id = ' . $object_as . '.' . $this_column, 'LEFT OUTER');
+				$db->join($object->table . ' ' .$object_as, $this_table . '.' . $this_primary_key . ' = ' . $object_as . '.' . $this_column, 'LEFT OUTER');
 				$query_related[] = $object_as;
 			}
 			if($id_only)
 			{
 				// include the column name
-				$object_as .= '.id';
+				$object_as .= '.' . $object_primary_key;
 			}
 		}
 		else
@@ -6354,7 +6504,7 @@ class DataMapper implements IteratorAggregate {
 			// Add join if not already included
 			if ( ! in_array($relationship_as, $query_related))
 			{
-				$db->join($relationship_table . ' ' . $relationship_as, $this_table . '.id = ' . $relationship_as . '.' . $this_column, 'LEFT OUTER');
+				$db->join($relationship_table . ' ' . $relationship_as, $this_table . '.' . $this_primary_key . ' = ' . $relationship_as . '.' . $this_column, 'LEFT OUTER');
 
 				if($this->_include_join_fields) {
 					$fields = $db->field_data($relationship_table);
@@ -6393,7 +6543,7 @@ class DataMapper implements IteratorAggregate {
 			else if ( ! in_array($object_as, $query_related))
 			{
 				// Add join if not already included
-				$db->join($object->table . ' ' . $object_as, $object_as . '.id = ' . $relationship_as . '.' . $other_column, 'LEFT OUTER');
+				$db->join($object->table . ' ' . $object_as, $object_as . '.' . $object_primary_key . ' = ' . $relationship_as . '.' . $other_column, 'LEFT OUTER');
 
 				$query_related[] = $object_as;
 			}
@@ -6428,10 +6578,11 @@ class DataMapper implements IteratorAggregate {
 			{
 				$object = $arguments[0];
 				$related_field = $object->model;
+				$related_primary_key = $object->primary_key;
 
 				// Prepare field and value
-				$field = (isset($arguments[1])) ? $arguments[1] : 'id';
-				$value = (isset($arguments[2])) ? $arguments[2] : $object->id;
+				$field = (isset($arguments[1])) ? $arguments[1] : $related_primary_key;
+				$value = (isset($arguments[2])) ? $arguments[2] : $object->{$related_primary_key};
 				$next_arg = 3;
 			}
 			else
@@ -6440,30 +6591,31 @@ class DataMapper implements IteratorAggregate {
 				// the TRUE allows conversion to singular
 				$related_properties = $this->_get_related_properties($related_field, TRUE);
 				$class = $related_properties['class'];
+				$related_primary_key = (new $class())->primary_key;
 				// enables where_related_{model}($object)
 				if(isset($arguments[1]) && is_object($arguments[1]))
 				{
 					$object = $arguments[1];
 					// Prepare field and value
-					$field = (isset($arguments[2])) ? $arguments[2] : 'id';
-					$value = (isset($arguments[3])) ? $arguments[3] : $object->id;
+					$field = (isset($arguments[2])) ? $arguments[2] : $related_primary_key;
+					$value = (isset($arguments[3])) ? $arguments[3] : $object->{$related_primary_key};
 					$next_arg = 4;
 				}
 				else
 				{
 					$object = new $class();
 					// Prepare field and value
-					$field = (isset($arguments[1])) ? $arguments[1] : 'id';
+					$field = (isset($arguments[1])) ? $arguments[1] : $related_primary_key;
 					$value = (isset($arguments[2])) ? $arguments[2] : NULL;
 					$next_arg = 3;
 				}
 			}
 
-			if(preg_replace('/[!=<> ]/ ', '', $field) == 'id')
+			if(preg_replace('/[!=<> ]/ ', '', $field) == $related_primary_key)
 			{
 				// special case to prevent joining unecessary tables
 				$column = $this->_add_related_table($object, $related_field, TRUE);
-				$field = str_replace('id', $column, $field);
+				$field = str_replace($related_primary_key, $column, $field);
 
 			}
 			else
@@ -6517,7 +6669,7 @@ class DataMapper implements IteratorAggregate {
 								$value = NULL;
 								break;
 							case 1:
-								$value = $value->id;
+								$value = $value->{$value->primary_key};
 								break;
 							default:
 								$query = 'where_in';
@@ -6559,7 +6711,7 @@ class DataMapper implements IteratorAggregate {
 			$field = $args[1];
 			$value = $args[2];
 		} else {
-			$field = 'id';
+			$field = is_object($rel_object) ? $rel_object->primary_key : 'id';
 			$value = $args[1];
 		}
 		if(is_object($value))
@@ -6590,7 +6742,8 @@ class DataMapper implements IteratorAggregate {
 	{
 		if(is_object($related_field))
 		{
-			$id = $related_field->id;
+			$primary_key = $related_field->primary_key;
+			$id = $related_field->{$primary_key};
 			$related_field = $related_field->model;
 		}
 		return ($this->{$related_field}->count(NULL, NULL, $id) > 0);
@@ -6824,10 +6977,10 @@ class DataMapper implements IteratorAggregate {
 	 * @param	int $id ID of related field or object
 	 * @return	bool Sucess or Failure
 	 */
-	protected function _get_relation($related_field, $id)
+	protected function _get_relation($related_field, $id, $field = 'id')
 	{
 		// No related items
-		if (empty($related_field) || empty($id))
+		if (empty($related_field) || $id === NULL || $id === '')
 		{
 			// Reset query
 			$this->db->dm_call_method('_reset_select');
@@ -6845,7 +6998,7 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		// query all items related to the given model
-		$this->where_related($related_field, 'id', $id);
+		$this->where_related($related_field, $field, $id);
 
 		return TRUE;
 	}
@@ -6877,6 +7030,9 @@ class DataMapper implements IteratorAggregate {
 			$this_model = $related_properties['join_self_as'];
 			$other_model = $related_properties['join_other_as'];
 			$other_field = $related_properties['other_field'];
+			$this_primary_key = $this->primary_key;
+			$object_primary_key = $object->primary_key;
+			$this_key_value = $this->{$this_primary_key};
 
 			// Determine relationship table name
 			$relationship_table = $this->_get_relationship_table($object, $related_field);
@@ -6888,32 +7044,46 @@ class DataMapper implements IteratorAggregate {
 				// if $object is new, save it first, otherwise we don't have a foreign key
 				if ( ! $object->exists())
 				{
-					$object->save();
+					if (!$object->save())
+					{
+						return FALSE;
+					}
 				}
 
-				$this->{$other_model . '_id'} = $object->id;
-				$ret =  $this->save();
+				$object_key_value = $object->{$object_primary_key};
+				$this->{$other_model . '_id'} = $object_key_value;
+				$ret = $this->save();
 				// remove any one-to-one relationships with the other object
-				$this->_remove_other_one_to_one($related_field, $object);
-				return $ret;
+				if (!$ret)
+				{
+					return FALSE;
+				}
+				return $this->_remove_other_one_to_one($related_field, $object) !== FALSE;
 			}
 			else if($relationship_table == $object->table)
 			{
-				$object->{$this_model . '_id'} = $this->id;
+				$object->{$this_model . '_id'} = $this_key_value;
 				$ret = $object->save();
 				// remove any one-to-one relationships with this object
-				$object->_remove_other_one_to_one($other_field, $this);
-				return $ret;
+				if (!$ret)
+				{
+					return FALSE;
+				}
+				return $object->_remove_other_one_to_one($other_field, $this) !== FALSE;
 			}
 			else
 			{
 				// if $object is new, save it first, otherwise we don't have a foreign key
 				if ( ! $object->exists())
 				{
-					$object->save();
+					if (!$object->save())
+					{
+						return FALSE;
+					}
 				}
 
-				$data = array($this_model . '_id' => $this->id, $other_model . '_id' => $object->id);
+				$object_key_value = $object->{$object_primary_key};
+				$data = array($this_model . '_id' => $this_key_value, $other_model . '_id' => $object_key_value);
 
 				// Check if relation already exists
 				$query = $this->db->get_where($relationship_table, $data, NULL, NULL);
@@ -6927,56 +7097,52 @@ class DataMapper implements IteratorAggregate {
 						if (isset($object->has_one[$other_field]))
 						{
 							// And it has an existing relation
-							$query = $this->db->get_where($relationship_table, array($other_model . '_id' => $object->id), 1, 0);
+							$query = $this->db->get_where($relationship_table, array($other_model . '_id' => $object_key_value), 1, 0);
 
 							if ($query->num_rows() > 0)
 							{
 								// Find and update the other objects existing relation to relate with this object
-								$this->db->where($other_model . '_id', $object->id);
-								$this->db->update($relationship_table, $data);
+								$this->db->where($other_model . '_id', $object_key_value);
+								return $this->db->update($relationship_table, $data);
 							}
 							else
 							{
 								// Add the relation since one doesn't exist
-								$this->db->insert($relationship_table, $data);
+								return $this->db->insert($relationship_table, $data);
 							}
-
-							return TRUE;
 						}
 						else if (isset($object->has_many[$other_field]))
 						{
 							// We can add the relation since this specific relation doesn't exist, and a "has many" to "has many" relationship exists between the objects
-							$this->db->insert($relationship_table, $data);
+							$relation_saved = $this->db->insert($relationship_table, $data);
 
 							// Self relationships can be defined as reciprocal -- save the reverse relationship at the same time
 							if ($related_properties['reciprocal'])
 							{
-								$data = array($this_model . '_id' => $object->id, $other_model . '_id' => $this->id);
-								$this->db->insert($relationship_table, $data);
+								$data = array($this_model . '_id' => $object_key_value, $other_model . '_id' => $this_key_value);
+								$relation_saved = $relation_saved && $this->db->insert($relationship_table, $data);
 							}
 
-							return TRUE;
+							return $relation_saved;
 						}
 					}
 					// If this object has a "has one" relationship with the other object
 					else if (isset($this->has_one[$related_field]))
 					{
 						// And it has an existing relation
-						$query = $this->db->get_where($relationship_table, array($this_model . '_id' => $this->id), 1, 0);
+						$query = $this->db->get_where($relationship_table, array($this_model . '_id' => $this_key_value), 1, 0);
 
 						if ($query->num_rows() > 0)
 						{
 							// Find and update the other objects existing relation to relate with this object
-							$this->db->where($this_model . '_id', $this->id);
-							$this->db->update($relationship_table, $data);
+							$this->db->where($this_model . '_id', $this_key_value);
+							return $this->db->update($relationship_table, $data);
 						}
 						else
 						{
 							// Add the relation since one doesn't exist
-							$this->db->insert($relationship_table, $data);
+							return $this->db->insert($relationship_table, $data);
 						}
-
-						return TRUE;
 					}
 				}
 				else
@@ -7021,24 +7187,26 @@ class DataMapper implements IteratorAggregate {
 	{
 		if( ! $object->exists())
 		{
-			return;
+			return TRUE;
 		}
 		$related_properties = $this->_get_related_properties($rf, TRUE);
 		if( ! array_key_exists($related_properties['other_field'], $object->has_one))
 		{
-			return;
+			return TRUE;
 		}
 		// This should be a one-to-one relationship with an ITFK if we got this far.
 		$other_column = $related_properties['join_other_as'] . '_id';
 		$c = get_class($this);
 		$update = new $c();
 
-		$update->where($other_column, $object->id);
+		$object_primary_key = $object->primary_key;
+		$this_primary_key = $this->primary_key;
+		$update->where($other_column, $object->{$object_primary_key});
 		if($this->exists())
 		{
-			$update->where('id <>', $this->id);
+			$update->where($this_primary_key . ' <>', $this->{$this_primary_key});
 		}
-		$update->update($other_column, NULL);
+		return $update->update($other_column, NULL);
 	}
 
 	// --------------------------------------------------------------------
@@ -7063,10 +7231,14 @@ class DataMapper implements IteratorAggregate {
 		// the TRUE allows conversion to singular
 		$related_properties = $this->_get_related_properties($related_field, TRUE);
 
-		if ( ! empty($related_properties) && ! empty($this->id) && ! empty($object->id))
+		$this_primary_key = $this->primary_key;
+		$object_primary_key = $object->primary_key;
+		if ( ! empty($related_properties) && isset($this->{$this_primary_key}) && $this->{$this_primary_key} !== '' && isset($object->{$object_primary_key}) && $object->{$object_primary_key} !== '')
 		{
 			$this_model = $related_properties['join_self_as'];
 			$other_model = $related_properties['join_other_as'];
+			$this_key_value = $this->{$this_primary_key};
+			$object_key_value = $object->{$object_primary_key};
 
 			// Determine relationship table name
 			$relationship_table = $this->_get_relationship_table($object, $related_field);
@@ -7076,30 +7248,36 @@ class DataMapper implements IteratorAggregate {
 					in_array($other_model . '_id', $this->fields))
 			{
 				$this->{$other_model . '_id'} = NULL;
-				$this->save();
+				$relation_deleted = $this->save();
 			}
 			else if ($relationship_table == $object->table)
 			{
 				$object->{$this_model . '_id'} = NULL;
-				$object->save();
+				$relation_deleted = $object->save();
 			}
 			else
 			{
-				$data = array($this_model . '_id' => $this->id, $other_model . '_id' => $object->id);
+				$data = array($this_model . '_id' => $this_key_value, $other_model . '_id' => $object_key_value);
 
 				// Delete relation
-				$this->db->delete($relationship_table, $data);
+				$relation_deleted = $this->db->delete($relationship_table, $data);
 
 				// Delete reverse direction if a reciprocal self relationship
 				if ($related_properties['reciprocal'])
 				{
-					$data = array($this_model . '_id' => $object->id, $other_model . '_id' => $this->id);
-					$this->db->delete($relationship_table, $data);
+					$data = array($this_model . '_id' => $object_key_value, $other_model . '_id' => $this_key_value);
+					$relation_deleted = $relation_deleted && $this->db->delete($relationship_table, $data);
 				}
+			}
+
+			if (!$relation_deleted)
+			{
+				return FALSE;
 			}
 
 			// Clear related object so it is refreshed on next access
 			unset($this->{$related_field});
+			$this->_invalidate_cache();
 
 			return TRUE;
 		}
@@ -7214,7 +7392,8 @@ class DataMapper implements IteratorAggregate {
 			$ids = array_unique($ids);
 		}
 
-		if ( ! empty($related_field) && ! empty($this->id))
+		$parent_key = $this->primary_key;
+		if ( ! empty($related_field) && isset($this->{$parent_key}) && $this->{$parent_key} !== '')
 		{
 			$one = isset($this->has_one[$related_field]);
 
@@ -7225,7 +7404,11 @@ class DataMapper implements IteratorAggregate {
 				$object = new $class();
 
 				// Store parent data
-				$object->parent = array('model' => $rel_properties['other_field'], 'id' => $this->id);
+				$object->parent = array(
+					'model' => $rel_properties['other_field'],
+					'id' => $this->{$parent_key},
+					'field' => $parent_key
+				);
 
 				// pass in IDs to exclude from the count
 
@@ -7275,7 +7458,8 @@ class DataMapper implements IteratorAggregate {
 			// if this object is the same relationship type, it counts
 			if ($related_field == $compare && $object->exists())
 			{
-				$ids[] = $object->id;
+				$primary_key = $object->primary_key;
+				$ids[] = $object->{$primary_key};
 				$count++;
 			}
 		}
@@ -7330,7 +7514,8 @@ class DataMapper implements IteratorAggregate {
 		{
 			$object = $related_field;
 			$related_field = $object->model;
-			$related_ids[] = $object->id;
+			$primary_key = $object->primary_key;
+			$related_ids[] = $object->{$primary_key};
 			$related_properties = $this->_get_related_properties($related_field);
 		}
 		else
@@ -7354,6 +7539,8 @@ class DataMapper implements IteratorAggregate {
 			$object = new $class();
 		}
 
+		$this_primary_key = $this->primary_key;
+
 		$this_model = $related_properties['join_self_as'];
 		$other_model = $related_properties['join_other_as'];
 
@@ -7369,15 +7556,16 @@ class DataMapper implements IteratorAggregate {
 
 		if (empty($object))
 		{
-			$this->db->where($this_model . '_id', $this->id);
+			$this->db->where($this_model . '_id', $this->{$this_primary_key});
 			$this->db->update($relationship_table, $field);
 		}
 		else
 		{
 			foreach ($object as $obj)
 			{
-				$this->db->where($this_model . '_id', $this->id);
-				$this->db->where($other_model . '_id', $obj->id);
+				$this->db->where($this_model . '_id', $this->{$this_primary_key});
+				$object_primary_key = $obj->primary_key;
+				$this->db->where($other_model . '_id', $obj->{$object_primary_key});
 				$this->db->update($relationship_table, $field);
 			}
 		}
@@ -7645,6 +7833,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _unique($field)
 	{
+		$primary_key = $this->primary_key;
 		if (property_exists($this, $field) and ! is_null($this->{$field}))
 		{
 			$query = $this->db->get_where($this->table, array($field => $this->{$field}), 1, 0);
@@ -7654,7 +7843,7 @@ class DataMapper implements IteratorAggregate {
 				$row = $query->row();
 
 				// If unique value does not belong to this object
-				if ($this->id != $row->id)
+				if (!isset($row->{$primary_key}) || $this->{$primary_key} != $row->{$primary_key})
 				{
 					// Then it is not unique
 					return FALSE;
@@ -7678,6 +7867,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _unique_pair($field, $other_field = '')
 	{
+		$primary_key = $this->primary_key;
 		if (property_exists($this, $field) and ! is_null($this->{$field}))
 		{
 			if (property_exists($this, $other_field) and ! is_null($this->{$other_field}))
@@ -7689,7 +7879,7 @@ class DataMapper implements IteratorAggregate {
 					$row = $query->row();
 
 					// If unique pair value does not belong to this object
-					if ($this->id != $row->id)
+					if (!isset($row->{$primary_key}) || $this->{$primary_key} != $row->{$primary_key})
 					{
 						// Then it is not a unique pair
 						return FALSE;
@@ -8210,7 +8400,8 @@ class DataMapper implements IteratorAggregate {
 			$this->_to_object($this, $query->row());
 
 			// don't bother recreating the first item.
-			$index = ($this->all_array_uses_ids && isset($this->id)) ? $this->id : 0;
+			$primary_key = $this->primary_key;
+			$index = ($this->all_array_uses_ids && isset($this->{$primary_key})) ? $this->{$primary_key} : 0;
 			$this->all[$index] = $this->get_clone();
 
 			if($query->num_rows() > 1)
@@ -8231,9 +8422,10 @@ class DataMapper implements IteratorAggregate {
 
 					$this->_to_object($item, $row);
 
-					if($this->all_array_uses_ids && isset($item->id))
+					$item_primary_key = $item->primary_key;
+					if($this->all_array_uses_ids && isset($item->{$item_primary_key}))
 					{
-						$this->all[$item->id] = $item;
+						$this->all[$item->{$item_primary_key}] = $item;
 					}
 					else
 					{
@@ -9345,6 +9537,22 @@ class DataMapper implements IteratorAggregate {
 		
 		return new DMZ_LazyCollection($this, $chunkSize);
 	}
+
+	/**
+	 * Get a lazy collection that advances by key instead of offset.
+	 *
+	 * @param int $chunk_size Chunk size for internal fetching
+	 * @param string|null $column Key column (defaults to the configured primary key)
+	 * @return DMZ_LazyCollection
+	 */
+	public function lazy_by_id($chunk_size = 1000, $column = NULL)
+	{
+		if (!class_exists('DMZ_LazyCollection', FALSE)) {
+			require_once(APPPATH . 'datamapper/lazycollection.php');
+		}
+
+		return new DMZ_LazyCollection($this, $chunk_size, $column === NULL ? $this->primary_key : $column);
+	}
 	
 	// ============================================================================
 	// CACHING METHODS
@@ -9389,6 +9597,16 @@ class DataMapper implements IteratorAggregate {
 	 * @var string|null Custom cache key
 	 */
 	protected $_cache_key = null;
+
+	/** @var bool Whether cache storage must wait for eager relations. */
+	protected $_cache_relations_enabled = false;
+
+	/** @var bool Whether the current relation-aware query was served from cache. */
+	protected $_cache_was_hit = false;
+
+	/** @var array Eager relation paths included in the cache identity. */
+	protected $_cache_relation_context = array();
+	protected $_last_query_succeeded = FALSE;
 	
 	/**
 	 * Enable query caching for the next query.
@@ -9451,10 +9669,49 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function cache_relations($ttl = 3600)
 	{
-		// Cache the main query
+		$this->_cache_relations_enabled = true;
 		$this->cache($ttl);
-		// Note: Relations are cached as part of the result set
 		return $this;
+	}
+
+	public function _prepare_relation_cache(array $relations, $has_constraints = FALSE)
+	{
+		$this->_cache_was_hit = false;
+		if (!$this->_cache_relations_enabled) {
+			return;
+		}
+
+		if ($has_constraints) {
+			dmz_log_message('debug', 'Relation caching disabled for constrained eager loads.');
+			$this->_cache_relations_enabled = false;
+			$this->_cache_enabled = false;
+			return;
+		}
+
+		$this->_cache_relation_context = array_values($relations);
+	}
+
+	public function _relation_cache_was_hit()
+	{
+		return $this->_cache_relations_enabled && $this->_cache_was_hit;
+	}
+
+	public function _finalize_relation_cache($store = TRUE)
+	{
+		if (!$this->_cache_relations_enabled) {
+			return;
+		}
+
+		try {
+			if ($store && !$this->_cache_was_hit && $this->_cache_enabled) {
+				$this->_store_in_cache($this->all);
+			}
+		} finally {
+			$this->_cache_enabled = false;
+			$this->_cache_key = null;
+			$this->_cache_relations_enabled = false;
+			$this->_cache_relation_context = array();
+		}
 	}
 	
 	/**
@@ -9585,7 +9842,7 @@ class DataMapper implements IteratorAggregate {
 		$qb_offset  = $this->db->dm_get('qb_offset');
 
 		$parts = array(
-			'query',
+			empty($this->_cache_relation_context) ? 'query' : 'relation-query',
 			strtolower($this->model),
 			md5(serialize(array(
 				'where'   => empty($qb_where)   ? array() : $qb_where,
@@ -9594,7 +9851,8 @@ class DataMapper implements IteratorAggregate {
 				'orderby' => empty($qb_orderby) ? array() : $qb_orderby,
 				'groupby' => empty($qb_groupby) ? array() : $qb_groupby,
 				'limit'   => $qb_limit,
-				'offset'  => $qb_offset
+				'offset'  => $qb_offset,
+				'relations' => $this->_cache_relation_context
 			)))
 		);
 
@@ -9703,7 +9961,7 @@ class DataMapper implements IteratorAggregate {
 			return;
 		}
 
-		// Clear all cache for this model
+		// Clear this model's base queries and all graphs that may include it.
 		$pattern = 'query:' . strtolower($this->model) . ':*';
 		if (!method_exists($driver, 'delete_pattern'))
 		{
@@ -9714,6 +9972,7 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		$driver->delete_pattern($pattern);
+		$driver->delete_pattern('relation-query:*');
 	}
 
 	/**
@@ -9757,6 +10016,7 @@ class DataMapper implements IteratorAggregate {
 	protected function _serialize_cached_relations($model)
 	{
 		$relations = array();
+		$model_vars = get_object_vars($model);
 
 		foreach ($model->has_many as $relation => $config) {
 			if (isset($model->{$relation}) && $model->{$relation} instanceof DMZ_Collection) {
@@ -9768,7 +10028,12 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		foreach ($model->has_one as $relation => $config) {
-			if (isset($model->{$relation}) && $model->{$relation} instanceof DataMapper) {
+			if (array_key_exists($relation, $model_vars) && $model->{$relation} === NULL) {
+				$relations[$relation] = array(
+					'type' => 'single',
+					'item' => array()
+				);
+			} elseif (isset($model->{$relation}) && $model->{$relation} instanceof DataMapper) {
 				$relations[$relation] = array(
 					'type' => 'single',
 					'item' => $this->_serialize_cache_payload(array($model->{$relation}))
@@ -9858,11 +10123,13 @@ class DataMapper implements IteratorAggregate {
 		$first = array_shift($models);
 		$this->_apply_cached_model($first);
 
-		$index = ($this->all_array_uses_ids && isset($this->id)) ? $this->id : 0;
+		$primary_key = $this->primary_key;
+		$index = ($this->all_array_uses_ids && isset($this->{$primary_key})) ? $this->{$primary_key} : 0;
 		$this->all[$index] = $this->get_clone();
 
 		foreach ($models as $model) {
-			$key = ($this->all_array_uses_ids && isset($model->id)) ? $model->id : count($this->all);
+			$model_primary_key = $model->primary_key;
+			$key = ($this->all_array_uses_ids && isset($model->{$model_primary_key})) ? $model->{$model_primary_key} : count($this->all);
 			$this->all[$key] = $model;
 		}
 	}
@@ -9875,6 +10142,8 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _apply_cached_model(DataMapper $source)
 	{
+		$source_vars = get_object_vars($source);
+
 		foreach ($this->fields as $field) {
 			$this->{$field} = isset($source->{$field}) ? $source->{$field} : NULL;
 		}
@@ -9888,7 +10157,7 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		foreach ($this->has_one as $relation => $_config) {
-			if (isset($source->{$relation})) {
+			if (array_key_exists($relation, $source_vars)) {
 				$this->{$relation} = $source->{$relation};
 			} else {
 				unset($this->{$relation});
@@ -10249,9 +10518,11 @@ class DataMapper implements IteratorAggregate {
 		// Check if columns exist in model fields
 		$has_created = in_array($created_col, $this->fields);
 		$has_updated = in_array($updated_col, $this->fields);
+		$primary_key = $this->primary_key;
+		$is_new = !isset($this->{$primary_key}) || $this->{$primary_key} === '';
 		
 		// Set created_at on new records
-		if ($has_created && empty($this->id) && empty($this->{$created_col}))
+		if ($has_created && $is_new && empty($this->{$created_col}))
 		{
 			$this->{$created_col} = $timestamp;
 		}
@@ -10700,7 +10971,8 @@ class DataMapper implements IteratorAggregate {
 	public function touch()
 	{
 		// Check if model uses HasTimestamps trait
-		if (!$this->_timestamps_is_enabled() || empty($this->id))
+		$primary_key = $this->primary_key;
+		if (!$this->_timestamps_is_enabled() || !isset($this->{$primary_key}) || $this->{$primary_key} === '')
 		{
 			return FALSE;
 		}
@@ -10828,7 +11100,8 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function force_delete()
 	{
-		if (empty($this->id))
+		$primary_key = $this->primary_key;
+		if (!isset($this->{$primary_key}) || $this->{$primary_key} === '')
 		{
 			return FALSE;
 		}
@@ -10856,7 +11129,8 @@ class DataMapper implements IteratorAggregate {
 	{
 		$soft_delete_enabled = $this->_soft_delete_writes_enabled();
 	
-		if (!$soft_delete_enabled || empty($this->id))
+		$primary_key = $this->primary_key;
+		if (!$soft_delete_enabled || !isset($this->{$primary_key}) || $this->{$primary_key} === '')
 		{
 			return FALSE;
 		}

@@ -1,6 +1,6 @@
-# Advanced Query Building (DataMapper 2.0)
+# Advanced Query Building (DataMapper 2.1)
 
-DataMapper 2.0 adds modern query helpers while keeping the classic CodeIgniter/DataMapper syntax. This page focuses on features that are implemented in the current library: subquery helpers, relationship existence filters, conditional clauses, aggregate helpers, ordering shortcuts, and reusable model methods.
+DataMapper 2.1 adds modern query helpers while keeping the classic CodeIgniter/DataMapper syntax. This page focuses on features that are implemented in the current library: subquery helpers, relationship existence filters, conditional clauses, aggregate helpers, ordering shortcuts, and reusable model methods.
 
 ## Table of Contents
 
@@ -149,7 +149,7 @@ $admin = (new User())->first_where('role', 'admin');
 
 ## Ordering and Pagination
 
-The classic methods still work, and DataMapper 2.0 adds aliases that match common builder terminology.
+The classic methods still work, and DataMapper 2.1 adds aliases that match common builder terminology.
 
 ```php
 $users = (new User())
@@ -238,7 +238,7 @@ $users = (new UserSearch())->apply($filters)->get();
 
 ## Notes on Scopes
 
-DataMapper 2.0 supports **local query scopes** via the `scope_` prefix convention. Define a method like `scope_published()` on your model, then call `$model->published()` — the `__call()` magic method discovers and invokes it, returning `$this` for chaining.
+DataMapper 2.1 supports **local query scopes** via the `scope_` prefix convention. Define a method like `scope_published()` on your model, then call `$model->published()` — the `__call()` magic method discovers and invokes it, returning `$this` for chaining.
 
 ```php
 class Post extends DataMapper {

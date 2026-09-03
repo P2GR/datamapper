@@ -363,11 +363,11 @@ $user->include_related('country', 'name')->get();
 // Access: $user->country_name
 ```
 
-::: info DataMapper 2.0
+::: info DataMapper 2.1
 Prefer `(new User())->with('country')` for new code. `with()` eager loads the relation, supports constraints, and avoids manually selecting/prefixing columns. Use `include_related()` only when you need flattened column output for legacy responses.
 :::
 
-## DataMapper 2.0 Features
+## DataMapper 2.1 Features
 
 ### Query Builder
 

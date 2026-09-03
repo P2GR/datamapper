@@ -6,6 +6,9 @@ use PHPUnit\Framework\TestCase;
 use Tests\Support\CacheableModelStub;
 use Tests\Support\CacheHarness;
 use Tests\Support\FakeQueryState;
+use DMZ_Collection;
+
+require_once APPPATH . 'datamapper/querybuilder.php';
 
 class DataMapperCacheTest extends TestCase
 {
@@ -97,6 +100,85 @@ class DataMapperCacheTest extends TestCase
         $this->assertSame('Mallory', $freshHarness->all[1]->name);
     }
 
+    public function testHydrateCachedResultsIndexesByConfiguredPrimaryKey(): void
+    {
+        $state = new FakeQueryState(array('qb_select' => array('account_uuid', 'name')));
+        $harness = new CustomKeyCacheHarness();
+        $harness->setDbState($state);
+        $models = array();
+        foreach (array('account-a', 'account-b') as $key) {
+            $model = new CustomKeyCacheHarness();
+            $model->account_uuid = $key;
+            $model->name = $key;
+            $models[] = $model;
+        }
+        $harness->storeInCache($models);
+
+        $freshHarness = new CustomKeyCacheHarness();
+        $freshHarness->setDbState($state);
+        $freshHarness->hydrateCachedResults($harness->fetchFromCache());
+
+        $this->assertSame(array('account-a', 'account-b'), array_keys($freshHarness->all));
+    }
+
+    public function testQueryExceptionResetsRelationCacheWithoutStoringPartialResults(): void
+    {
+        $model = new ThrowingRelationCacheHarness();
+        $model->cache_relations(60);
+        $builder = new RelationCacheQueryBuilderHarness($model);
+
+        try {
+            $builder->get();
+            $this->fail('Expected the query exception to be propagated.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('query failed', $exception->getMessage());
+        }
+
+        $this->assertFalse($builder->ownedModel()->relationCacheEnabled());
+        $this->assertFalse($builder->ownedModel()->cacheEnabled());
+    }
+
+    public function testCacheStoreExceptionStillResetsRelationCacheState(): void
+    {
+        $model = new ThrowingCacheStoreHarness();
+        $model->cache_relations(60);
+        $model->_prepare_relation_cache(array('children'));
+
+        try {
+            $model->_finalize_relation_cache();
+            $this->fail('Expected the cache store exception to be propagated.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('cache store failed', $exception->getMessage());
+        }
+
+        $this->assertFalse($model->relationCacheEnabled());
+        $this->assertFalse($model->cacheEnabled());
+    }
+
+    public function testDirectRelationCacheGetResetsCacheState(): void
+    {
+        $model = new DirectRelationCacheHarness();
+        $model->setDbState(new DirectCacheQueryState());
+
+        $model->cache_relations(60)->get();
+
+        $this->assertTrue($model->_query_was_successful());
+        $this->assertFalse($model->relationCacheEnabled());
+        $this->assertFalse($model->cacheEnabled());
+    }
+
+    public function testFailedDirectRelationCacheGetResetsCacheState(): void
+    {
+        $model = new DirectRelationCacheHarness();
+        $model->setDbState(new FailedDirectCacheQueryState());
+
+        $model->cache_relations(60)->get();
+
+        $this->assertFalse($model->_query_was_successful());
+        $this->assertFalse($model->relationCacheEnabled());
+        $this->assertFalse($model->cacheEnabled());
+    }
+
     public function testInvalidateCacheRemovesStoredEntries(): void
     {
         $state = new FakeQueryState(array('qb_where' => array(array('field' => 'role', 'value' => 'admin'))));
@@ -110,6 +192,34 @@ class DataMapperCacheTest extends TestCase
 
         $harness->invalidateCache();
         $this->assertFalse($driver->has($key));
+    }
+
+    public function testRelationCacheStoresAndRestoresHydratedGraph(): void
+    {
+        $state = new FakeQueryState(array('qb_where' => array(array('field' => 'id', 'value' => 15))));
+        $harness = new CacheRelationHarness();
+        $harness->setDbState($state);
+        $parent = new CacheRelationHarness();
+        $parent->id = 15;
+        $parent->name = 'Parent';
+        $child = new CacheRelationChildStub();
+        $child->id = 27;
+        $child->name = 'Child';
+        $parent->children = new DMZ_Collection(array($child));
+        $parent->profile = NULL;
+
+        $harness->storeRelationGraph(array($parent), array('children'));
+
+        $freshHarness = new CacheRelationHarness();
+        $freshHarness->setDbState($state);
+        $freshHarness->prepareRelationFetch(array('children'));
+        $payload = $freshHarness->fetchFromCache();
+        $freshHarness->hydrateCachedResults($payload);
+
+        $this->assertInstanceOf(DMZ_Collection::class, $freshHarness->all[0]->children);
+        $this->assertSame(27, $freshHarness->all[0]->children->first()->id);
+        $this->assertTrue(property_exists($freshHarness->all[0], 'profile'));
+        $this->assertNull($freshHarness->all[0]->profile);
     }
 
     private function createHarness(FakeQueryState $state): CacheHarness
@@ -156,5 +266,101 @@ class DataMapperCacheTest extends TestCase
         }
 
         @rmdir($directory);
+    }
+}
+
+class CacheRelationHarness extends CacheHarness
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->has_many = array('children' => array('class' => CacheRelationChildStub::class));
+        $this->has_one = array('profile' => array('class' => CacheRelationChildStub::class));
+    }
+}
+
+class CacheRelationChildStub extends CacheableModelStub
+{
+}
+
+class CustomKeyCacheHarness extends CacheHarness
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->primary_key = 'account_uuid';
+        $this->fields = array('account_uuid', 'name');
+        $this->all_array_uses_ids = TRUE;
+    }
+}
+
+class ThrowingRelationCacheHarness extends CacheHarness
+{
+    public function get($limit = NULL, $offset = NULL)
+    {
+        throw new \RuntimeException('query failed');
+    }
+
+    public function relationCacheEnabled()
+    {
+        return $this->_cache_relations_enabled;
+    }
+
+    public function cacheEnabled()
+    {
+        return $this->_cache_enabled;
+    }
+}
+
+class RelationCacheQueryBuilderHarness extends \DMZ_QueryBuilder
+{
+    public function ownedModel()
+    {
+        return $this->model;
+    }
+}
+
+class ThrowingCacheStoreHarness extends ThrowingRelationCacheHarness
+{
+    public function get($limit = NULL, $offset = NULL)
+    {
+        return $this;
+    }
+
+    protected function _store_in_cache($results)
+    {
+        throw new \RuntimeException('cache store failed');
+    }
+}
+
+class DirectRelationCacheHarness extends ThrowingRelationCacheHarness
+{
+    public function get($limit = NULL, $offset = NULL)
+    {
+        return \DataMapper::get($limit, $offset);
+    }
+}
+
+class DirectCacheQueryState extends FakeQueryState
+{
+    public function get($table = NULL, $limit = NULL, $offset = NULL)
+    {
+        return new EmptyCacheQueryResult();
+    }
+}
+
+class EmptyCacheQueryResult
+{
+    public function num_rows()
+    {
+        return 0;
+    }
+}
+
+class FailedDirectCacheQueryState extends FakeQueryState
+{
+    public function get($table = NULL, $limit = NULL, $offset = NULL)
+    {
+        return FALSE;
     }
 }

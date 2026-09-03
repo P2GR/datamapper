@@ -1,4 +1,4 @@
-# Model Utilities <Badge type="tip" text="2.0" />
+# Model Utilities <Badge type="tip" text="2.1" />
 
 A collection of convenience methods that make common model operations more expressive. These methods complement the existing DataMapper API without changing any existing behavior.
 

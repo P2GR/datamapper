@@ -95,10 +95,10 @@ features:
 
 </div>
 
-## Why DataMapper 2.0?
+## Why DataMapper 2.1?
 
-::: info DataMapper 2.0
-DataMapper 2.0 adds focused query, collection, casting, cache, and streaming helpers while preserving the classic CodeIgniter 3 workflow.
+::: info DataMapper 2.1
+DataMapper 2.1 adds focused query, collection, casting, cache, and streaming helpers while preserving the classic CodeIgniter 3 workflow.
 :::
 
 ### Before vs After
@@ -121,7 +121,7 @@ foreach ($user as $u) {
 }
 ```
 
-```php [Query Builder (2.0)]
+```php [Query Builder (2.1)]
 $users = (new User())
     ->where('active', 1)
     ->where('age >', 18)
@@ -195,7 +195,7 @@ $topCustomer = $customers->first();
 
 ## Feature Comparison
 
-| Feature | DataMapper 2.0 | Laravel | Doctrine ORM |
+| Feature | DataMapper 2.1 | Laravel | Doctrine ORM |
 |---------|---------------|---------|--------------|
 | **Modern Query Builder** | Yes | Yes | DQL |
 | **Eager Loading** | Yes | Yes | Yes |
@@ -212,8 +212,8 @@ $topCustomer = $customers->first();
 
 DataMapper ORM is developed and maintained by:
 
-- **[P2GR](https://github.com/P2GR)** - Version 2.0 development and maintenance
-- **[KayElliot](https://github.com/kayelliot)** - Version 2.0 development and maintenance
+- **[P2GR](https://github.com/P2GR)** - Version 2.1 development and maintenance
+- **[KayElliot](https://github.com/kayelliot)** - Version 2.1 development and maintenance
 
 DataMapper ORM was originally created by **Phil DeJarnett** and **Simon Stenhouse**, with continued development by **Harro Verton** through version 1.8.3.
 

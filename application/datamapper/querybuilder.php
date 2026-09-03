@@ -12,7 +12,7 @@
  * @author     DataMapper Development Team
  * @license    MIT License
  * @link       http://datamapper.wanwizard.eu/
- * @version    2.0.5
+ * @version    2.1.0
  */
 
 if (!function_exists('dmz_log_message')) {
@@ -928,36 +928,39 @@ class DMZ_QueryBuilder {
     public function get() {
         // Store the model class before calling get()
         $model_class = get_class($this->model);
-        
-        // Call DataMapper's get() method (returns $this, populates $this->model->all)
-        if (isset($this->_limit)) {
-            $this->model->get($this->_limit, $this->_offset);
-        } else {
-            if (isset($this->_offset) && $this->_offset !== NULL) {
-                $this->model->offset($this->_offset);
+        $this->model->_prepare_relation_cache($this->eager_loads, !empty($this->eager_constraints));
+		$query_succeeded = false;
+
+        try {
+            // Call DataMapper's get() method (returns $this, populates $this->model->all)
+            if (isset($this->_limit)) {
+                $this->model->get($this->_limit, $this->_offset);
+            } else {
+                if (isset($this->_offset) && $this->_offset !== NULL) {
+                    $this->model->offset($this->_offset);
+                }
+                $this->model->get();
             }
-            $this->model->get();
-        }
-        
-        // Apply eager loading if requested
-        if (!empty($this->eager_loads) && !empty($this->model->all)) {
-            $queries_before = isset($this->model->db->queries) ? count($this->model->db->queries) : 0;
-            
-            // Create a temporary collection for eager loading (internal use only)
-            $collection = new DMZ_Collection($this->model->all, $this->model);
-            
-            // Apply eager loading to the models
-            $this->_load_eager_relations($collection);
-            
-            $queries_after = isset($this->model->db->queries) ? count($this->model->db->queries) : 0;
-            $eager_query_count = $queries_after - $queries_before;
-            
-            // Log eager loading execution
-            dmz_log_message('debug', "Eager loading for {$model_class}", array(
-                'relations' => $this->eager_loads,
-                'result_count' => count($this->model->all),
-                'queries' => $eager_query_count
-            ));
+			if (!$this->model->_query_was_successful()) {
+				throw new DataMapper_Database_Exception('Base query failed during eager loading.');
+			}
+
+            // Apply eager loading if requested
+            if (!empty($this->eager_loads) && !empty($this->model->all) && !$this->model->_relation_cache_was_hit()) {
+                $queries_before = isset($this->model->db->queries) ? count($this->model->db->queries) : 0;
+                $collection = new DMZ_Collection($this->model->all, $this->model);
+                $this->_load_eager_relations($collection);
+                $queries_after = isset($this->model->db->queries) ? count($this->model->db->queries) : 0;
+
+                dmz_log_message('debug', "Eager loading for {$model_class}", array(
+                    'relations' => $this->eager_loads,
+                    'result_count' => count($this->model->all),
+                    'queries' => $queries_after - $queries_before
+                ));
+            }
+			$query_succeeded = true;
+        } finally {
+			$this->model->_finalize_relation_cache($query_succeeded);
         }
         
         // Return the model for backward compatibility (like DataMapper::get())
@@ -1743,8 +1746,9 @@ class DMZ_QueryBuilder {
             return; // Skip invalid relations silently
         }
         
-        // Get relationship configuration
-        $relation_config = $is_has_many ? $first_model->has_many[$relation] : $first_model->has_one[$relation];
+        // Consume DataMapper's normalized relationship configuration.
+        $normalized_relation = $relation;
+        $relation_config = $first_model->_get_related_properties($normalized_relation);
         
         // Normalize config - handle both simple strings and arrays
         if (is_string($relation_config)) {
@@ -1762,25 +1766,25 @@ class DMZ_QueryBuilder {
             }
         }
         
-        // Get all parent IDs for batch loading
+        // Create related model instance
+        $related_model = new $related_class();
+        $relation_config['_dm_parent_key'] = $first_model->primary_key;
+        $relation_config['_dm_related_key'] = $related_model->primary_key;
+        $relation_config['_dm_parent_alias'] = $relation_config['join_self_as'];
+        $relation_config['_dm_related_alias'] = $relation_config['join_other_as'];
+
+        // Get all parent IDs for batch loading.
         $parent_ids = array();
         foreach ($results->to_array() as $model) {
-            if (!empty($model->id)) {
-                $parent_ids[] = $model->id;
+            $parent_key = $relation_config['_dm_parent_key'];
+            if (isset($model->{$parent_key}) && $model->{$parent_key} !== '') {
+                $parent_ids[] = $model->{$parent_key};
             }
         }
-        
+
         if (empty($parent_ids)) {
             return;
         }
-        
-        // Determine the relationship table and keys based on DataMapper conventions
-        $parent_model = strtolower(get_class($first_model));
-        $parent_table = $first_model->table;
-        
-        // Create related model instance
-        $related_model = new $related_class();
-        $related_table = $related_model->table;
         
         // Determine join table and foreign keys using DataMapper's naming convention
         // For many-to-many: uses join table like 'users_roles'
@@ -1822,7 +1826,7 @@ class DMZ_QueryBuilder {
         // If the FK column exists, this is NOT a many-to-many relationship - use FK-based loading
         // This check must happen BEFORE checking for join table existence to avoid false positives
         if ($is_has_one || isset($model->has_one[$relation])) {
-            $fk_column = $relation . '_id';
+            $fk_column = $config['join_other_as'] . '_id';
             
             // Check if FK column exists in parent model's fields (case-insensitive)
             if (!empty($model->fields) && is_array($model->fields)) {
@@ -1862,6 +1866,12 @@ class DMZ_QueryBuilder {
         if ($related_table === NULL) {
             $related_model = new $related_class();
             $related_table = $related_model->table;
+        }
+
+        $related_model = isset($related_model) ? $related_model : new $related_class();
+        $related_fk = $config['join_self_as'] . '_id';
+        if (!empty($related_model->fields) && in_array($related_fk, $related_model->fields)) {
+            return FALSE;
         }
         
         // Try both orderings (alphabetical is DataMapper convention)
@@ -1962,7 +1972,8 @@ class DMZ_QueryBuilder {
     protected function _load_many_to_many($results, $relation, $config, $parent_ids, $is_has_one = FALSE) {
         $first_model = $results->first();
         $parent_table = $first_model->table;
-        $parent_key = isset($config['join_self_as']) ? $config['join_self_as'] : rtrim($parent_table, 's');
+        $parent_alias = $config['_dm_parent_alias'];
+        $parent_primary_key = $config['_dm_parent_key'];
         
         $related_class = $config['class'];
         
@@ -1976,7 +1987,8 @@ class DMZ_QueryBuilder {
         
         $related_model = new $related_class();
         $related_table = $related_model->table;
-        $related_key = isset($config['join_other_as']) ? $config['join_other_as'] : rtrim($related_table, 's');
+        $related_alias = $config['_dm_related_alias'];
+        $related_primary_key = $config['_dm_related_key'];
         
         // Determine join table
         $join_table = isset($config['join_table']) ? 
@@ -2007,15 +2019,16 @@ class DMZ_QueryBuilder {
         // Query: SELECT related.*, join.parent_id FROM related 
         //        JOIN join_table ON related.id = join.related_id 
         //        WHERE join.parent_id IN (...)
-        $db->select($related_table . '.*, ' . $join_table . '.' . $parent_key . '_id as _dm_parent_id')
+          $db->select($related_table . '.*, ' . $join_table . '.' . $parent_alias . '_id as _dm_parent_id')
            ->from($related_table)
-           ->join($join_table, $related_table . '.id = ' . $join_table . '.' . $related_key . '_id')
-           ->where_in($join_table . '.' . $parent_key . '_id', $parent_ids);
+              ->join($join_table, $related_table . '.' . $related_primary_key . ' = ' . $join_table . '.' . $related_alias . '_id')
+              ->where_in($join_table . '.' . $parent_alias . '_id', $parent_ids);
         
         // Apply eager loading constraints FIRST (to capture soft delete scope from user)
         // For many-to-many, we pass the DB instance directly since we're using manual queries
         $related_instance = new $related_class();
         $wrapper = $this->_apply_eager_constraints_to_db($db, $relation, $related_table, $this->_get_deleted_at_column($related_instance));
+        $eager_limit = $this->_consume_eager_limit($db);
         
         // Apply DataMapper 2.0 soft delete scope automatically
         // Check if the related model has soft deletes enabled (either trait or built-in)
@@ -2024,6 +2037,9 @@ class DMZ_QueryBuilder {
         
         // Execute query
         $query = $db->get();
+		if (!$query) {
+			throw new DataMapper_Database_Exception('Many-to-many related query failed during eager loading.');
+		}
         
         // Group results by parent ID
         $grouped = array();
@@ -2047,13 +2063,15 @@ class DMZ_QueryBuilder {
         
         // Assign to parent models
         foreach ($results->to_array() as $model) {
-            if (isset($grouped[$model->id])) {
+            $parent_id = $model->{$parent_primary_key};
+            $items = isset($grouped[$parent_id]) ? $this->_slice_eager_results($grouped[$parent_id], $eager_limit) : array();
+            if (!empty($items)) {
                 if ($is_has_one) {
                     // has_one via join table - return first (and only) related model
-                    $this->_assign_eager_relation($model, $relation, $grouped[$model->id][0]);
+                    $this->_assign_eager_relation($model, $relation, $items[0]);
                 } else {
                     // has_many - return collection
-                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection($grouped[$model->id]));
+                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection($items));
                 }
             } else {
                 if ($is_has_one) {
@@ -2080,23 +2098,26 @@ class DMZ_QueryBuilder {
         $first_model = $results->first();
         $related_class = $config['class'];
         $related_model = new $related_class();
+        $parent_primary_key = $config['_dm_parent_key'];
+        $related_primary_key = $config['_dm_related_key'];
+        $foreign_key = $this->_resolve_model_field($related_model->fields, $config['_dm_parent_alias'] . '_id');
+        $parent_foreign_key = $this->_resolve_model_field($first_model->fields, $config['_dm_related_alias'] . '_id');
         
-        if ($is_has_many) {
+        if ($is_has_many || !in_array($parent_foreign_key, $first_model->fields)) {
             // has_many: foreign key is in the RELATED table (e.g., installations.user_id)
-            $parent_model_name = strtolower(get_class($first_model));
-            $foreign_key = isset($config['other_field']) ? 
-                          $config['other_field'] . '_id' : 
-                          $parent_model_name . '_id';
-            
             // Batch load related records where foreign_key IN (parent_ids)
             // Build base query
             $related_model->where_in($foreign_key, $parent_ids);
             
             // Apply eager loading constraints if any
             $this->_apply_eager_constraints($related_model, $relation);
+            $eager_limit = $this->_consume_eager_limit($related_model->db);
             
             // Execute query
             $related_records = $related_model->get();
+			if (!$related_records->_query_was_successful()) {
+				throw new DataMapper_Database_Exception('Related query failed during eager loading.');
+			}
             
             // NOTE: Don't disable auto-populate here - it will prevent nested eager loading
             // Auto-populate will be disabled at the very end, after all nested relations are loaded
@@ -2115,21 +2136,23 @@ class DMZ_QueryBuilder {
             
             // Assign to parent models
             foreach ($results->to_array() as $model) {
-                if (isset($grouped[$model->id])) {
-                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection($grouped[$model->id]));
+                $parent_id = $model->{$parent_primary_key};
+                $items = isset($grouped[$parent_id]) ? $this->_slice_eager_results($grouped[$parent_id], $eager_limit) : array();
+                if ($is_has_many) {
+                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection($items));
                 } else {
-                    $this->_assign_eager_relation($model, $relation, new DMZ_Collection(array()));
+                    $this->_assign_eager_relation($model, $relation, empty($items) ? NULL : $items[0]);
                 }
             }
             
         } else {
             // has_one: foreign key is in the PARENT table (e.g., users.role_id)
-            $foreign_key_field = $relation . '_id';
+            $foreign_key_field = $parent_foreign_key;
             
             // Collect all the foreign key IDs from parent models
             $foreign_ids = array();
             foreach ($results->to_array() as $model) {
-                if (!empty($model->{$foreign_key_field})) {
+                if (isset($model->{$foreign_key_field}) && $model->{$foreign_key_field} !== '') {
                     $foreign_ids[] = $model->{$foreign_key_field};
                 }
             }
@@ -2147,13 +2170,17 @@ class DMZ_QueryBuilder {
             
             // Load related records by ID (BATCHED - single query)
             // Build base query
-            $related_model->where_in('id', $foreign_ids);
+            $related_model->where_in($related_primary_key, $foreign_ids);
             
             // Apply eager loading constraints if any
             $this->_apply_eager_constraints($related_model, $relation);
+            $eager_limit = $this->_consume_eager_limit($related_model->db);
             
             // Execute query
             $related_records = $related_model->get();
+            if (!$related_records->_query_was_successful()) {
+                throw new DataMapper_Database_Exception('Related query failed during eager loading.');
+            }
             
             // NOTE: Don't disable auto-populate here - it will prevent nested eager loading
             // Auto-populate will be disabled at the very end, after all nested relations are loaded
@@ -2162,14 +2189,18 @@ class DMZ_QueryBuilder {
             $indexed = array();
             if (isset($related_records->all)) {
                 foreach ($related_records->all as $record) {
-                    $indexed[$record->id] = $record;
+                    $indexed[$record->{$related_primary_key}] = $record;
                 }
             }
             
             // Assign to parent models
             foreach ($results->to_array() as $model) {
-                if (!empty($model->{$foreign_key_field}) && isset($indexed[$model->{$foreign_key_field}])) {
-                    $this->_assign_eager_relation($model, $relation, $indexed[$model->{$foreign_key_field}]);
+                $items = (isset($model->{$foreign_key_field}) && $model->{$foreign_key_field} !== '' && isset($indexed[$model->{$foreign_key_field}]))
+                    ? array($indexed[$model->{$foreign_key_field}])
+                    : array();
+                $items = $this->_slice_eager_results($items, $eager_limit);
+                if (!empty($items)) {
+                    $this->_assign_eager_relation($model, $relation, $items[0]);
                 } else {
                     $this->_assign_eager_relation($model, $relation, NULL);
                 }
@@ -2212,6 +2243,43 @@ class DMZ_QueryBuilder {
             // Call the constraint callback, passing the model as the query builder
             call_user_func($constraint, $model);
         }
+    }
+
+    /**
+     * Remove a relation constraint's global SQL limit so it can be applied per parent.
+     */
+    protected function _consume_eager_limit($db) {
+        if (!is_object($db) || !method_exists($db, 'dm_get') || !method_exists($db, 'dm_set')) {
+            return NULL;
+        }
+
+        $limit = $db->dm_get('qb_limit');
+        if ($limit === NULL || $limit === FALSE || $limit === '') {
+            return NULL;
+        }
+
+        $offset = $db->dm_get('qb_offset');
+        $db->dm_set('qb_limit', FALSE);
+        $db->dm_set('qb_offset', FALSE);
+        return array('limit' => (int) $limit, 'offset' => (int) $offset);
+    }
+
+    protected function _slice_eager_results(array $items, $eager_limit) {
+        if ($eager_limit === NULL) {
+            return $items;
+        }
+
+        return array_slice($items, $eager_limit['offset'], $eager_limit['limit']);
+    }
+
+    protected function _resolve_model_field($fields, $expected) {
+        foreach ((array) $fields as $field) {
+            if (strcasecmp($field, $expected) === 0) {
+                return $field;
+            }
+        }
+
+        return $expected;
     }
     
     /**

@@ -1,16 +1,16 @@
 <?php	if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
 /**
- * DataMapper 2.0 Configuration
+ * DataMapper 2.1 Configuration
  *
  * Global configuration settings that apply to all DataMapper models.
- * This configuration includes both legacy settings and new DataMapper 2.0 features
+ * This configuration includes both legacy settings and new DataMapper 2.1 features
  * like automatic timestamps, soft deletes, and enhanced caching.
  *
  * @package    DataMapper ORM
  * @category   Configuration
  * @author     DataMapper Development Team
- * @version    2.0.5
+ * @version    2.1.0
  */
 
 /*
@@ -159,7 +159,7 @@ $config['cascade_delete'] = TRUE;
 
 /*
 |--------------------------------------------------------------------------
-| DataMapper 2.0 - Modern Timestamps
+| DataMapper 2.1 - Modern Timestamps
 |--------------------------------------------------------------------------
 |
 | Enable automatic created_at/updated_at timestamp management.
@@ -174,7 +174,7 @@ $config['updated_at_column'] = 'updated_at';
 
 /*
 |--------------------------------------------------------------------------
-| DataMapper 2.0 - Soft Deletes
+| DataMapper 2.1 - Soft Deletes
 |--------------------------------------------------------------------------
 |
 | Enable soft deletion functionality. Modern DataMapper projects should

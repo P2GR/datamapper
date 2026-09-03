@@ -1,4 +1,4 @@
-# Collections (DataMapper 2.0)
+# Collections (DataMapper 2.1)
 
 `DMZ_Collection` wraps a set of models or arrays and gives you a predictable set of filtering, mapping, sorting, grouping, and aggregate helpers. Classic `get()` still returns the model instance with `$object->all` populated; use `collect()` when you want a collection object.
 

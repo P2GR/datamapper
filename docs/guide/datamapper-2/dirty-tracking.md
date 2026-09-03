@@ -1,4 +1,4 @@
-# Dirty Tracking <Badge type="tip" text="2.0" />
+# Dirty Tracking <Badge type="tip" text="2.1" />
 
 Track which attributes have been modified on a model since it was loaded from the database. Dirty tracking enables smarter saves, audit logging, conditional logic based on what changed, and undo workflows.
 

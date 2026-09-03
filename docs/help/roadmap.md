@@ -8,7 +8,7 @@ The code snippets on this page show proposed APIs, not methods available in the 
 We value your feedback! Suggest features or vote on existing proposals in our [GitHub Discussions](https://github.com/P2GR/datamapper/discussions).
 :::
 
-## Proposed 2.1 - Performance & DX
+## Proposed 2.2 - Performance & DX
 
 ### Planned Features
 
@@ -122,11 +122,11 @@ $user->where('preferences->theme', 'dark')->get();
 - [ ] Beta release
 - [ ] Stable release
 
-Timing will be set after the 2.0 line stabilizes.
+Timing will be set after the 2.1 release stabilizes.
 
 ---
 
-## Proposed 2.2 - Enterprise Features
+## Proposed 2.3 - Enterprise Features
 
 ### Planned Features
 
@@ -329,7 +329,7 @@ class User extends DataMapper {
 - [ ] Design phase
 - [ ] Prototype
 
-Timing will be set after the 2.x roadmap is complete.
+Timing will be set after the 2.2 roadmap is complete.
 
 ---
 
@@ -341,13 +341,13 @@ Based on GitHub issues and community feedback:
 
 | Feature | Votes | Status | Target Version |
 |---------|-------|--------|----------------|
-| Model Events | 45 | Planned | 2.1 |
-| Multi-Database | 38 | Planned | 2.2 |
-| JSON Columns | 35 | Planned | 2.1 |
-| Migrations | 32 | Planned | 2.2 |
-| Batch Operations | 28 | Planned | 2.1 |
-| Audit Logging | 25 | Planned | 2.2 |
-| Read/Write Split | 22 | Planned | 2.2 |
+| Model Events | 45 | Planned | 2.2 |
+| Multi-Database | 38 | Planned | 2.3 |
+| JSON Columns | 35 | Planned | 2.2 |
+| Migrations | 32 | Planned | 2.3 |
+| Batch Operations | 28 | Planned | 2.2 |
+| Audit Logging | 25 | Planned | 2.3 |
+| Read/Write Split | 22 | Planned | 2.3 |
 | Async Queries | 20 | Considering | 3.0 |
 | GraphQL Support | 15 | Considering | TBD |
 | MongoDB Support | 12 | Won't Add | - |
@@ -366,7 +366,7 @@ Want to influence the roadmap?
 
 Features from the roadmap that have been completed:
 
-### Version 2.0 (Released Dec 2024)
+### Version 2.1 (Soon to be released)
 
 - [x] Query Builder
 - [x] Eager Loading
@@ -377,6 +377,9 @@ Features from the roadmap that have been completed:
 - [x] Attribute Casting
 - [x] Streaming Results
 - [x] Advanced Query Building
+- [x] Keyset lazy iteration with `lazy_by_id()`
+- [x] Custom-key eager loading and persistence fixes
+- [x] Relation graph caching and cache invalidation fixes
 
 ---
 

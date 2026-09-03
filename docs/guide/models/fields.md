@@ -32,9 +32,9 @@ $user->password = "secret123";
 $user->save();
 ```
 
-## Mass Assignment Protection <Badge type="tip" text="2.0" />
+## Mass Assignment Protection <Badge type="tip" text="2.1" />
 
-DataMapper 2.0 adopts Laravel-style mass assignment controls so you can safely populate models from request data. Declare either a whitelist via `$fillable` or a blacklist via `$guarded` on your model and call `fill()`:
+DataMapper 2.1 adopts Laravel-style mass assignment controls so you can safely populate models from request data. Declare either a whitelist via `$fillable` or a blacklist via `$guarded` on your model and call `fill()`:
 
 ```php
 class User extends DataMapper {
@@ -165,9 +165,9 @@ $data = $user->to_array();
 echo $data['name']; // "John"
 ```
 
-## Property Types and Casting <Badge type="tip" text="2.0" />
+## Property Types and Casting <Badge type="tip" text="2.1" />
 
-DataMapper 2.0 supports automatic attribute casting:
+DataMapper 2.1 supports automatic attribute casting:
 
 ::: code-group
 
@@ -354,7 +354,7 @@ echo $user->country_id;    // Foreign key
 echo $user->country_name;  // Included field
 ```
 
-::: tip DataMapper 2.0
+::: tip DataMapper 2.1
 Use eager loading for better performance:
 
 ```php
@@ -457,6 +457,6 @@ $user->select('bio')
 - [Creating Models](/guide/models/creating) - Model basics
 - [From Array](/guide/models/from-array) - Bulk assignment
 - [To Array](/guide/models/to-array) - Export to array
-- [Attribute Casting](/guide/datamapper-2/casting) - Type casting (2.0)
+- [Attribute Casting](/guide/datamapper-2/casting) - Type casting (2.1)
 - [Validation](/guide/advanced/validation) - Data validation
 - [Reserved Names](/reference/reserved-names) - Avoid conflicts

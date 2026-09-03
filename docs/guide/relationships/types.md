@@ -450,7 +450,7 @@ foreach ($user as $u) {
 ```
 :::
 
-::: tip Solution: Eager Loading (DataMapper 2.0)
+::: tip Solution: Eager Loading (DataMapper 2.1)
 ```php
 // Efficient for this one relation: users query + posts query
 $user = new User();
@@ -473,5 +473,5 @@ Learn more: [Eager Loading](/guide/datamapper-2/eager-loading)
 - [Setting Relations](/guide/relationships/setting) - Creating relationships
 - [Saving Relations](/guide/relationships/saving) - Persisting relationships
 - [Deleting Relations](/guide/relationships/deleting) - Removing relationships
-- [Eager Loading](/guide/datamapper-2/eager-loading) - Prevent N+1 (2.0)
+- [Eager Loading](/guide/datamapper-2/eager-loading) - Prevent N+1 (2.1)
 - [Advanced Relations](/guide/relationships/advanced) - Complex scenarios

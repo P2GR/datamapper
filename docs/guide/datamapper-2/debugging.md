@@ -1,6 +1,6 @@
 # Debugging & Benchmarking
 
-DataMapper 2.0 includes built-in tools to inspect queries and measure performance.
+DataMapper 2.1 includes built-in tools to inspect queries and measure performance.
 
 ## Quick Debug
 

@@ -12,7 +12,7 @@
  * @info		Based on nstrees by Rolf Brugger, edutech
  * 				http://www.edutech.ch/contribution/nstrees
  * @link    	https://github.com/P2GR/datamapper2
- * @version 	2.0.5
+ * @version 	2.1.0
  */
 
 // --------------------------------------------------------------------------

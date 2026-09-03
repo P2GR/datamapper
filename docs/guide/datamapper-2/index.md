@@ -1,14 +1,14 @@
-﻿# What's New in DataMapper 2.0
+﻿# What's New in DataMapper 2.1
 
-DataMapper 2.0 adds query, collection, cache, casting, timestamp, soft-delete, and streaming helpers while keeping the classic DataMapper API available.
+DataMapper 2.1 adds query, collection, cache, casting, timestamp, soft-delete, and streaming helpers while keeping the classic DataMapper API available.
 
 ## Overview
 
 ::: info Backward Compatible
-Existing DataMapper-style models and controllers can continue to use the classic API while you adopt 2.0 helpers gradually.
+Existing DataMapper-style models and controllers can continue to use the classic API while you adopt 2.1 helpers gradually.
 :::
 
-DataMapper 2.0 focuses on three key areas:
+DataMapper 2.1 focuses on three key areas:
 
 1. **Developer Experience** - Chainable model syntax
 2. **Performance** - Eager loading and caching
@@ -394,7 +394,7 @@ $users = $query->get();
 
 ## Comparison Table
 
-| Feature | DataMapper 1.x | DataMapper 2.0 |
+| Feature | DataMapper 1.x | DataMapper 2.1 |
 |---------|----------------|----------------|
 | **Syntax** | Traditional | Modern query builder + Traditional |
 | **Eager Loading** | Basic | With constraints |
@@ -412,12 +412,12 @@ $users = $query->get();
 | **Atomic Counters** | No | `increment()` / `decrement()` |
 | **Model Comparison** | No | `is()` / `is_not()` |
 | **Debugging** | `check_last_query()` | `debug()`, `benchmark()`, `get_query_index()` |
-| **PHP Version** | 5.6 - 7.4 | 7.4 - 8.3+ |
+| **PHP Version** | 5.6 - 7.4 | 8.0 - 8.5 |
 | **Performance** | Good | Excellent |
 
 ## Legacy API Quick Reference
 
-| If you used this in 1.x… | Use this in 2.0 | Why it’s better |
+| If you used this in 1.x… | Use this in 2.1 | Why it’s better |
 |--------------------------|-----------------|-----------------|
 | `$user->include_related('company')` | `(new User())->with('company')` | Loads full related objects, supports constraints, fewer queries |
 | `$user->include_related('company', 'name')` | Access via accessor/attribute on eager-loaded relation (`$user->company->name`) | Keeps data normalized, no column collisions |
@@ -430,7 +430,7 @@ These replacements are additive—you can adopt them gradually while legacy code
 
 ## Migration Path
 
-You can adopt 2.0 features gradually:
+You can adopt 2.1 features gradually:
 
 ### Phase 1: Drop-in Replacement
 ```php
@@ -463,7 +463,7 @@ $users = (new User())->with('post')->get();
 
 ## Real-World Impact
 
-### Before DataMapper 2.0
+### Before DataMapper 2.1
 
 ```php
 // E-commerce: Get customers with recent orders
@@ -485,7 +485,7 @@ foreach ($customers as $customer) {
 // Total: 51 queries (1 + 50)
 ```
 
-### After DataMapper 2.0
+### After DataMapper 2.1
 
 ```php
 // Same functionality, 96% fewer queries!
