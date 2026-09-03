@@ -167,8 +167,7 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	public function flush()
 	{
 		// Only flush keys with our prefix
-		$pattern = $this->prefix . '*';
-		$deleted = $this->delete_pattern($pattern);
+		$this->delete_pattern('*');
 		
 		return true;
 	}
