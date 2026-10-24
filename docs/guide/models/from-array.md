@@ -2,7 +2,7 @@
 
 Populate a DataMapper object from an array. This is perfect for processing form data, API requests, or bulk imports.
 
-::: warning DataMapper 2.1
+::: warning DataMapper 2.2.0
 Prefer `$model->fill($input)` with `$fillable` / `$guarded` for day-to-day assignments. `from_array()` still works through the Array extension, but `fill()` ships in core and respects your mass-assignment rules automatically. See [Mass Assignment](/guide/models/mass-assignment) for full details.
 :::
 
@@ -295,7 +295,7 @@ if ($model->save()) {
 ## Timestamps with from_array
 
 ::: tip Automatic Timestamps
-If using the `HasTimestamps` trait (DataMapper 2.1), `created_at` and `updated_at` are managed automatically:
+If using the `HasTimestamps` trait (DataMapper 2.2.0), `created_at` and `updated_at` are managed automatically:
 
 ```php
 $user = new User();

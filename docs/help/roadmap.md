@@ -8,7 +8,7 @@ The code snippets on this page show proposed APIs, not methods available in the 
 We value your feedback! Suggest features or vote on existing proposals in our [GitHub Discussions](https://github.com/P2GR/datamapper/discussions).
 :::
 
-## Proposed 2.2 - Performance & DX
+## Future Proposals - Performance & DX
 
 ### Planned Features
 
@@ -122,7 +122,7 @@ $user->where('preferences->theme', 'dark')->get();
 - [ ] Beta release
 - [ ] Stable release
 
-Timing will be set after the 2.1 release stabilizes; the 2.1 line is now released and maintained through patch updates.
+These proposals are not included in 2.2.0; timing will be set separately.
 
 ---
 
@@ -237,7 +237,7 @@ $history = $user->revisions();
 - [ ] Design finalization
 - [ ] Implementation
 
-Timing will be set after the 2.1 scope is finalized.
+Timing will be set after the preceding proposals are scoped.
 
 ---
 
@@ -329,7 +329,7 @@ class User extends DataMapper {
 - [ ] Design phase
 - [ ] Prototype
 
-Timing will be set after the 2.2 roadmap is complete.
+Timing will be set after the preceding proposals are scoped.
 
 ---
 
@@ -341,11 +341,11 @@ Based on GitHub issues and community feedback:
 
 | Feature | Votes | Status | Target Version |
 |---------|-------|--------|----------------|
-| Model Events | 45 | Planned | 2.2 |
+| Model Events | 45 | Planned | TBD |
 | Multi-Database | 38 | Planned | 2.3 |
-| JSON Columns | 35 | Planned | 2.2 |
+| JSON Columns | 35 | Planned | TBD |
 | Migrations | 32 | Planned | 2.3 |
-| Batch Operations | 28 | Planned | 2.2 |
+| Batch Operations | 28 | Planned | TBD |
 | Audit Logging | 25 | Planned | 2.3 |
 | Read/Write Split | 22 | Planned | 2.3 |
 | Async Queries | 20 | Considering | 3.0 |
@@ -365,6 +365,15 @@ Want to influence the roadmap?
 ## Recently Completed
 
 Features from the roadmap that have been completed:
+
+### Version 2.2.0 (Released)
+
+- [x] Eager-loading correctness and bounded per-parent limits
+- [x] Transaction-aware caching and connection preservation
+- [x] Streaming, casting and serialization hardening
+- [x] Real CI3 database regression coverage
+
+See the [changelog](/help/changelog#_2-2-0-2026-10-24) for the fixes by topic.
 
 ### Version 2.1 (Released)
 

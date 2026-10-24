@@ -12,7 +12,7 @@
  * @category    Compatibility
  * @author      DataMapper 2.0 Team
  * @license     MIT
- * @version     2.1.1
+ * @version     2.2.0
  */
 
 /**

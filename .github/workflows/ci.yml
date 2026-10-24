@@ -23,12 +23,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Checkout CI3 database integration fixture
+        uses: actions/checkout@v4
+        with:
+          repository: bcit-ci/CodeIgniter
+          ref: bcb17eb8ba53a85de154439d0ab8ff1bed047bc9
+          path: tests/.ci3
+
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
+          extensions: redis, sqlite3, pdo_sqlite
           coverage: none
           tools: composer:v2
+        env:
+          fail-fast: 'true'
 
       - name: Validate composer.json
         run: composer validate --no-check-publish

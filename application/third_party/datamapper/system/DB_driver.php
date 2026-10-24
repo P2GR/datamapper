@@ -10,7 +10,7 @@
  * @category	DataMapper ORM
  * @author  	Harro "WanWizard" Verton
  * @link		http://datamapper.wanwizard.eu/
- * @version 	2.1.1
+ * @version 	2.2.0
  */
 
 // determine our driver alias name
@@ -22,6 +22,7 @@ if ( ! class_exists($driver, FALSE) )
 	$dmclass = <<<CODE
 class $driver extends $org_driver
 {
+	protected \$_dm_cache_invalidations = array();
 	// public interface to internal driver methods
 	// Compatible with both native CI3 and pocketarc fork
 	public function dm_call_method(\$function, ...\$args)
@@ -51,6 +52,45 @@ class $driver extends $org_driver
 	public function dm_set_append(\$var, \$value)
 	{
 		\$this->{\$var}[] = \$value;
+	}
+
+	public function dm_share_transaction_state(\$source)
+	{
+		foreach (array('_trans_depth', '_trans_status', '_trans_failure', '_dm_cache_invalidations') as \$property)
+		{
+			\$this->{\$property} =& \$source->{\$property};
+		}
+	}
+
+	public function dm_defer_cache_invalidation(\$cache, \$pattern)
+	{
+		\$this->_dm_cache_invalidations[spl_object_id(\$cache) . ':' . \$pattern] = array(\$cache, \$pattern);
+	}
+
+	public function trans_commit()
+	{
+		\$result = parent::trans_commit();
+		if (\$result && \$this->_trans_depth === 0) {
+			\$pending = \$this->_dm_cache_invalidations;
+			\$this->_dm_cache_invalidations = array();
+			foreach (\$pending as \$entry) {
+				try {
+					\$entry[0]->delete_pattern(\$entry[1]);
+				} catch (Throwable \$error) {
+					log_message('error', 'DataMapper cache invalidation failed after commit: ' . \$error->getMessage());
+				}
+			}
+		}
+		return \$result;
+	}
+
+	public function trans_rollback()
+	{
+		\$result = parent::trans_rollback();
+		if (\$result && \$this->_trans_depth === 0) {
+			\$this->_dm_cache_invalidations = array();
+		}
+		return \$result;
 	}
 }
 CODE;

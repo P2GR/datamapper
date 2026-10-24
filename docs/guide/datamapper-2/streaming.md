@@ -1,8 +1,8 @@
-# Streaming & Chunking (DataMapper 2.1)
+# Streaming & Chunking (DataMapper 2.2.0)
 
 Process large datasets efficiently without loading all records into memory. Perfect for handling millions of records with minimal memory footprint.
 
-**DataMapper 2.1:** These methods allow you to process large datasets in batches or one-by-one, reducing memory usage compared with loading the full result set.
+**DataMapper 2.2.0:** These methods allow you to process large datasets in batches or one-by-one, reducing memory usage compared with loading the full result set.
 
 Available Methods:
 
@@ -78,6 +78,14 @@ By default DataMapper now uses your model's `primary_key` when no column is prov
 
 The key column must be selected in every result. The method throws a `RuntimeException` if it is missing rather than repeating a chunk indefinitely.
 
+`chunk_by_id()` orders by the key in ascending order, replacing ordinary and CI-cached
+`order_by()` clauses. The optional `$alias` names the key in the result; `$column`
+still names the database column used for filtering and ordering.
+
+Keyset batches retain CI3 query-builder cached filters. Each batch merges those
+clauses into its own query clone before adding its progression condition; the
+original query's cache and filters remain unchanged.
+
 ### Basic Usage
 
 ```php
@@ -114,12 +122,16 @@ Returns a PHP Generator that yields one record at a time. Extremely memory-effic
 
 Like the chunk helpers, each batch the cursor streams is loaded through a cloned query builder with caching disabled to avoid serving stale pages while you iterate.
 
+`cursor()` fetches batches of up to 1,000 models using offsets. Use
+`lazy_by_id()` or `chunk_by_id()` when processing changes which rows still match,
+including deleting rows or updating a filtered column.
+
 ### Basic Usage
 
 ```php
 $u = new User();
 foreach ($u->cursor() as $user) {
-    // Only one user in memory at a time
+    // One model yielded at a time; up to 1,000 models loaded per batch
     $user->process();
     $user->save();
 }
@@ -131,7 +143,7 @@ foreach ($u->cursor() as $user) {
 $u = new User();
 $u->where('last_login <', '2020-01-01');
 
-foreach ($u->cursor() as $user) {
+foreach ($u->lazy_by_id() as $user) {
     $user->delete(); // Clean up inactive users
 }
 ```
@@ -156,6 +168,12 @@ foreach ($u->cursor() as $user) {
 ## lazy() - Lazy Collections
 
 Returns a DMZ_LazyCollection with chainable operations. Combines the power of collections with memory efficiency.
+
+Operations run in chain order: `take(10)->filter($callback)` filters only the
+first ten items, while `filter($callback)->take(10)` finds ten matching items.
+`map()` and `pluck()` retain `NULL` values unless a later filter removes them.
+Eager-loading constraints registered with `with()` apply to each batch in
+`chunk()`, `chunk_by_id()`, `lazy()`, `lazy_by_id()`, and `cursor()`.
 
 ### Basic Usage
 
@@ -221,6 +239,10 @@ $events = (new Event())->lazy_by_id(1000, 'sequence_number');
 
 The key column must be selected, unique, and monotonically increasing for stable progression.
 
+`lazy_by_id()` requires a query without pre-existing ordering. Iteration raises
+`InvalidArgumentException` if ordinary or CI-cached `order_by()` clauses are already present.
+Use `lazy()` or ordinary pagination when you need a different result order.
+
 ## Best Practices
 
 ### Choose the Right Tool
@@ -242,6 +264,10 @@ $u->lazy_by_id(2000);           // GOOD: Mutable datasets
 ```
 
 ### Error Handling
+
+Database failures propagate as exceptions. They are not treated as an empty final
+batch or a successful partial job. A callback returning `FALSE` still stops
+`chunk()` and `chunk_by_id()` and makes the helper return `FALSE`.
 
 ```php
 $u = new User();

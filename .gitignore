@@ -1,5 +1,6 @@
 # Composer dependencies
 /vendor/
+/tests/.ci3/
 
 # Composer utility artifacts
 /composer.phar

@@ -10,7 +10,7 @@
  * @category	DMZ
  * @author  	WanWizard
  * @link    	https://github.com/P2GR/datamapper2
- * @version 	2.1.1
+ * @version 	2.2.0
  */
 
 // --------------------------------------------------------------------------

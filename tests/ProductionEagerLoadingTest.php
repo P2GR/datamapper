@@ -13,6 +13,7 @@ class ProductionEagerLoadingTest extends TestCase
 {
     public function test_has_many_uses_normalized_aliases_custom_keys_and_per_parent_limit(): void
     {
+        ProductionEagerChild::$loadedRows = 0;
         $first = new ProductionEagerParent('account-a');
         $second = new ProductionEagerParent('account-b');
         $builder = new ProductionEagerQueryBuilder($first);
@@ -28,7 +29,7 @@ class ProductionEagerLoadingTest extends TestCase
             array('where_in', 'owner_id', array('account-a', 'account-b')),
             ProductionEagerChild::$lastQuery[0]
         );
-        $this->assertSame(4, ProductionEagerChild::$loadedRows);
+        $this->assertSame(2, ProductionEagerChild::$loadedRows);
     }
 
     public function test_many_to_many_query_failure_is_propagated(): void
@@ -109,19 +110,29 @@ class ProductionEagerChild extends FakeDataMapper
         $this->table = 'entries';
         $this->fields = array('entry_uuid', 'owner_id');
         $this->has_many = array();
-        $this->has_one = array();
+        $this->has_one = array('account' => array('class' => ProductionEagerParent::class));
         $this->db = new ProductionEagerDatabaseStub();
     }
 
     public function get($limit = NULL, $offset = NULL)
     {
-        parent::get($limit, $offset);
+        parent::get();
         if (!empty($this->whereInValues)) {
             $this->all = array_values(array_filter($this->all, function ($row) {
                 return in_array($row->owner_id, $this->whereInValues, TRUE);
             }));
         }
-        self::$loadedRows = count($this->all);
+        foreach ($this->queryLog as $operation) {
+            if ($operation[0] === 'where' && $operation[1] === 'owner_id') {
+                $this->all = array_values(array_filter($this->all, function ($row) use ($operation) {
+                    return $row->owner_id === $operation[2];
+                }));
+            }
+        }
+        if ($this->db->dm_get('qb_limit') !== FALSE) {
+            $this->all = array_slice($this->all, (int) $this->db->dm_get('qb_offset'), $this->db->dm_get('qb_limit'));
+        }
+        self::$loadedRows += count($this->all);
         $models = array();
         foreach ($this->all as $row) {
             $model = clone $this;
@@ -170,6 +181,8 @@ class ProductionEagerDatabaseStub
 
 class FailedManyToManyDatabaseStub
 {
+    public function stop_cache() { return $this; }
+    public function flush_cache() { return $this; }
     private $state = array(
         'qb_limit' => FALSE,
         'qb_offset' => FALSE,

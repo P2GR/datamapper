@@ -112,6 +112,36 @@ class DataMapperCacheTest extends TestCase
         $this->assertSame('Mallory', $freshHarness->all[1]->name);
     }
 
+    public function testHydrationRejectsNonModelAndNonStringClassMetadataBeforeConstruction(): void
+    {
+        InvalidCachedClass::$constructed = FALSE;
+        $harness = $this->createHarness(new FakeQueryState());
+        $harness->hydrateCachedResults(array(
+            array('class' => InvalidCachedClass::class, 'data' => array('id' => 1)),
+            array('class' => array(CacheableModelStub::class), 'data' => array('id' => 2)),
+            array('class' => new \stdClass(), 'data' => array('id' => 3)),
+            array('class' => 7, 'data' => array('id' => 4)),
+        ));
+
+        $this->assertFalse(InvalidCachedClass::$constructed);
+        $this->assertSame(array(), $harness->all);
+    }
+
+    public function testHydrationStillAcceptsModelSubclassesAfterIgnoringInvalidMetadata(): void
+    {
+        $harness = $this->createHarness(new FakeQueryState());
+        $harness->hydrateCachedResults(array(
+            array('class' => InvalidCachedClass::class, 'data' => array('id' => 1)),
+            array('class' => CacheableModelStub::class, 'data' => array('id' => 2, 'name' => 'Parent')),
+            array('class' => CacheRelationChildStub::class, 'data' => array('id' => 3, 'name' => 'Child')),
+        ));
+
+        $this->assertCount(2, $harness->all);
+        $this->assertSame(2, $harness->id);
+        $this->assertInstanceOf(CacheRelationChildStub::class, $harness->all[1]);
+        $this->assertSame('Child', $harness->all[1]->name);
+    }
+
     public function testHydrateCachedResultsIndexesByConfiguredPrimaryKey(): void
     {
         $state = new FakeQueryState(array('qb_select' => array('account_uuid', 'name')));
@@ -281,6 +311,12 @@ class DataMapperCacheTest extends TestCase
     }
 }
 
+class InvalidCachedClass
+{
+    public static $constructed = FALSE;
+    public function __construct() { self::$constructed = TRUE; }
+}
+
 class CacheRelationHarness extends CacheHarness
 {
     public function __construct()
@@ -355,6 +391,7 @@ class DirectRelationCacheHarness extends ThrowingRelationCacheHarness
 
 class DirectCacheQueryState extends FakeQueryState
 {
+    public function from($table) { return $this; }
     public function get($table = NULL, $limit = NULL, $offset = NULL)
     {
         return new EmptyCacheQueryResult();
@@ -363,13 +400,14 @@ class DirectCacheQueryState extends FakeQueryState
 
 class EmptyCacheQueryResult
 {
+    public function result() { return array(); }
     public function num_rows()
     {
         return 0;
     }
 }
 
-class FailedDirectCacheQueryState extends FakeQueryState
+class FailedDirectCacheQueryState extends DirectCacheQueryState
 {
     public function get($table = NULL, $limit = NULL, $offset = NULL)
     {

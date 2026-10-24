@@ -32,7 +32,7 @@ if (!function_exists('dmz_log_message')) {
  * @category	DMZ
  * @author  	Phil DeJarnett
  * @link    	https://github.com/P2GR/datamapper2
- * @version 	2.1.1
+ * @version 	2.2.0
  */
 
 // --------------------------------------------------------------------------
@@ -48,6 +48,8 @@ if (!function_exists('dmz_log_message')) {
  * @property CI_URI        $uri
  */
 class DMZ_HTMLForm {
+	public $CI;
+	public $load;
 
 	// this is the default template (view) to use for the overall form
 	var $form_template = 'dmz_htmlform/form';
@@ -757,7 +759,7 @@ class DMZ_HTMLForm {
 			$ret = $this->_render_node('input', $a);
 			if( ! empty($label))
 			{
-				$ret .= ' ' . $this->_render_node('label', array('for' => $node_id), $label);
+				$ret .= ' ' . $this->_render_node('label', array('for' => $node_id), htmlspecialchars($label, ENT_QUOTES, 'UTF-8'));
 			}
 			return $ret;
 		}

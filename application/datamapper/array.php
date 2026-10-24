@@ -10,7 +10,7 @@
  * @category	DMZ
  * @author  	Phil DeJarnett
  * @link    	https://github.com/P2GR/datamapper2
- * @version 	2.1.1
+ * @version 	2.2.0
  */
 
 // --------------------------------------------------------------------------
@@ -285,9 +285,7 @@ class DMZ_Array {
 	/**
 	 * Apply $hidden, $visible, and $appends serialization control.
 	 *
-	 * Only applied when no explicit $fields were passed to to_array()
-	 * (i.e. default serialization), so callers that request specific
-	 * fields still get exactly what they asked for.
+	 * Visibility restrictions also apply to explicitly selected and appended fields.
 	 *
 	 * @param	DataMapper $object
 	 * @param	array $result Current result array
@@ -295,6 +293,17 @@ class DMZ_Array {
 	 */
 	protected function _apply_serialization_control($object, $result)
 	{
+		// $appends — include computed accessor values
+		$appends = isset($object->appends) ? $object->appends : array();
+		foreach ($appends as $accessor)
+		{
+			$method = 'get_' . $accessor . '_attribute';
+			if (method_exists($object, $method))
+			{
+				$result[$accessor] = $object->{$method}();
+			}
+		}
+
 		// $visible acts as a whitelist — only keep those keys
 		$visible = isset($object->visible) ? $object->visible : array();
 		if ( ! empty($visible))
@@ -307,17 +316,6 @@ class DMZ_Array {
 		if ( ! empty($hidden))
 		{
 			$result = array_diff_key($result, array_flip($hidden));
-		}
-
-		// $appends — include computed accessor values
-		$appends = isset($object->appends) ? $object->appends : array();
-		foreach ($appends as $accessor)
-		{
-			$method = 'get_' . $accessor . '_attribute';
-			if (method_exists($object, $method))
-			{
-				$result[$accessor] = $object->{$method}();
-			}
 		}
 
 		return $result;

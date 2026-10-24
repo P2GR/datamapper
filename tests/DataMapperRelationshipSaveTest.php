@@ -288,6 +288,7 @@ class SavingRelationshipParentStub extends RelationshipParentStub
 
 class RelationshipDatabaseStub
 {
+    public function dm_get($property) { return NULL; }
     public $insert_result = TRUE;
     public $update_result = TRUE;
     public $delete_result = TRUE;

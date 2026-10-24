@@ -2,17 +2,80 @@
 
 Guide to upgrading DataMapper to the latest version safely.
 
-## Version 2.1 Upgrade
+## Version 2.2.0 Upgrade
 
-### What's New in 2.1
+### 2.2.0 compatibility notes
 
-DataMapper 2.1 adds opt-in query, collection, cache, casting, timestamp, soft-delete, and streaming helpers while keeping the classic DataMapper API available.
+Classic model properties, query methods, relationship configuration and existing
+`__get()` overrides remain supported. Deploy the core library, extensions and
+`application/third_party/datamapper/` together: the database interceptor now shares
+transaction status between query builders using the same connection.
+
+Review these intentional corrections before updating an application:
+
+- Modern batch and aggregate helpers surface database failures as exceptions.
+  A failed batch is no longer reported as successful completion.
+- Lazy collection operations follow chain order and retain mapped `NULL` values.
+  Use `lazy_by_id()` or `chunk_by_id()` when deleting rows or changing filters
+  during iteration; `cursor()` retains its offset-based batching behavior.
+- Per-parent eager limits run in SQL using one limited query per parent.
+  Unlimited eager loading remains batched. Keep parent batches small for limited
+  child relationships.
+- Queries inside transactions bypass shared caches, with invalidation after the
+  outer commit. Update the bundled database interceptor as part of deployment.
+- Automatic integer hydration preserves values beyond PHP's integer range as
+  strings. Ordinary integer values and explicit casts keep their existing types.
+
+- Model and collection JSON output now honors `$hidden`, `$visible` and `$appends`,
+  and excludes ORM internals. Visibility restrictions apply to appended fields
+  too; include their names in a non-empty `$visible` list to expose them. This also
+  applies to the legacy Array and JSON extensions.
+- `fill()` and `force_fill()` accept model attributes and application mutators,
+  rather than ORM configuration. The default guard also protects a custom primary
+  key. Explicit `$fillable` or an empty `$guarded` still permits intentional key assignment.
+- Counter amounts must be finite numbers or numeric strings. Checkbox labels are
+  escaped text.
+- `DECIMAL` and `NUMERIC` columns retain the driver's exact value, usually a string.
+  Add an explicit `'float'` cast only where approximate arithmetic is intended.
+  String foreign keys also retain their database type.
+- Fields with casts, accessors or mutators use internal attribute storage so every
+  assignment is handled consistently. Read them with normal property access or
+  `to_array()`; `get_object_vars()` and `property_exists()` are not attribute APIs.
+  Ordinary legacy fields remain public properties.
+- For an array cast, edit a copy and assign it back (`$value = $model->settings;
+  $value['theme'] = 'dark'; $model->settings = $value;`). Object and `DateTime`
+  casts support in-place mutation and dirty tracking.
+- The legacy `DMZ_AttributeCasting` trait delegates to the core implementation.
+  Keep `$casts` untyped to match the parent model. Timestamp and soft-delete
+  traits accept the documented model property overrides.
+- `chunk_by_id()` uses ascending key order and replaces ordinary and CI-cached
+  `order_by()` clauses. `lazy_by_id()` rejects both kinds of pre-existing ordering.
+  Cached filters and the original query remain intact. Use ordinary pagination
+  when descending order is required.
+- Nested-set writes use transactions and return `FALSE` when insertion or boundary
+  updates fail or a source node has disappeared. Boundary refreshes retain each
+  node's database connection and preserve unsaved attributes. Use a transactional
+  database engine for rollback protection.
+- JSON containment preserves numeric object keys such as `settings->0` as object
+  keys. Numeric array indexes such as `settings[0]` remain unsupported.
+- Redis decoding allows `stdClass`, `DateTime` and `DateTimeImmutable` by default.
+  If you cache custom value objects, list their concrete classes in
+  `cache_config['allowed_classes']`. Redis driver counters now expire after one
+  hour of inactivity.
+
+Generated query cache keys change with the corrected query and connection
+identity; existing entries expire normally. Custom cache keys remain literal and
+require explicit invalidation, as described in the [caching guide](/guide/datamapper-2/caching).
+
+### Modern features available in 2.2.0
+
+DataMapper 2.2.0 hardens the opt-in query, collection, cache, casting, timestamp, soft-delete and streaming helpers while keeping the classic DataMapper API available.
 
 ::: tip Backward Compatible
-Existing DataMapper-style models and controllers can continue to use the classic API while you adopt 2.1 features gradually.
+Existing DataMapper-style models and controllers can continue to use the classic API while you adopt 2.2.0 features gradually.
 :::
 
-**New Features:**
+**Available features:**
 - Modern query builder
 - Eager loading with constraints
 - Collection methods
@@ -26,7 +89,7 @@ Existing DataMapper-style models and controllers can continue to use the classic
 
 | Version | PHP | CodeIgniter |
 |---------|-----|-------------|
-| **2.1.x** | 8.0 - 8.5 | 3.1.x |
+| **2.2.x** | 8.0 - 8.5 | 3.1.x |
 | **1.8.x** | 5.6 - 7.4 | 2.x / 3.x |
 
 ### Upgrade Steps
@@ -45,7 +108,7 @@ cp -r application/models models_backup
 cp -r application/libraries/datamapper.php datamapper_backup.php
 ```
 
-#### 3. Download DataMapper 2.1
+#### 3. Download DataMapper 2.2.0
 
 ```bash
 # Via Git
@@ -58,17 +121,22 @@ git checkout datamapper2
 
 #### 4. Replace Core Files
 
-Replace these files with 2.1 versions:
+Replace these files with 2.2.0 versions:
 
 ```
 application/libraries/
-├── datamapper.php                          # Core library (REPLACE)
-├── DataMapperBackwardCompatibility.php     # New file (ADD)
-└── datamapper/                             # Extensions folder
-    ├── HasTimestamps.php                   # New  
-    ├── SoftDeletes.php                     # New
-    ├── attributecasting.php                # Legacy compatibility; core casting needs no trait
-    └── ...
+└── datamapper.php                          # Core library (REPLACE)
+
+application/datamapper/                     # Extensions (UPDATE)
+├── HasTimestamps.php
+├── SoftDeletes.php
+├── attributecasting.php                    # Legacy compatibility; core casting needs no trait
+└── ...
+
+application/third_party/datamapper/         # CI3 integration (UPDATE)
+├── system/DB.php
+├── system/DB_driver.php
+└── ...
 
 application/config/
 └── datamapper.php                          # Config (UPDATE)
@@ -97,7 +165,7 @@ foreach ($user->post as $post) {
 
 #### 6. Gradually Adopt New Features
 
-You can now use 2.1 features alongside old syntax:
+You can now use 2.2.0 features alongside old syntax:
 
 ```php
 // Old syntax still works
@@ -181,7 +249,7 @@ foreach ($users as $user) {
 
 ### Key Differences from 1.x (What to Update)
 
-| Legacy pattern | 2.1 replacement | Benefit |
+| Legacy pattern | 2.2.0 replacement | Benefit |
 |----------------|-----------------|---------|
 | `$post->include_related('user', 'name')` to copy columns onto the base model | `(new Post())->with('user')` and read `$post->user->name` | Keeps models normalized, supports constraints, avoids column collisions |
 | Chaining `include_related()` multiple times to join through relationships | Nested eager loading: `with('user.company', fn($q) => ...)` | One round-trip per relation, can filter/limit at the DB level |

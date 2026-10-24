@@ -6,7 +6,8 @@ if (!defined('ENVIRONMENT')) {
 }
 
 if (!defined('BASEPATH')) {
-    define('BASEPATH', __DIR__ . '/../system/');
+    $ciSystem = getenv('CI3_SYSTEM_PATH') ?: __DIR__ . '/.ci3/system';
+    define('BASEPATH', rtrim($ciSystem, '/\\') . DIRECTORY_SEPARATOR);
 }
 
 if (!defined('APPPATH')) {
@@ -20,6 +21,7 @@ if (!defined('EXT')) {
 // Provide minimal CodeIgniter instance shim used by DataMapper
 class CI_TestHarness
 {
+    public $db;
     public $load;
     public $config;
     public $lang;
@@ -75,6 +77,11 @@ class CI_Config_Shim
 
 class CI_Lang_Shim
 {
+    public function dm_line($key)
+    {
+        return FALSE;
+    }
+
     public function load($file, $idiom = '', $return = FALSE, $add_suffix = TRUE, $alt_path = '')
     {
         // No-op for tests; language loading is not required here.

@@ -1,6 +1,6 @@
-# Attribute Casting, Accessors and Mutators (DataMapper 2.1)
+# Attribute Casting, Accessors and Mutators (DataMapper 2.2.0)
 
-DataMapper 2.1 includes opt-in attribute casting, accessors and mutators directly in the core model. Existing models without `$casts`, accessors or mutators continue to behave as before.
+DataMapper 2.2.0 includes opt-in attribute casting, accessors and mutators directly in the core model. Existing models without `$casts`, accessors or mutators continue to behave as before.
 
 ## Table of Contents
 
@@ -59,6 +59,10 @@ echo $user->created_at->format('Y-m-d');
 
 ## Reading and Writing Casted Values
 
+Exact `DECIMAL` and `NUMERIC` columns are not automatically converted to binary
+floats. They retain the database driver's value, usually a string. Set an explicit
+`'float'` cast when the loss of decimal precision is acceptable.
+
 Casted values remain application-facing while you work with the model. DataMapper converts them back to database storage format when the model is saved.
 
 ```php
@@ -74,6 +78,18 @@ $user->save();               // settings is stored as JSON, created_at as a date
 ```
 
 This is different from the old pattern where applications often had to call `json_decode()` after reads and `json_encode()` before saves.
+
+For an array cast, assign changes back to the attribute:
+
+```php
+$settings = $user->settings;
+$settings['theme'] = 'light';
+$user->settings = $settings;
+```
+
+Object and `DateTime` casts support in-place changes, which dirty tracking detects.
+Use property access and `to_array()` to inspect attributes; fields with casts,
+accessors or mutators need not appear in PHP's `get_object_vars()` or `property_exists()`.
 
 ## Accessors
 
@@ -151,6 +167,10 @@ $data = $user->to_array(array('id', 'email', 'full_name', 'settings'));
 For saves, DataMapper uses its internal database payload conversion and reverses JSON/date casts back to storage values.
 
 ## Backward Compatibility
+
+Automatic integer hydration keeps values within PHP's integer range as integers.
+Larger values, including unsigned `BIGINT` identifiers, remain exact strings.
+An explicit `'int'` cast still requests PHP integer conversion.
 
 Casting is opt-in.
 

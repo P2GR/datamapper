@@ -95,10 +95,10 @@ features:
 
 </div>
 
-## Why DataMapper 2.1?
+## Why DataMapper 2.2.0?
 
-::: info DataMapper 2.1
-DataMapper 2.1 adds focused query, collection, casting, cache, and streaming helpers while preserving the classic CodeIgniter 3 workflow.
+::: info DataMapper 2.2.0
+DataMapper 2.2.0 adds focused query, collection, casting, cache, and streaming helpers while preserving the classic CodeIgniter 3 workflow.
 :::
 
 ### Before vs After
@@ -121,7 +121,7 @@ foreach ($user as $u) {
 }
 ```
 
-```php [Query Builder (2.1)]
+```php [Query Builder (2.2.0)]
 $users = (new User())
     ->where('active', 1)
     ->where('age >', 18)
@@ -195,7 +195,7 @@ $topCustomer = $customers->first();
 
 ## Feature Comparison
 
-| Feature | DataMapper 2.1 | Laravel | Doctrine ORM |
+| Feature | DataMapper 2.2.0 | Laravel | Doctrine ORM |
 |---------|---------------|---------|--------------|
 | **Modern Query Builder** | Yes | Yes | DQL |
 | **Eager Loading** | Yes | Yes | Yes |

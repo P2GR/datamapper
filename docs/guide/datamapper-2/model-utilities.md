@@ -14,8 +14,14 @@ $object->decrement($field, $amount = 1, $extra = array())
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `$field` | string | The numeric column to modify |
-| `$amount` | int/float | How much to add/subtract (default `1`) |
+| `$amount` | int/float/numeric string | Finite amount to add/subtract (default `1`) |
 | `$extra` | array | Additional fields to update in the same query |
+
+The column must belong to the model. Invalid columns and non-finite amounts raise
+`InvalidArgumentException`; non-numeric amounts are rejected before SQL is run.
+Both methods return the database write result, or `FALSE` for an unsaved model.
+Successful writes invalidate generated query and relation caches. Other unsaved
+attribute changes remain dirty.
 
 ```php
 $post = new Post();
@@ -183,6 +189,10 @@ $custom->save();
 ---
 
 ## Fresh & Refresh
+
+Both helpers use the model's current database connection. Query results and
+creation helpers also retain that connection when constructing another instance
+of the same model. Related models with an explicit database group keep that group.
 
 ### fresh()
 

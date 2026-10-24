@@ -218,21 +218,6 @@ class QueryBuilderHelpersTest extends TestCase
         $this->assertSame(array(), $builder->get_model()->queryLog);
     }
 
-    public function testAggregateHelpersFallbackToCollectionForTestDoubles(): void
-    {
-        $mapper = new FakeDataMapper(array(
-            array('id' => 1, 'score' => 10),
-            array('id' => 2, 'score' => 20),
-            array('id' => 3, 'score' => 30),
-        ));
-        $builder = new DMZ_QueryBuilder($mapper);
-
-        $this->assertSame(60, $builder->sum('score'));
-        $this->assertSame(20.0, $builder->avg('score'));
-        $this->assertSame(10, $builder->min('score'));
-        $this->assertSame(30, $builder->max('score'));
-    }
-
     public function testConditionalHelpersApplyExpectedCallbacks(): void
     {
         $mapper = new FakeDataMapper(array(array('id' => 1)));

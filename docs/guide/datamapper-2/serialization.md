@@ -50,7 +50,9 @@ class User extends DataMapper {
 ```
 
 ::: warning
-When both `$visible` and `$hidden` are set, `$visible` is applied first (whitelist), then `$hidden` removes fields from the result. In practice, use one or the other — not both.
+Both restrictions apply after computed attributes have been appended. When
+`$visible` is set, include any appended names you want to expose in that list.
+`$hidden` takes precedence, including for appended attributes.
 :::
 
 ### $appends
@@ -262,9 +264,9 @@ $data = $user->to_array(array('id', 'name', 'email', 'password'));
 
 When `to_array()` or `to_json()` runs, it first builds the normal field array, then applies serialization controls in this order:
 
-1. **$visible** – if not empty, only keep fields in the whitelist.
-2. **$hidden** – remove any fields in the blacklist.
-3. **$appends** – for each name, call `get_{name}_attribute()` and add the result.
+1. **$appends** – for each name, call `get_{name}_attribute()` and add the result.
+2. **$visible** – if not empty, only keep fields in the whitelist.
+3. **$hidden** – remove any fields in the blacklist, including appended attributes.
 
 ::: tip Backward Compatible
 If `$hidden`, `$visible`, and `$appends` are all empty arrays (the default), serialization output is identical to previous versions. No existing code is affected.

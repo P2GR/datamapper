@@ -1,4 +1,4 @@
-# Collections (DataMapper 2.1)
+# Collections (DataMapper 2.2.0)
 
 `DMZ_Collection` wraps a set of models or arrays and gives you a predictable set of filtering, mapping, sorting, grouping, and aggregate helpers. Classic `get()` still returns the model instance with `$object->all` populated; use `collect()` when you want a collection object.
 
@@ -13,7 +13,12 @@ $posts->where('status', 'published')->get();
 $collection = $posts->collect();
 ```
 
-Pass a limit to `collect()` when the query has not been executed yet.
+`collect()` executes a pending query, including a new query with no filters. If
+results are already loaded and no new query clauses have been added, it wraps
+those results without another database read. Use `to_collection()` to wrap only
+the currently loaded results, including an empty result set.
+
+An optional limit fetches a new result set:
 
 ```php
 $posts = new Post();
@@ -55,6 +60,11 @@ $firstAdmin = (new User())
 ```
 
 Use `collect()->pluck()` when you need a collection chain before plucking. `pluck()` itself returns a plain PHP array.
+
+For ordinary database columns, query-level `pluck()` and `value()` select only
+that column and avoid building full models. Accessors, casts, explicit selects,
+eager loading, and cached queries retain the model-based path and its existing
+return types.
 
 ## Reading Items
 
@@ -142,6 +152,15 @@ $items = $users->values();
 $array = $users->to_array();
 $json = $users->to_json();
 ```
+
+Collection `to_array()` returns the original items. Collection `to_json()` and
+`json_encode($collection)` serialize DataMapper items through their model JSON
+serializer, excluding ORM and database internals. Use model `to_array()` when you
+need an associative array of a model's attributes.
+
+Model `$hidden` and `$visible` restrictions also apply to appended attributes.
+An appended field must be in a non-empty `$visible` list to appear in the output;
+listing it in `$hidden` always excludes it.
 
 ## Aggregates
 

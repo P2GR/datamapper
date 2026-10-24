@@ -1,4 +1,4 @@
-# Query Caching (DataMapper 2.1)
+# Query Caching (DataMapper 2.2.0)
 
 DataMapper can cache the result of a `get()` query through the configured cache driver. Caching is opt-in per query: call `cache()` before `get()` or before a result helper that executes the query.
 
@@ -9,6 +9,12 @@ The cache layer supports three drivers:
 - `memcached`
 
 If a driver cannot be initialized, DataMapper logs the failure, disables caching for that query, and runs the database query normally.
+
+Queries inside a database transaction bypass the shared cache. Successful writes
+invalidate affected entries after the outermost transaction commits; rollback
+does not publish uncommitted results. This also applies when transactions are
+completed through CI3's database object. Deploy the bundled DataMapper database
+driver together with the model library so connection clones share this state.
 
 ## Configuration
 
@@ -41,6 +47,22 @@ $config['cache_config'] = array(
 ```
 
 The Redis driver requires the PHP Redis extension.
+
+Provide credentials through your application's configuration or secret store. `password` accepts a password string for the default Redis user, or an array containing the ACL username and password.
+
+Redis values are decoded with an object allowlist. The defaults are `stdClass`, `DateTime`, and `DateTimeImmutable`. If custom accessors or cached values contain your own value objects, list their concrete classes explicitly:
+
+```php
+$config['cache_config']['allowed_classes'] = array(
+    'stdClass', 'DateTime', 'DateTimeImmutable', Money::class
+);
+```
+
+This array replaces the default allowlist. Use `FALSE` to prevent all object instantiation. Unlisted object types are restored as `__PHP_Incomplete_Class`; their magic methods are not run. Only allow classes you trust to instantiate. Model cache payloads store model names as strings, and hydration accepts only DataMapper model classes.
+
+The application Redis user needs `GET`, `MGET`, `SETEX`, `DEL`, `EXISTS`, `SCAN`, and `SELECT`, plus authentication when configured. Counter helpers also need `MULTI`, `EXEC`, `DISCARD`, `INCRBY`, and `EXPIRE`. `INFO` is optional: when denied, `get_stats()` returns basic local counters. Invalidation and `flush()` use prefix-matched `SCAN` and `DEL`, so no `KEYS`, `FLUSHDB`, or `FLUSHALL` permission is required.
+
+`set()` and `set_multiple()` use `SETEX` with the supplied positive TTL (default 3,600 seconds). Redis driver `increment()` and `decrement()` atomically update the counter and refresh its TTL to 3,600 seconds, including counters that previously had no expiry. This expiry policy applies to cache-driver counters, not model-column counters.
 
 ### Memcached
 
@@ -154,7 +176,10 @@ The number returned is the count reported by the configured driver.
 
 ## Automatic Invalidation
 
-DataMapper invalidates model query cache entries after writes such as `save()`, `delete()`, and `delete_all()`. It also invalidates all `relation-query:*` entries because the changed model may be nested in any cached graph.
+DataMapper invalidates generated model query cache entries after `save()`, `delete()`, `delete_all()`, `update()`, `update_all()`, counters, `destroy()`, and `truncate()`. It also invalidates all `relation-query:*` entries because the changed model may be nested in any cached graph.
+
+Explicit custom keys remain literal. Clear them yourself after writes, for example
+`$settings->clear_cache('settings:all')`, or choose generated keys for automatic invalidation.
 
 ```php
 $user = new User();

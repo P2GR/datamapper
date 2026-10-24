@@ -91,19 +91,6 @@ class DataMapperWrapperTest extends TestCase
         $this->assertSame(array('offset', 10), $mapper->queryLog[3]);
     }
 
-    public function testAggregateWrappersReturnScalarValues(): void
-    {
-        $mapper = new FakeDataMapper(array(
-            array('id' => 1, 'score' => 3),
-            array('id' => 2, 'score' => 7),
-        ));
-
-        $this->assertSame(10, $mapper->sum('score'));
-        $this->assertSame(5.0, $mapper->avg('score'));
-        $this->assertSame(3, $mapper->min('score'));
-        $this->assertSame(7, $mapper->max('score'));
-    }
-
     public function testAllWrapperReturnsCollection(): void
     {
         $mapper = new FakeDataMapper(array(

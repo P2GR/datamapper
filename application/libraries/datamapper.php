@@ -12,7 +12,7 @@
  * @author  	Phil DeJarnett (up to v1.7.1)
  * @author  	Simon Stenhouse (up to v1.6.0)
  * @link		http://datamapper.wanwizard.eu/
- * @version 	2.1.1
+ * @version 	2.2.0
  */
 
 /**
@@ -23,7 +23,7 @@ define('DMZ_CLASSNAMES_KEY', '_dmz_classnames');
 /**
  * DMZ version
  */
-define('DMZ_VERSION', '2.1.1');
+define('DMZ_VERSION', '2.2.0');
 
 // Define APPPATH when running outside of CodeIgniter bootstrap (e.g., CLI tooling)
 if (!defined('APPPATH')) {
@@ -261,7 +261,7 @@ if (!function_exists('dmz_log_message')) {
  *
  */
 #[\AllowDynamicProperties]
-class DataMapper implements IteratorAggregate {
+class DataMapper implements IteratorAggregate, JsonSerializable {
 
 	public $ci_load;
 	public $ci_config;
@@ -363,6 +363,13 @@ class DataMapper implements IteratorAggregate {
 	 * @var array
 	 */
 	protected $casts = array();
+	protected $_dm_attributes = array();
+	public $_dm_conflicted_attributes = array();
+	protected $_dm_eager_relation_values = array();
+	protected $_dm_save_error = array();
+
+	protected $_dm_attribute_access = array();
+	protected $_dm_cached_where = NULL;
 
 	/**
 	 * Mass assignment configuration.
@@ -657,12 +664,7 @@ class DataMapper implements IteratorAggregate {
 			// Load in the production cache for this model, if it exists
 			if( ! empty(DataMapper::$config['production_cache']))
 			{
-				// check if it's a fully qualified path first
-				if (!is_dir($cache_folder = DataMapper::$config['production_cache']))
-				{
-					// if not, it's relative to the application path
-					$cache_folder = APPPATH . DataMapper::$config['production_cache'];
-				}
+				$cache_folder = DataMapper::production_cache_folder(DataMapper::$config['production_cache']);
 				if(file_exists($cache_folder) && is_dir($cache_folder) && is_writeable($cache_folder))
 				{
 					$cache_file = $cache_folder . '/' . $common_key . '.php';
@@ -796,21 +798,6 @@ class DataMapper implements IteratorAggregate {
 					{
 						// process the relationship
 						$this->_relationship($arr, $rel_props, $related_field);
-					}
-				}
-
-				// Force all other has_one ITFKs to integers on get
-				foreach($this->has_one as $related => $rel_props)
-				{
-					$field = $related . '_id';
-					if(	in_array($field, $this->fields) &&
-						( ! isset($this->validation[$field]) || // does not have a validation key or...
-							! isset($this->validation[$field]['get_rules'])) &&  // a get_rules key...
-						( ! isset($this->validation[$related]) || // nor does the related have a validation key or...
-							! isset($this->validation[$related]['get_rules'])) ) // a get_rules key
-					{
-						// assume an int
-						$this->_field_tracking['intval'][] = $field;
 					}
 				}
 
@@ -1330,15 +1317,31 @@ class DataMapper implements IteratorAggregate {
 	public function __get($name)
 	{
 		static $CI = NULL;
+		if ($this->_uses_attribute_storage($name)) {
+			if ($this->_has_get_accessor($name) && empty($this->_dm_attribute_access[$name])) {
+				$this->_dm_attribute_access[$name] = TRUE;
+				$this->{$name} = $this->_get_raw_attribute($name);
+				try {
+					$value = $this->_get_attribute_value($name);
+				} finally {
+					$properties = get_object_vars($this);
+					$this->_set_raw_attribute($name, $properties[$name] ?? NULL);
+					unset($this->_dm_attribute_access[$name]);
+				}
+				return $value;
+			}
+			if (!array_key_exists($name, $this->_dm_attributes)) {
+				$this->_dm_attributes[$name] = NULL;
+			}
+			return $this->_dm_attributes[$name];
+		}
 
 		// === ATTRIBUTE CASTING SUPPORT (NEW in DataMapper 2.0) ===
 		// Check for accessor method first (e.g., getFullNameAttribute())
 		if ($this->_has_get_accessor($name)) {
-			return $this->_get_attribute_value($name);
+			$value = $this->_get_attribute_value($name);
+			return $value;
 		}
-		
-		// Store the original name for casting later
-		$original_name = $name;
 		
 		// get the CI instance
 		is_null($CI) AND $CI =& get_instance();
@@ -1365,6 +1368,7 @@ class DataMapper implements IteratorAggregate {
 					}
 					// clone, so we don't create additional connections to the DB
 					$this->db = clone($CI->db);
+					$this->db->dm_share_transaction_state($CI->db);
 					$this->db->dm_call_method('_reset_select');
 				}
 				else
@@ -1442,13 +1446,8 @@ class DataMapper implements IteratorAggregate {
 			}
 		}
 		
-		// === APPLY ATTRIBUTE CASTING (NEW in DataMapper 2.0) ===
-		// If we get here, check if property exists and apply casting if defined
-		if (isset($this->casts[$original_name]) && in_array($original_name, $this->fields, TRUE) && property_exists($this, $original_name)) {
-			return $this->_cast_attribute($original_name, $this->{$original_name});
-		}
-
-		return NULL;
+		$value = NULL;
+		return $value;
 	}
 
 	// --------------------------------------------------------------------
@@ -1466,20 +1465,95 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function __set($key, $value)
 	{
+		if ($this->_uses_attribute_storage($key)) {
+			if (!empty($this->_dm_attribute_access[$key])) {
+				$this->{$key} = $value;
+				return;
+			}
+			if ($this->_has_set_mutator($key)) {
+				$this->_dm_attribute_access[$key] = TRUE;
+				try {
+					$this->_set_attribute_value($key, $value);
+					$properties = get_object_vars($this);
+					$value = array_key_exists($key, $properties) ? $properties[$key] : $this->_get_raw_attribute($key);
+				} finally {
+					if (array_key_exists($key, get_object_vars($this))) { unset($this->{$key}); }
+					unset($this->_dm_attribute_access[$key]);
+				}
+			}
+			$this->_set_raw_attribute($key, $value);
+			return;
+		}
 		// Check for mutator method first (highest priority)
 		if ($this->_has_set_mutator($key)) {
 			$this->_set_attribute_value($key, $value);
 			return;
 		}
 		
-		// Keep casted fields in their application-facing form.
-		// _to_array() converts them back to the database format when saving.
-		if (isset($this->casts[$key]) && in_array($key, $this->fields, TRUE)) {
-			$value = $this->_cast_attribute($key, $value);
-		}
-		
 		// Set the property directly (standard DataMapper behavior)
 		$this->{$key} = $value;
+	}
+
+	public function __isset($key)
+	{
+		return (array_key_exists($key, $this->_dm_attributes) || $this->_has_get_accessor($key))
+			&& $this->__get($key) !== NULL;
+	}
+
+	public function __unset($key)
+	{
+		unset($this->_dm_attributes[$key]);
+	}
+
+	protected function _uses_attribute_storage($key)
+	{
+		return in_array($key, $this->fields, TRUE)
+			&& (isset($this->casts[$key]) || $this->_has_get_accessor($key) || $this->_has_set_mutator($key));
+	}
+
+	protected function _get_raw_attribute($key)
+	{
+		if (array_key_exists($key, $this->_dm_conflicted_attributes)) {
+			$properties = get_object_vars($this);
+			return array_key_exists($key, $properties) && $properties[$key] !== $this->_dm_eager_relation_values[$key]
+				? $properties[$key] : $this->_dm_conflicted_attributes[$key];
+		}
+		if (array_key_exists($key, $this->_dm_attributes)) {
+			return $this->_dm_attributes[$key];
+		}
+		$properties = get_object_vars($this);
+		return array_key_exists($key, $properties) ? $properties[$key] : NULL;
+	}
+
+	protected function _set_raw_attribute($key, $value)
+	{
+		if (array_key_exists($key, $this->_dm_conflicted_attributes)) {
+			$this->_dm_conflicted_attributes[$key] = $value;
+			return;
+		}
+		if ($this->_uses_attribute_storage($key)) {
+			if (array_key_exists($key, get_object_vars($this))) {
+				unset($this->{$key});
+			}
+			$this->_dm_attributes[$key] = $this->_cast_attribute($key, $value);
+		} else {
+			$this->{$key} = $value;
+		}
+	}
+
+	/** Keep a legacy column's value when its name also identifies an eager relation. */
+	public function _set_eager_relation($relation, $value)
+	{
+		if (in_array($relation, $this->fields, TRUE)) {
+			$this->_dm_conflicted_attributes[$relation] = $this->_get_raw_attribute($relation);
+			$this->_dm_eager_relation_values[$relation] = $value;
+			$this->_dm_attribute_access[$relation] = TRUE;
+		}
+		try {
+			$this->{$relation} = $value;
+		} finally {
+			unset($this->_dm_attribute_access[$relation]);
+		}
 	}
 
 	// --------------------------------------------------------------------
@@ -1697,13 +1771,48 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function __clone()
 	{
-		foreach ($this as $key => $value)
-		{
-			if (is_object($value) && $key != 'db')
-			{
-				$this->{$key} = clone($value);
+		foreach ($this->fields as $field) {
+			$this->_set_raw_attribute($field, $this->_snapshot_value($this->_get_raw_attribute($field)));
+		}
+		foreach (array('stored', 'error') as $key) {
+			if (isset($this->{$key})) { $this->{$key} = $this->_snapshot_value($this->{$key}); }
+		}
+	}
+
+	protected function _snapshot_value($value, $seen = NULL)
+	{
+		$seen = $seen ?: new SplObjectStorage();
+		if (is_array($value)) {
+			foreach ($value as $key => $item) { $value[$key] = $this->_snapshot_value($item, $seen); }
+		} elseif (is_object($value)) {
+			if (isset($seen[$value])) { return $seen[$value]; }
+			$copy = clone $value;
+			$seen[$value] = $copy;
+			if ($value instanceof stdClass) {
+				foreach ($value as $key => $item) { $copy->{$key} = $this->_snapshot_value($item, $seen); }
+			}
+			return $copy;
+		}
+		return $value;
+	}
+
+	public function jsonSerialize(): array
+	{
+		if ($this->_extension_method_exists('to_array') || method_exists($this, 'to_array')) {
+			$result = $this->to_array();
+		} else {
+			require_once APPPATH . 'datamapper/array.php';
+			$result = (new DMZ_Array())->to_array($this);
+		}
+		$properties = get_object_vars($this);
+		foreach (array_merge(array_keys($this->has_one), array_keys($this->has_many)) as $relation) {
+			if (array_key_exists($relation, $properties)
+				&& !in_array($relation, $this->hidden, TRUE)
+				&& (empty($this->visible) || in_array($relation, $this->visible, TRUE))) {
+				$result[$relation] = $properties[$relation];
 			}
 		}
+		return $result;
 	}
 
 	// --------------------------------------------------------------------
@@ -1766,105 +1875,61 @@ class DataMapper implements IteratorAggregate {
 		$this->_cache_was_hit = FALSE;
 		$this->_last_query_succeeded = FALSE;
 		$direct_relation_cache = $this->_cache_relations_enabled && empty($this->_cache_relation_context);
-
-		try
-		{
-
-		// Check if this is a related object and if so, perform a related get
-		if (! $this->_handle_related())
-		{
-			// invalid get request, return this for chaining.
-			return $this;
-		}
-
-		$cached = $this->_get_from_cache();
-		if ($cached !== NULL) {
-			$this->_hydrate_cached_results($cached);
-			$this->_cache_was_hit = TRUE;
-			$this->_last_query_succeeded = TRUE;
-			if ($this->_cache_relations_enabled && empty($this->_cache_relation_context)) {
-				$this->_finalize_relation_cache(FALSE);
+		try {
+			if (!$this->_handle_related()) {
+				return $this;
 			}
-			
-			// Reset cache flags
-			$this->_cache_enabled = FALSE;
-			$this->_cache_key = NULL;
-			
-			return $this;
-		}
-
-		$query = FALSE;
-
-		// Check if object has been validated (skipped for related items)
-		if ($this->_validated && empty($this->parent))
-		{
-			// Reset validated
-			$this->_validated = FALSE;
-
-			// Use this objects properties
-			$data = $this->_to_array(TRUE);
-
-			if ( ! empty($data))
-			{
-				// Clear this object to make way for new data
-				$this->clear();
-
-				// Set up default order by (if available)
-				$this->_handle_default_order_by();
-
-				// Get by objects properties
-				$this->db->from($this->table);
-				foreach ($data as $field => $value)
-				{
+			if ($this->_validated && empty($this->parent)) {
+				$this->_validated = FALSE;
+				$data = $this->_to_array(TRUE);
+				if (empty($data)) {
+					return $this;
+				}
+				foreach ($data as $field => $value) {
 					$this->db->where($field, $value);
 				}
-				$this->_apply_soft_delete_scope();
-				$query = $this->db->get(NULL, $limit, $offset);
 			}
-		}
-		else
-		{
-			// Clear this object to make way for new data
 			$this->clear();
-
+			$this->db->from($this->table);
 			$this->_apply_soft_delete_scope();
-
-			// Set up default order by (if available)
 			$this->_handle_default_order_by();
-
-			// Get by built up query
-			$query = $this->db->get($this->table, $limit, $offset);
-		}
-
-		// Convert the query result into DataMapper objects
-		if($query)
-		{
-			$this->_process_query($query);
-			$this->_last_query_succeeded = TRUE;
-			
-			if ($this->_cache_enabled && $this->_cache_relations_enabled && empty($this->_cache_relation_context)) {
-				$this->_finalize_relation_cache();
-			} elseif ($this->_cache_enabled && !$this->_cache_relations_enabled) {
-				$this->_store_in_cache($this->all);
-				
-				// Reset cache flags
-				$this->_cache_enabled = false;
-				$this->_cache_key = null;
+			if ($limit !== NULL) {
+				$this->limit($limit, $offset);
+			} elseif ($offset !== NULL) {
+				$this->offset($offset);
 			}
-		}
-		elseif ($this->_cache_relations_enabled && empty($this->_cache_relation_context))
-		{
-			$this->_finalize_relation_cache(FALSE);
-		}
-
-		// For method chaining
-		return $this;
-		}
-		finally
-		{
-			if ($direct_relation_cache && $this->_cache_relations_enabled)
-			{
+			if ($this->_cache_enabled) {
+				// CI resets query state after execution; retain the same key for storage.
+				$this->_cache_key = $this->_generate_cache_key();
+			}
+			$cached = $this->_get_from_cache();
+			if ($cached !== NULL) {
+				$this->_clear_after_query();
+				$this->_hydrate_cached_results($cached);
+				$this->_cache_was_hit = TRUE;
+				$this->_last_query_succeeded = TRUE;
+			} else {
+				$query = $this->db->get();
+				$this->_restore_cached_where();
+				$this->_dm_soft_delete_scope_applied = FALSE;
+				if ($query) {
+					$this->_process_query($query);
+					$this->_last_query_succeeded = TRUE;
+					if ($this->_cache_enabled && !$this->_cache_relations_enabled) {
+						$this->_store_in_cache($this->all);
+					}
+				}
+			}
+			return $this;
+		} finally {
+			$this->_restore_cached_where();
+			$this->_dm_soft_delete_scope_applied = FALSE;
+			if ($direct_relation_cache) {
 				$this->_finalize_relation_cache($this->_last_query_succeeded);
+			}
+			if (!$this->_cache_relations_enabled) {
+				$this->_cache_enabled = FALSE;
+				$this->_cache_key = NULL;
 			}
 		}
 	}
@@ -1873,6 +1938,8 @@ class DataMapper implements IteratorAggregate {
 	{
 		return $this->_last_query_succeeded;
 	}
+
+	public function _save_error() { return $this->_dm_save_error; }
 
 	// --------------------------------------------------------------------
 
@@ -2109,6 +2176,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function save($object = '', $related_field = '')
 	{
+		$this->_dm_save_error = array();
 		// Temporarily store the success/failure
 		$result = array();
 
@@ -2201,7 +2269,7 @@ class DataMapper implements IteratorAggregate {
 					foreach ($data as $field => $value)
 					{
 						// Unset field from data if it hasn't been changed
-						if ($this->{$field} === $this->stored->{$field})
+						if ($value === $this->_reverse_cast_attribute($field, $this->stored->{$field}))
 						{
 							unset($data[$field]);
 						}
@@ -2256,7 +2324,16 @@ class DataMapper implements IteratorAggregate {
 					$this->_dm_changed = $data;
 
 					// Create new record
-					$base_write_succeeded = $this->db->insert($this->table, $data);
+					try {
+						$base_write_succeeded = $this->db->insert($this->table, $data);
+					} catch (Throwable $error) {
+						$this->_dm_save_error = array('code' => $error->getCode(), 'message' => $error->getMessage());
+						if ($this->db->dm_get('_trans_depth') > 0) { $this->db->dm_set('_trans_status', FALSE); }
+						throw $error;
+					}
+					if (!$base_write_succeeded && method_exists($this->db, 'error')) {
+						$this->_dm_save_error = $this->db->error();
+					}
 					$result[] = $base_write_succeeded;
 					if ($base_write_succeeded)
 					{
@@ -2543,7 +2620,11 @@ class DataMapper implements IteratorAggregate {
 			}
 			$this->db->set($k, $v, $escape_values);
 		}
-		return $this->db->update($this->table);
+		$success = $this->db->update($this->table);
+		if ($success) {
+			$this->_invalidate_cache();
+		}
+		return $success;
 	}
 
 	// --------------------------------------------------------------------
@@ -2888,6 +2969,7 @@ class DataMapper implements IteratorAggregate {
 	{
 		// Begin auto transaction
 		$this->_auto_trans_begin();
+		$success = TRUE;
 
 		// Delete all "has many" and "has one" relations for this object first
 		foreach (array('has_many', 'has_one') as $type)
@@ -2918,12 +3000,14 @@ class DataMapper implements IteratorAggregate {
 						$data = array($this_model . '_id' => NULL);
 
 						// Update table to remove all ITFK relations
-						$this->db->update($object->table, $data);
+						$updated = $this->db->update($object->table, $data);
+						$success = $updated && $success;
+						if ($updated) { $object->_invalidate_cache(); }
 					}
 					else if ($relationship_table != $this->table)
 					{
 						// Delete all relationship records
-						$this->db->truncate($relationship_table);
+						$success = $this->db->truncate($relationship_table) && $success;
 					}
 					// Else, no reason to delete the relationships on this table
 				}
@@ -2931,10 +3015,16 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		// Delete all records
-		$this->db->truncate($this->table);
+		if ($success) { $success = $this->db->truncate($this->table); }
 
 		// Complete auto transaction
-		$this->_auto_trans_complete('truncate');
+		if (!$success) {
+			if ($this->auto_transaction) { $this->trans_rollback(); }
+			$this->_invalidate_cache();
+			return FALSE;
+		}
+		if (!$this->_auto_trans_complete('truncate')) { return FALSE; }
+		$this->_invalidate_cache();
 
 		// Clear this object
 		$this->clear();
@@ -3249,22 +3339,14 @@ class DataMapper implements IteratorAggregate {
 	public function get_dirty()
 	{
 		$dirty = array();
-
-		foreach ($this->fields as $field)
-		{
-			if ( ! isset($this->stored) || ! property_exists($this->stored, $field))
-			{
-				if (isset($this->{$field}))
-				{
-					$dirty[$field] = $this->{$field};
-				}
-			}
-			elseif ($this->{$field} !== $this->stored->{$field})
-			{
-				$dirty[$field] = $this->{$field};
+		foreach ($this->fields as $field) {
+			$value = $this->_get_raw_attribute($field);
+			if (!isset($this->stored) || !property_exists($this->stored, $field)) {
+				if ($value !== NULL) { $dirty[$field] = $value; }
+			} elseif ($this->_reverse_cast_attribute($field, $value) !== $this->_reverse_cast_attribute($field, $this->stored->{$field})) {
+				$dirty[$field] = $value;
 			}
 		}
-
 		return $dirty;
 	}
 
@@ -3316,8 +3398,7 @@ class DataMapper implements IteratorAggregate {
 			return NULL;
 		}
 
-		$class = get_class($this);
-		$fresh = new $class();
+		$fresh = $this->_new_instance();
 		$primary_key = $this->primary_key;
 		$fresh->where($primary_key, $this->{$primary_key})->get(1);
 
@@ -3338,8 +3419,7 @@ class DataMapper implements IteratorAggregate {
 			return $this;
 		}
 
-		$class = get_class($this);
-		$fresh = new $class();
+		$fresh = $this->_new_instance();
 		$primary_key = $this->primary_key;
 		$fresh->where($primary_key, $this->{$primary_key})->get(1);
 
@@ -3347,7 +3427,7 @@ class DataMapper implements IteratorAggregate {
 		{
 			foreach ($this->fields as $field)
 			{
-				$this->{$field} = $fresh->{$field};
+				$this->_set_raw_attribute($field, $fresh->_get_raw_attribute($field));
 			}
 			$this->_refresh_stored_values();
 			$this->_dm_changed = array();
@@ -3371,12 +3451,16 @@ class DataMapper implements IteratorAggregate {
 	 */
 	public function increment($field, $amount = 1, $extra = array())
 	{
+		if (!in_array($field, $this->fields, TRUE) || !is_numeric($amount) || !is_finite((float) $amount)) {
+			throw new InvalidArgumentException('Counter updates require a model column and a finite numeric amount.');
+		}
+		if (is_string($amount)) { $amount = trim($amount); }
 		if ( ! $this->exists())
 		{
 			return FALSE;
 		}
 
-		$this->db->set($field, "{$field} + {$amount}", FALSE);
+		$this->db->set($field, $this->db->escape_identifiers($field) . ' + ' . $amount, FALSE);
 
 		if ( ! empty($extra))
 		{
@@ -3406,7 +3490,10 @@ class DataMapper implements IteratorAggregate {
 				$this->{$k} = $v;
 			}
 
-			$this->_refresh_stored_values();
+			foreach (array_merge(array($field), array_keys($extra)) as $written) {
+				$this->stored->{$written} = $this->_snapshot_value($this->_get_raw_attribute($written));
+			}
+			$this->_invalidate_cache();
 		}
 
 		return $result;
@@ -3470,12 +3557,20 @@ class DataMapper implements IteratorAggregate {
 				}
 
 				$instance->db->where_in($instance->primary_key, $ids);
-				return $instance->db->update($instance->table, $data);
+				$success = $instance->db->update($instance->table, $data);
+				if ($success) {
+					$instance->_invalidate_cache();
+				}
+				return $success;
 			}
 		}
 
 		$instance->db->where_in($instance->primary_key, $ids);
-		return $instance->db->delete($instance->table);
+		$success = $instance->db->delete($instance->table);
+		if ($success) {
+			$instance->_invalidate_cache();
+		}
+		return $success;
 	}
 
 	// --------------------------------------------------------------------
@@ -3567,6 +3662,8 @@ class DataMapper implements IteratorAggregate {
 	public function clear()
 	{
 		$this->_dm_soft_delete_scope_applied = FALSE;
+		$this->_dm_conflicted_attributes = array();
+		$this->_dm_eager_relation_values = array();
 
 		// Clear the all list
 		$this->all = array();
@@ -3577,7 +3674,7 @@ class DataMapper implements IteratorAggregate {
 		// Clear this objects properties and set blank error messages in case they are accessed
 		foreach ($this->fields as $field)
 		{
-			$this->{$field} = NULL;
+			$this->_set_raw_attribute($field, NULL);
 		}
 
 		// Clear this objects "has many" related objects
@@ -3614,6 +3711,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _clear_after_query()
 	{
+		$this->_restore_cached_where();
 		// clear the query as if it was run
 		$this->db->dm_call_method('_reset_select');
 
@@ -3626,6 +3724,53 @@ class DataMapper implements IteratorAggregate {
 
 		// Clear the saved iterator
 		unset($this->_dm_dataset_iterator);
+	}
+
+	protected function _restore_cached_where()
+	{
+		if ($this->_dm_cached_where !== NULL) {
+			$this->db->dm_set('qb_cache_where', $this->_dm_cached_where);
+			$this->_dm_cached_where = NULL;
+		}
+	}
+
+	protected function _merge_cached_where()
+	{
+		$cached_where = $this->db->dm_get('qb_cache_where');
+		if (!empty($cached_where) && $this->_dm_cached_where === NULL) {
+			// Keep CI3 from merging cached OR clauses outside a later condition group.
+			$this->db->dm_call_method('_merge_cache');
+			$this->_dm_cached_where = $cached_where;
+			$this->db->dm_set('qb_cache_where', array());
+		}
+	}
+
+	public static function _group_query_conditions($db, $offset = 0)
+	{
+		if (!method_exists($db, 'dm_get')) { return; }
+		$where = $db->dm_get('qb_where');
+		if (count((array) $where) > $offset && method_exists($db, 'dm_set')) {
+			$group = array_splice($where, $offset);
+			if ($offset) {
+				$group[0]['condition'] = preg_replace('/^(AND|OR)\s+/i', '', $group[0]['condition']);
+			}
+			$where[] = array('condition' => $offset ? 'AND (' : '(', 'value' => NULL, 'escape' => FALSE);
+			$where = array_merge($where, $group, array(array('condition' => ')', 'value' => NULL, 'escape' => FALSE)));
+			$db->dm_set('qb_where', $where);
+		}
+	}
+
+	protected function _has_pending_query()
+	{
+		if (!isset($this->db) || !method_exists($this->db, 'dm_get')) {
+			return FALSE;
+		}
+		foreach (array('qb_from', 'qb_select', 'qb_join', 'qb_where', 'qb_having', 'qb_groupby', 'qb_orderby', 'qb_limit', 'qb_offset', 'qb_distinct') as $property) {
+			if ($this->db->dm_get($property)) {
+				return TRUE;
+			}
+		}
+		return FALSE;
 	}
 
 	// --------------------------------------------------------------------
@@ -3753,10 +3898,12 @@ class DataMapper implements IteratorAggregate {
 		$sql = $this->db->dm_call_method('_compile_select', $select . $this->db->protect_identifiers('numrows'));
 
 		$query = $this->db->query($sql);
+		$this->_last_query_succeeded = (bool) $query;
+		$this->_restore_cached_where();
 		$this->db->dm_call_method('_reset_select');
 		$this->_dm_soft_delete_scope_applied = FALSE;
 
-		if ($query->num_rows() == 0)
+		if (!$query || $query->num_rows() == 0)
 		{
 			return 0;
 		}
@@ -4083,8 +4230,35 @@ class DataMapper implements IteratorAggregate {
 		{
 			// create a copy of $this->db
 			$temp->db = clone($this->db);
+			if (method_exists($temp->db, 'dm_share_transaction_state')) {
+				$temp->db->dm_share_transaction_state($this->db);
+			}
 		}
 		return $temp;
+	}
+
+	/** Create a clean model on this connection, retaining explicit related database groups. */
+	public function _new_instance($class = NULL)
+	{
+		$class = $class ?: get_class($this);
+		$model = new $class();
+		$same_model = get_class($model) === get_class($this);
+		if (!$same_model && $model->db_params !== '' && $model->db_params !== TRUE && $model->db_params !== FALSE) {
+			return $model;
+		}
+		if ($same_model) {
+			$model->db_params = $this->db_params;
+			$model->auto_transaction = $this->auto_transaction;
+		}
+		$model->db = $model->db_params === FALSE ? $this->db : clone $this->db;
+		if (method_exists($model->db, 'dm_share_transaction_state')) {
+			$model->db->dm_share_transaction_state($this->db);
+		}
+		if ($model->db_params !== FALSE) {
+			$model->db->reset_query();
+			$model->db->stop_cache()->flush_cache();
+		}
+		return $model;
 	}
 
 	// --------------------------------------------------------------------
@@ -5104,10 +5278,10 @@ class DataMapper implements IteratorAggregate {
 		list($base_field, $segments) = $this->_parse_json_reference($field, $path);
 
 		$type = $this->_get_prepend_type($type);
-		$column = $this->add_table_name($base_field);
+		$column = $this->db->protect_identifiers($this->add_table_name($base_field));
 		$expression = $this->_compile_json_contains_expression($column, $segments, $value, $negate);
 
-		$this->db->dm_call_method('_wh', 'qb_where', $expression, NULL, $type, NULL);
+		$this->db->dm_call_method('_wh', 'qb_where', $expression, NULL, $type, FALSE);
 
 		return $this;
 	}
@@ -5131,24 +5305,14 @@ class DataMapper implements IteratorAggregate {
 		switch ($driver)
 		{
 			case 'mysql':
-				$path = $this->_build_mysql_json_path($segments);
-				$candidate = $this->_json_encode_value($value);
-				$expression = 'JSON_CONTAINS(' . $column . ', ' . $this->db->escape($candidate);
-				if ($path !== '$')
-				{
-					$expression .= ', ' . $this->db->escape($path);
-				}
-				$expression .= ')';
-				if ($negate)
-				{
-					$expression = 'NOT (' . $expression . ')';
-				}
-				return $expression;
+				$candidate = $this->_json_encode_value($this->_wrap_value_into_segments($segments, $value));
+				$expression = 'JSON_CONTAINS(' . $column . ', ' . $this->db->escape($candidate) . ')';
+				return $negate ? 'NOT (' . $expression . ')' : $expression;
 
 			case 'pgsql':
 				$document = $this->_build_postgres_json_document($segments, $value);
-				$operator = $negate ? '!@>' : '@>';
-				return '(' . $column . ')::jsonb ' . $operator . ' ' . $this->db->escape($document) . '::jsonb';
+				$expression = '(' . $column . ')::jsonb @> ' . $this->db->escape($document) . '::jsonb';
+				return $negate ? 'NOT (' . $expression . ')' : $expression;
 		}
 
 		dmz_log_message('error', 'JSON helpers are not supported for driver: ' . ($this->db->dbdriver ?? 'unknown'));
@@ -5337,7 +5501,7 @@ class DataMapper implements IteratorAggregate {
 					$result = array($result);
 					break;
 				case 'key':
-					$result = array($segment['key'] => $result);
+					$result = (object) array($segment['key'] => $result);
 					break;
 				default:
 					throw new \InvalidArgumentException('Unsupported JSON path segment while wrapping value.');
@@ -6938,13 +7102,14 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		// now generate a subquery for counting the related objects
+		$object->_merge_cached_where();
+		self::_group_query_conditions($object->db);
 		$object->select_func('COUNT', '*', 'count');
 		$this_rel = $related_properties['other_field'];
 		$tablename = $object->_add_related_table($this, $this_rel);
-		$related_primary_key = $object->primary_key;
 		$parent_primary_key = $this->primary_key;
 		$object->where(
-			$tablename . '.`' . $related_primary_key . '` = ',
+			$object->db->escape_identifiers($tablename . '.' . $parent_primary_key) . ' = ',
 			$this->db->escape_identifiers('${parent}.' . $parent_primary_key),
 			FALSE
 		);
@@ -8234,13 +8399,7 @@ class DataMapper implements IteratorAggregate {
 			return;
 		}
 
-		// check if it's a fully qualified path first
-		$cache_folder = DataMapper::$config['production_cache'];
-		if (!is_dir($cache_folder))
-		{
-			// if not, it's relative to the application path
-			$cache_folder = APPPATH . DataMapper::$config['production_cache'];
-		}
+		$cache_folder = DataMapper::production_cache_folder(DataMapper::$config['production_cache']);
 
 		if (!file_exists($cache_folder) || !is_dir($cache_folder) || !is_writeable($cache_folder))
 		{
@@ -8265,6 +8424,25 @@ class DataMapper implements IteratorAggregate {
 		fclose($fp);
 
 		@chmod($cache_file, FILE_WRITE_MODE);
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Resolves the configured production cache folder.
+	 * Absolute paths (/..., \..., C:\...) are used as-is, even when the folder
+	 * does not exist yet; relative paths are relative to APPPATH.
+	 * @param	string $path Configured production_cache value
+	 * @return	string
+	 */
+	public static function production_cache_folder($path)
+	{
+		if (preg_match('#^([a-zA-Z]:)?[\\\\/]#', $path))
+		{
+			return $path;
+		}
+
+		return APPPATH . $path;
 	}
 
 	// --------------------------------------------------------------------
@@ -8380,14 +8558,14 @@ class DataMapper implements IteratorAggregate {
 			// Get the raw property value directly, bypassing __get accessor
 			// This is needed because __get applies casting (e.g., JSON string to array),
 			// but the database expects the raw storage format (e.g., JSON string)
-			$has_property = property_exists($this, $field);
+			$has_property = property_exists($this, $field) || array_key_exists($field, $this->_dm_attributes);
 			
 			if ($validate && !$has_property)
 			{
 				continue;
 			}
 
-			$value = $has_property ? $this->$field : null;
+			$value = $has_property ? $this->_get_raw_attribute($field) : null;
 			
 			// If the field has a cast defined and the raw value is still in cast format
 			// (e.g., an array that should be stored as JSON), reverse cast it for storage
@@ -8414,25 +8592,24 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _process_query($query)
 	{
-		if ($query->num_rows() > 0)
+		$rows = $query->result();
+		if (count($rows) > 0)
 		{
 			// Populate all with records as objects
 			$this->all = array();
 
-			$this->_to_object($this, $query->row());
+			$this->_to_object($this, reset($rows));
 
 			// don't bother recreating the first item.
 			$primary_key = $this->primary_key;
 			$index = ($this->all_array_uses_ids && isset($this->{$primary_key})) ? $this->{$primary_key} : 0;
 			$this->all[$index] = $this->get_clone();
 
-			if($query->num_rows() > 1)
+			if(count($rows) > 1)
 			{
-				$model = get_class($this);
-
 				$first = TRUE;
 
-				foreach ($query->result() as $row)
+				foreach ($rows as $row)
 				{
 					if($first)
 					{
@@ -8440,7 +8617,7 @@ class DataMapper implements IteratorAggregate {
 						continue;
 					}
 
-					$item = new $model();
+					$item = $this->_new_instance();
 
 					$this->_to_object($item, $row);
 
@@ -8460,7 +8637,7 @@ class DataMapper implements IteratorAggregate {
 			$this->_instantiations = NULL;
 
 			// free large queries
-			if($query->num_rows() > $this->free_result_threshold)
+			if(count($rows) > $this->free_result_threshold)
 			{
 				$query->free_result();
 			}
@@ -8494,14 +8671,14 @@ class DataMapper implements IteratorAggregate {
 		// Populate this object with values from first record
 		foreach ($row as $key => $value)
 		{
-			$item->{$key} = $value;
+			$item->_set_raw_attribute($key, $value);
 		}
 
 		foreach ($this->fields as $field)
 		{
 			if (! isset($row->{$field}))
 			{
-				$item->{$field} = NULL;
+				$item->_set_raw_attribute($field, NULL);
 			}
 		}
 
@@ -8510,7 +8687,8 @@ class DataMapper implements IteratorAggregate {
 		{
 			if(isset($item->{$field}))
 			{
-				$item->{$field} = intval($item->{$field});
+				$value = $item->_get_raw_attribute($field);
+				$item->_set_raw_attribute($field, $this->_hydrate_integer($value));
 			}
 		}
 
@@ -8518,7 +8696,7 @@ class DataMapper implements IteratorAggregate {
 		{
 			if(isset($item->{$field}))
 			{
-				$item->{$field} = floatval($item->{$field});
+				$item->_set_raw_attribute($field, floatval($item->_get_raw_attribute($field)));
 			}
 		}
 
@@ -8527,7 +8705,7 @@ class DataMapper implements IteratorAggregate {
 		if (!empty($item->casts)) {
 			foreach ($item->casts as $field => $cast_type) {
 				if (isset($item->{$field})) {
-					$item->{$field} = $item->_cast_attribute($field, $item->{$field});
+					$item->_set_raw_attribute($field, $item->_get_raw_attribute($field));
 				}
 			}
 		}
@@ -8662,7 +8840,7 @@ class DataMapper implements IteratorAggregate {
 		// Update stored values
 		foreach ($this->fields as $field)
 		{
-			$this->stored->{$field} = $this->{$field};
+			$this->stored->{$field} = $this->_snapshot_value($this->_get_raw_attribute($field));
 		}
 
 		// If there is a "matches" validation rule, match the field value with the other field value
@@ -8986,7 +9164,7 @@ class DataMapper implements IteratorAggregate {
 		}
 		
 		// If limit is provided, fetch data first
-		if ($limit !== NULL) {
+		if ($limit !== NULL || (!$this->_last_query_succeeded && empty($this->all)) || $this->_has_pending_query()) {
 			$this->get($limit, $offset);
 		}
 		
@@ -9006,6 +9184,35 @@ class DataMapper implements IteratorAggregate {
 		}
 
 		return (new DMZ_QueryBuilder($this))->pluck($field);
+	}
+
+	/** Read ordinary columns without constructing models; NULL keeps the accessor/cache path. */
+	public function _pluck_column($field, $limit = NULL, $offset = NULL)
+	{
+		if (!in_array($field, $this->fields, TRUE) || isset($this->casts[$field])
+			|| isset($this->has_one[$field]) || isset($this->has_many[$field])
+			|| $this->_has_get_accessor($field) || $this->_has_set_mutator($field)
+			|| !empty($this->_field_tracking['get_rules']) || $this->_cache_enabled
+			|| $this->db->dm_get('qb_select') || $this->db->dm_get('qb_cache_select')) {
+			return NULL;
+		}
+		$this->select($field);
+		$query = $this->get_raw($limit, $offset);
+		if (!$query) {
+			throw new DataMapper_Database_Exception('Scalar query failed.');
+		}
+		$values = array();
+		foreach ($query->result() as $row) {
+			$value = $row->{$field};
+			if ($value !== NULL && in_array($field, (array) ($this->_field_tracking['intval'] ?? array()), TRUE)) {
+				$value = $this->_hydrate_integer($value);
+			} elseif ($value !== NULL && in_array($field, (array) ($this->_field_tracking['floatval'] ?? array()), TRUE)) {
+				$value = (float) $value;
+			}
+			$values[] = $value;
+		}
+		$query->free_result();
+		return $values;
 	}
 
 	/**
@@ -9363,6 +9570,9 @@ class DataMapper implements IteratorAggregate {
 			
 			// Fetch chunk
 			$chunk_query->limit($size, $offset)->get();
+			if (!$chunk_query->_query_was_successful()) {
+				throw new DataMapper_Database_Exception('Query failed during chunk().');
+			}
 			
 			// Stop if no more results
 			if (empty($chunk_query->all)) {
@@ -9429,7 +9639,7 @@ class DataMapper implements IteratorAggregate {
 		
 		$lastId = null;
 		$column = $column ?? $this->primary_key;
-		$column_name = $alias ?? $column;
+		$column_name = $alias ?? substr(strrchr('.' . $column, '.'), 1);
 		
 		while (true) {
 			// Clone query to preserve original state without sharing cache/db handles
@@ -9437,13 +9647,25 @@ class DataMapper implements IteratorAggregate {
 			$chunk_query->_cache_enabled = FALSE;
 			$chunk_query->_cache_key = NULL;
 			
+			// Freeze cached clauses before wrapping the cursor predicate's conditions.
+			if (method_exists($chunk_query->db, 'flush_cache')) {
+				$chunk_query->db->dm_call_method('_merge_cache');
+				$chunk_query->db->stop_cache()->flush_cache();
+			}
 			// Add WHERE selected key > lastId
 			if ($lastId !== null) {
-				$chunk_query->where("{$column_name} >", $lastId);
+				self::_group_query_conditions($chunk_query->db);
+				$chunk_query->where($column . ' >', $lastId);
 			}
 			
 			// Order by selected key and limit
-			$chunk_query->order_by($column_name, 'ASC')->limit($size)->get();
+			if (method_exists($chunk_query->db, 'dm_set')) {
+				$chunk_query->db->dm_set('qb_orderby', array());
+			}
+			$chunk_query->order_by($column, 'ASC')->limit($size)->get();
+			if (!$chunk_query->_query_was_successful()) {
+				throw new DataMapper_Database_Exception('Query failed during chunk_by_id().');
+			}
 			
 			// Stop if no results
 			if (empty($chunk_query->all)) {
@@ -9521,6 +9743,9 @@ class DataMapper implements IteratorAggregate {
 			
 			// Fetch batch
 			$batch_query->limit($batch_size, $offset)->get();
+			if (!$batch_query->_query_was_successful()) {
+				throw new DataMapper_Database_Exception('Query failed during cursor().');
+			}
 			
 			// Stop if no results
 			if (empty($batch_query->all)) {
@@ -9874,27 +10099,20 @@ class DataMapper implements IteratorAggregate {
 			return $this->_cache_key;
 		}
 
-		$qb_where   = $this->db->dm_get('qb_where');
-		$qb_select  = $this->db->dm_get('qb_select');
-		$qb_join    = $this->db->dm_get('qb_join');
-		$qb_orderby = $this->db->dm_get('qb_orderby');
-		$qb_groupby = $this->db->dm_get('qb_groupby');
-		$qb_limit   = $this->db->dm_get('qb_limit');
-		$qb_offset  = $this->db->dm_get('qb_offset');
-
+		$state = array('table' => $this->table, 'relations' => $this->_cache_relation_context);
+		foreach (array('qb_from', 'qb_select', 'qb_distinct', 'qb_join', 'qb_where', 'qb_having', 'qb_groupby', 'qb_orderby', 'qb_limit', 'qb_offset', 'qb_cache_select', 'qb_cache_from', 'qb_cache_join', 'qb_cache_where', 'qb_cache_having', 'qb_cache_groupby', 'qb_cache_orderby') as $property) {
+			$state[$property] = $this->db->dm_get($property);
+		}
+		foreach (array('dbdriver', 'subdriver', 'hostname', 'port', 'database', 'username', 'dbprefix') as $property) {
+			$state['connection'][$property] = isset($this->db->{$property}) ? $this->db->{$property} : NULL;
+		}
+		if (isset($this->db->database) && $this->db->database === ':memory:') {
+			$state['connection']['memory'] = is_object($this->db->conn_id) ? spl_object_id($this->db->conn_id) : (int) $this->db->conn_id;
+		}
 		$parts = array(
 			empty($this->_cache_relation_context) ? 'query' : 'relation-query',
 			strtolower($this->model),
-			md5(serialize(array(
-				'where'   => empty($qb_where)   ? array() : $qb_where,
-				'select'  => empty($qb_select)  ? array() : $qb_select,
-				'join'    => empty($qb_join)    ? array() : $qb_join,
-				'orderby' => empty($qb_orderby) ? array() : $qb_orderby,
-				'groupby' => empty($qb_groupby) ? array() : $qb_groupby,
-				'limit'   => $qb_limit,
-				'offset'  => $qb_offset,
-				'relations' => $this->_cache_relation_context
-			)))
+			md5(serialize($state))
 		);
 
 		return implode(':', $parts);
@@ -9907,7 +10125,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _get_from_cache()
 	{
-		if (!$this->_cache_enabled) {
+		if (!$this->_cache_enabled || $this->db->dm_get('_trans_depth') > 0) {
 			return NULL;
 		}
 
@@ -9952,7 +10170,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _store_in_cache($results)
 	{
-		if (!$this->_cache_enabled) {
+		if (!$this->_cache_enabled || $this->db->dm_get('_trans_depth') > 0) {
 			return;
 		}
 
@@ -10012,8 +10230,13 @@ class DataMapper implements IteratorAggregate {
 			return;
 		}
 
-		$driver->delete_pattern($pattern);
-		$driver->delete_pattern('relation-query:*');
+		foreach (array($pattern, 'relation-query:*') as $cache_pattern) {
+			if ($this->db->dm_get('_trans_depth') > 0) {
+				$this->db->dm_defer_cache_invalidation($driver, $cache_pattern);
+			} else {
+				$driver->delete_pattern($cache_pattern);
+			}
+		}
 	}
 
 	/**
@@ -10033,7 +10256,7 @@ class DataMapper implements IteratorAggregate {
 
 			$data = array();
 			foreach ($model->fields as $field) {
-				$data[$field] = isset($model->{$field}) ? $model->{$field} : NULL;
+				$data[$field] = $model->_get_raw_attribute($field);
 			}
 
 			$relations = $this->_serialize_cached_relations($model);
@@ -10096,12 +10319,12 @@ class DataMapper implements IteratorAggregate {
 		$results = array();
 
 		foreach ($payload as $item) {
-			if (empty($item['class']) || empty($item['data']) || !class_exists($item['class'])) {
+			if (empty($item['class']) || !is_string($item['class']) || empty($item['data']) || !is_a($item['class'], 'DataMapper', TRUE)) {
 				continue;
 			}
 
 			$class = $item['class'];
-			$model = new $class();
+			$model = $this->_new_instance($class);
 			$model->_populate((object) $item['data']);
 			$model->_refresh_stored_values();
 
@@ -10135,11 +10358,11 @@ class DataMapper implements IteratorAggregate {
 
 			if ($meta['type'] === 'collection') {
 				$items = isset($meta['items']) && is_array($meta['items']) ? $this->_hydrate_cache_payload($meta['items']) : array();
-				$model->{$relation} = new DMZ_Collection($items);
+				$model->_set_eager_relation($relation, new DMZ_Collection($items));
 			} elseif ($meta['type'] === 'single') {
 				$itemPayload = isset($meta['item']) && is_array($meta['item']) ? $meta['item'] : array();
 				$items = $this->_hydrate_cache_payload($itemPayload);
-				$model->{$relation} = !empty($items) ? $items[0] : NULL;
+				$model->_set_eager_relation($relation, !empty($items) ? $items[0] : NULL);
 			}
 		}
 	}
@@ -10186,20 +10409,22 @@ class DataMapper implements IteratorAggregate {
 		$source_vars = get_object_vars($source);
 
 		foreach ($this->fields as $field) {
-			$this->{$field} = isset($source->{$field}) ? $source->{$field} : NULL;
+			$this->_set_raw_attribute($field, $source->_get_raw_attribute($field));
 		}
 
 		foreach ($this->has_many as $relation => $_config) {
+			if (in_array($relation, $this->fields, TRUE) && !array_key_exists($relation, $source->_dm_eager_relation_values)) { continue; }
 			if (isset($source->{$relation})) {
-				$this->{$relation} = $source->{$relation};
+				$this->_set_eager_relation($relation, $source->{$relation});
 			} else {
 				unset($this->{$relation});
 			}
 		}
 
 		foreach ($this->has_one as $relation => $_config) {
+			if (in_array($relation, $this->fields, TRUE) && !array_key_exists($relation, $source->_dm_eager_relation_values)) { continue; }
 			if (array_key_exists($relation, $source_vars)) {
-				$this->{$relation} = $source->{$relation};
+				$this->_set_eager_relation($relation, $source->{$relation});
 			} else {
 				unset($this->{$relation});
 			}
@@ -10288,6 +10513,19 @@ class DataMapper implements IteratorAggregate {
 		return in_array($field_type, array('int', 'integer', 'tinyint', 'smallint', 'mediumint', 'bigint'), TRUE);
 	}
 
+	protected function _hydrate_integer($value)
+	{
+		if (is_string($value) && preg_match('/^[+-]?\d+$/D', trim($value))) {
+			$number = trim($value);
+			$digits = ltrim($number, '+-0');
+			$limit = $number[0] === '-' ? substr((string) PHP_INT_MIN, 1) : (string) PHP_INT_MAX;
+			if (strlen($digits) > strlen($limit) || (strlen($digits) === strlen($limit) && strcmp($digits, $limit) > 0)) {
+				return $value;
+			}
+		}
+		return intval($value);
+	}
+
 	/**
 	 * Determine whether a database field type should hydrate as a float.
 	 *
@@ -10296,7 +10534,7 @@ class DataMapper implements IteratorAggregate {
 	 */
 	protected function _is_float_field_type($field_type)
 	{
-		return in_array($field_type, array('float', 'double', 'decimal', 'real', 'numeric'), TRUE);
+		return in_array($field_type, array('float', 'double', 'real'), TRUE);
 	}
 	
 	/**
@@ -10633,7 +10871,9 @@ class DataMapper implements IteratorAggregate {
 			if ($this->_has_declared_model_property($property))
 			{
 				$reflection = new ReflectionProperty($this, $property);
-				$reflection->setAccessible(TRUE);
+				if (PHP_VERSION_ID < 80100) {
+					$reflection->setAccessible(TRUE);
+				}
 				return (bool) $reflection->getValue($this);
 			}
 		}
@@ -10658,7 +10898,9 @@ class DataMapper implements IteratorAggregate {
 			if (property_exists($this, $property))
 			{
 				$reflection = new ReflectionProperty($this, $property);
-				$reflection->setAccessible(TRUE);
+				if (PHP_VERSION_ID < 80100) {
+					$reflection->setAccessible(TRUE);
+				}
 				return (bool) $reflection->getValue($this);
 			}
 		}
@@ -10732,7 +10974,7 @@ class DataMapper implements IteratorAggregate {
 		try
 		{
 			$reflection = new ReflectionProperty($this, $property);
-			return $reflection->getDeclaringClass()->getName() !== __CLASS__;
+			return $reflection->isDefault() && $reflection->getDeclaringClass()->getName() !== __CLASS__;
 		}
 		catch (ReflectionException $exception)
 		{
@@ -10979,6 +11221,9 @@ class DataMapper implements IteratorAggregate {
 		$guarded = array_filter((array) $this->guarded, function($value) {
 			return $value !== '' && $value !== NULL;
 		});
+		if ($guarded === array('id') && $this->primary_key !== 'id') {
+			$guarded[] = $this->primary_key;
+		}
 		if (empty($guarded))
 		{
 			return $attributes;
@@ -11011,14 +11256,18 @@ class DataMapper implements IteratorAggregate {
 		{
 			$mutator = 'set_' . $key;
 
-			if (method_exists($this, $mutator))
+			if (method_exists($this, $mutator)
+				&& (isset($field_lookup[$key]) || (new ReflectionMethod($this, $mutator))->getDeclaringClass()->getName() !== __CLASS__))
 			{
 				$this->{$mutator}($value);
 				continue;
 			}
 
-			if (isset($field_lookup[$key]) || property_exists($this, $key))
+			if (isset($field_lookup[$key]) || $this->_has_set_mutator($key))
 			{
+				if (isset($this->_dm_conflicted_attributes) && array_key_exists($key, $this->_dm_conflicted_attributes)) {
+					unset($this->_dm_conflicted_attributes[$key], $this->_dm_eager_relation_values[$key], $this->{$key});
+				}
 				$this->{$key} = $value;
 			}
 		}
@@ -11099,6 +11348,11 @@ class DataMapper implements IteratorAggregate {
 			$column = $this->table . '.' . $deleted_col;
 		}
 		
+		if ($this->_only_trashed || !$this->_include_trashed) {
+			$this->_merge_cached_where();
+			self::_group_query_conditions($this->db);
+		}
+
 		// Apply scope based on flags
 		if ($this->_only_trashed)
 		{

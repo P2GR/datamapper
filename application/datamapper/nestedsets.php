@@ -12,7 +12,7 @@
  * @info		Based on nstrees by Rolf Brugger, edutech
  * 				http://www.edutech.ch/contribution/nstrees
  * @link    	https://github.com/P2GR/datamapper2
- * @version 	2.1.1
+ * @version 	2.2.0
  */
 
 // --------------------------------------------------------------------------
@@ -190,19 +190,21 @@ class DMZ_Nestedsets {
 	 */
 	function new_root($object)
 	{
-		// set the pointers for the root object
-		$object->{$object->primary_key} = NULL;
-		$object->{$this->_leftindex} = 1;
-		$object->{$this->_rightindex} = 2;
+		return $this->_atomic($object, NULL, function () use ($object) {
+			// set the pointers for the root object
+			$object->{$object->primary_key} = NULL;
+			$object->{$this->_leftindex} = 1;
+			$object->{$this->_rightindex} = 2;
 
-		// add a root index if needed
-		if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
-		{
-			$object->{$this->_rootfield} = $this->_rootindex;
-		}
+			// add a root index if needed
+			if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
+			{
+				$object->{$this->_rootfield} = $this->_rootindex;
+			}
 
-		// create the new tree root, and return the updated object
-		return $this->_insertNew($object);
+			// create the new tree root, and return the updated object
+			return $this->_insertNew($object);
+		});
 	}
 
 	// -----------------------------------------------------------------
@@ -217,35 +219,37 @@ class DMZ_Nestedsets {
 	 */
 	function new_first_child($object, $node = NULL)
 	{
-		// a node passed?
-		if ( is_null($node) )
-		{
-			// no, use the object itself
-			$node = $object->get_clone();
-		}
+		return $this->_atomic($object, $node, function () use ($object, $node) {
+			// a node passed?
+			if ( is_null($node) )
+			{
+				// no, use the object itself
+				$node = $object->get_clone();
+			}
 
-		// we need a valid node for this to work
-		if ( ! $node->exists() )
-		{
-			return $node;
-		}
+			// we need a valid node for this to work
+			if ( ! $node->exists() )
+			{
+				return $node;
+			}
 
-		// set the pointers for the root object
-		$object->{$object->primary_key} = NULL;
-		$object->{$this->_leftindex} = $node->{$this->_leftindex} + 1;
-		$object->{$this->_rightindex} = $node->{$this->_leftindex} + 2;
+			// set the pointers for the root object
+			$object->{$object->primary_key} = NULL;
+			$object->{$this->_leftindex} = $node->{$this->_leftindex} + 1;
+			$object->{$this->_rightindex} = $node->{$this->_leftindex} + 2;
 
-		// add a root index if needed
-		if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
-		{
-			$object->{$this->_rootfield} = $this->_rootindex;
-		}
+			// add a root index if needed
+			if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
+			{
+				$object->{$this->_rootfield} = $this->_rootindex;
+			}
 
-		// shift nodes to make room for the new child
-		$this->_shiftRLValues($node, $object->{$this->_leftindex}, 2);
+			// shift nodes to make room for the new child
+			if ($this->_shiftRLValues($node, $object->{$this->_leftindex}, 2) === FALSE) { return FALSE; }
 
-		// create the new tree node, and return the updated object
-		return $this->_insertNew($object);
+			// create the new tree node, and return the updated object
+			return $this->_insertNew($object);
+		});
 	}
 
 	// -----------------------------------------------------------------
@@ -260,35 +264,37 @@ class DMZ_Nestedsets {
 	 */
 	function new_last_child($object, $node = NULL)
 	{
-		// a node passed?
-		if ( is_null($node) )
-		{
-			// no, use the object itself
-			$node = $object->get_clone();
-		}
+		return $this->_atomic($object, $node, function () use ($object, $node) {
+			// a node passed?
+			if ( is_null($node) )
+			{
+				// no, use the object itself
+				$node = $object->get_clone();
+			}
 
-		// we need a valid node for this to work
-		if ( ! $node->exists() )
-		{
-			return $node;
-		}
+			// we need a valid node for this to work
+			if ( ! $node->exists() )
+			{
+				return $node;
+			}
 
-		// set the pointers for the root object
-		$object->{$object->primary_key} = NULL;
-		$object->{$this->_leftindex} = $node->{$this->_rightindex};
-		$object->{$this->_rightindex} = $node->{$this->_rightindex} + 1;
+			// set the pointers for the root object
+			$object->{$object->primary_key} = NULL;
+			$object->{$this->_leftindex} = $node->{$this->_rightindex};
+			$object->{$this->_rightindex} = $node->{$this->_rightindex} + 1;
 
-		// add a root index if needed
-		if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
-		{
-			$object->{$this->_rootfield} = $this->_rootindex;
-		}
+			// add a root index if needed
+			if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
+			{
+				$object->{$this->_rootfield} = $this->_rootindex;
+			}
 
-		// shift nodes to make room for the new child
-		$this->_shiftRLValues($node, $object->{$this->_leftindex}, 2);
+			// shift nodes to make room for the new child
+			if ($this->_shiftRLValues($node, $object->{$this->_leftindex}, 2) === FALSE) { return FALSE; }
 
-		// create the new tree node, and return the updated object
-		return $this->_insertNew($object);
+			// create the new tree node, and return the updated object
+			return $this->_insertNew($object);
+		});
 	}
 
 	// -----------------------------------------------------------------
@@ -303,35 +309,37 @@ class DMZ_Nestedsets {
 	 */
 	function new_previous_sibling($object, $node = NULL)
 	{
-		// a node passed?
-		if ( is_null($node) )
-		{
-			// no, use the object itself
-			$node = $object->get_clone();
-		}
+		return $this->_atomic($object, $node, function () use ($object, $node) {
+			// a node passed?
+			if ( is_null($node) )
+			{
+				// no, use the object itself
+				$node = $object->get_clone();
+			}
 
-		// we need a valid node for this to work
-		if ( ! $node->exists() )
-		{
-			return $node;
-		}
+			// we need a valid node for this to work
+			if ( ! $node->exists() )
+			{
+				return $node;
+			}
 
-		// set the pointers for the root object
-		$object->{$object->primary_key} = NULL;
-		$object->{$this->_leftindex} = $node->{$this->_leftindex};
-		$object->{$this->_rightindex} = $node->{$this->_leftindex} + 1;
+			// set the pointers for the root object
+			$object->{$object->primary_key} = NULL;
+			$object->{$this->_leftindex} = $node->{$this->_leftindex};
+			$object->{$this->_rightindex} = $node->{$this->_leftindex} + 1;
 
-		// add a root index if needed
-		if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
-		{
-			$object->{$this->_rootfield} = $this->_rootindex;
-		}
+			// add a root index if needed
+			if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
+			{
+				$object->{$this->_rootfield} = $this->_rootindex;
+			}
 
-		// shift nodes to make room for the new sibling
-		$this->_shiftRLValues($node, $object->{$this->_leftindex}, 2);
+			// shift nodes to make room for the new sibling
+			if ($this->_shiftRLValues($node, $object->{$this->_leftindex}, 2) === FALSE) { return FALSE; }
 
-		// create the new tree node, and return the updated object
-		return $this->_insertNew($object);
+			// create the new tree node, and return the updated object
+			return $this->_insertNew($object);
+		});
 	}
 
 	// -----------------------------------------------------------------
@@ -346,35 +354,37 @@ class DMZ_Nestedsets {
 	 */
 	function new_next_sibling($object, $node = NULL)
 	{
-		// a node passed?
-		if ( is_null($node) )
-		{
-			// no, use the object itself
-			$node = $object->get_clone();
-		}
+		return $this->_atomic($object, $node, function () use ($object, $node) {
+			// a node passed?
+			if ( is_null($node) )
+			{
+				// no, use the object itself
+				$node = $object->get_clone();
+			}
 
-		// we need a valid node for this to work
-		if ( ! $node->exists() )
-		{
-			return $node;
-		}
+			// we need a valid node for this to work
+			if ( ! $node->exists() )
+			{
+				return $node;
+			}
 
-		// set the pointers for the root object
-		$object->{$object->primary_key} = NULL;
-		$object->{$this->_leftindex} = $node->{$this->_rightindex} + 1;
-		$object->{$this->_rightindex} = $node->{$this->_rightindex} + 2;
+			// set the pointers for the root object
+			$object->{$object->primary_key} = NULL;
+			$object->{$this->_leftindex} = $node->{$this->_rightindex} + 1;
+			$object->{$this->_rightindex} = $node->{$this->_rightindex} + 2;
 
-		// add a root index if needed
-		if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
-		{
-			$object->{$this->_rootfield} = $this->_rootindex;
-		}
+			// add a root index if needed
+			if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
+			{
+				$object->{$this->_rootfield} = $this->_rootindex;
+			}
 
-		// shift nodes to make room for the new sibling
-		$this->_shiftRLValues($node, $object->{$this->_leftindex}, 2);
+			// shift nodes to make room for the new sibling
+			if ($this->_shiftRLValues($node, $object->{$this->_leftindex}, 2) === FALSE) { return FALSE; }
 
-		// create the new tree node, and return the updated object
-		return $this->_insertNew($object);
+			// create the new tree node, and return the updated object
+			return $this->_insertNew($object);
+		});
 	}
 
 	// -----------------------------------------------------------------
@@ -879,14 +889,16 @@ class DMZ_Nestedsets {
 	 */
 	function make_next_sibling_of($object, $node)
 	{
-		if ( ! $this->is_root($node) )
-		{
-			return $this->_moveSubtree($object, $node, $node->{$this->_rightindex}+1);
-		}
-		else
-		{
-			return FALSE;
-		}
+		return $this->_atomic($object, $node, function () use ($object, $node) {
+			if ( ! $this->is_root($node) )
+			{
+				return $this->_moveSubtree($object, $node, $node->{$this->_rightindex}+1);
+			}
+			else
+			{
+				return FALSE;
+			}
+		});
 	}
 
 	// -----------------------------------------------------------------
@@ -901,14 +913,16 @@ class DMZ_Nestedsets {
 	 */
 	function make_previous_sibling_of($object, $node)
 	{
-		if ( ! $this->is_root($node) )
-		{
-			return $this->_moveSubtree($object, $node, $node->{$this->_leftindex});
-		}
-		else
-		{
-			return FALSE;
-		}
+		return $this->_atomic($object, $node, function () use ($object, $node) {
+			if ( ! $this->is_root($node) )
+			{
+				return $this->_moveSubtree($object, $node, $node->{$this->_leftindex});
+			}
+			else
+			{
+				return FALSE;
+			}
+		});
 	}
 
 	// -----------------------------------------------------------------
@@ -923,7 +937,9 @@ class DMZ_Nestedsets {
 	 */
 	function make_first_child_of($object, $node)
 	{
-		return $this->_moveSubtree($object, $node, $node->{$this->_leftindex}+1);
+		return $this->_atomic($object, $node, function () use ($object, $node) {
+			return $this->_moveSubtree($object, $node, $node->{$this->_leftindex}+1);
+		});
 	}
 
 	// -----------------------------------------------------------------
@@ -938,7 +954,9 @@ class DMZ_Nestedsets {
 	 */
 	function make_last_child_of($object, $node)
 	{
-		return $this->_moveSubtree($object, $node, $node->{$this->_rightindex});
+		return $this->_atomic($object, $node, function () use ($object, $node) {
+			return $this->_moveSubtree($object, $node, $node->{$this->_rightindex});
+		});
 	}
 
 	// -----------------------------------------------------------------
@@ -955,34 +973,36 @@ class DMZ_Nestedsets {
 	 */
 	function remove_tree($object, $tree_id = NULL)
 	{
-		// if we have multiple roots
-		if ( in_array($this->_rootfield, $object->fields) )
-		{
-			// was a tree id passed?
-			if ( ! is_null($tree_id) )
+		return $this->_atomic($object, NULL, function () use ($object, $tree_id) {
+			// if we have multiple roots
+			if ( in_array($this->_rootfield, $object->fields) )
 			{
-				// only delete the selected one
-				$object->db->where($this->_rootfield, $tree_id)->delete($object->table);
-			}
-			elseif ( ! is_null($this->_rootindex) )
-			{
-				// only delete the selected one
-				$object->db->where($this->_rootfield, $this->_rootindex)->delete($object->table);
+				// was a tree id passed?
+				if ( ! is_null($tree_id) )
+				{
+					// only delete the selected one
+					if (!$object->db->where($this->_rootfield, $tree_id)->delete($object->table)) { return FALSE; }
+				}
+				elseif ( ! is_null($this->_rootindex) )
+				{
+					// only delete the selected one
+					if (!$object->db->where($this->_rootfield, $this->_rootindex)->delete($object->table)) { return FALSE; }
+				}
+				else
+				{
+					// delete them all
+					if (!$object->db->where('1 = 1', NULL, FALSE)->delete($object->table)) { return FALSE; }
+				}
 			}
 			else
 			{
 				// delete them all
-				$object->db->truncate($object->table);
+				if (!$object->db->where('1 = 1', NULL, FALSE)->delete($object->table)) { return FALSE; }
 			}
-		}
-		else
-		{
-			// delete them all
-			$object->db->truncate($object->table);
-		}
 
-		// return the cleared object
-		return $object->clear();
+			// return the cleared object
+			return $object->clear();
+		});
 	}
 
 	// -----------------------------------------------------------------
@@ -996,32 +1016,34 @@ class DMZ_Nestedsets {
 	 */
 	function remove_node($object)
 	{
-		// we need a valid node to do this
-		if ( $object->exists() )
-		{
-			// if we have multiple roots
-			if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
+		return $this->_atomic($object, NULL, function () use ($object) {
+			// we need a valid node to do this
+			if ( $object->exists() )
 			{
-				// only delete the selected one
-				$object->db->where($this->_rootfield, $this->_rootindex);
+				// if we have multiple roots
+				if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
+				{
+					// only delete the selected one
+					$object->db->where($this->_rootfield, $this->_rootindex);
+				}
+
+				// clone the object, we need to it shift later
+				$clone = $object->get_clone();
+
+				// select the node and all children
+				$object->db->where($this->_leftindex . ' >=', $object->{$this->_leftindex});
+				$object->db->where($this->_rightindex . ' <=', $object->{$this->_rightindex});
+
+				// delete them all
+				if (!$object->db->delete($object->table)) { return FALSE; }
+
+				// re-index the tree
+				if ($this->_shiftRLValues($clone, $object->{$this->_rightindex} + 1, $clone->{$this->_leftindex} - $object->{$this->_rightindex} -1) === FALSE) { return FALSE; }
 			}
 
-			// clone the object, we need to it shift later
-			$clone = $object->get_clone();
-
-			// select the node and all children
-			$object->db->where($this->_leftindex . ' >=', $object->{$this->_leftindex});
-			$object->db->where($this->_rightindex . ' <=', $object->{$this->_rightindex});
-
-			// delete them all
-			$object->db->delete($object->table);
-
-			// re-index the tree
-			$this->_shiftRLValues($clone, $object->{$this->_rightindex} + 1, $clone->{$this->_leftindex} - $object->{$this->_rightindex} -1);
-		}
-
-		// return the cleared object
-		return $object->clear();
+			// return the cleared object
+			return $object->clear();
+		});
 	}
 
 	// -----------------------------------------------------------------
@@ -1249,6 +1271,57 @@ class DMZ_Nestedsets {
 	 * @return	object	the updated DataMapper object
 	 * @access	private
 	 */
+	private function _atomic($object, $node, $callback)
+	{
+		$db = $object->db;
+		$depth = $db->dm_get('_trans_depth');
+		$status = $db->trans_status();
+		$root = $this->_rootindex;
+		if (!$db->trans_begin()) { return FALSE; }
+		$finished = FALSE;
+		try {
+			$reference = $node ?: $object;
+			$lockRoot = $this->_rootindex;
+			if ($lockRoot === NULL && in_array($this->_rootfield, $object->fields)) {
+				$lockRoot = $reference->{$this->_rootfield};
+			}
+			$lock = $object->get_clone(TRUE);
+			$lock->db->reset_query();
+			if ($lockRoot !== NULL) {
+				$lock->db->where($this->_rootfield, $lockRoot);
+			}
+			// A root update locks concurrent tree writers, including on SQLite.
+			$lock->db->where($this->_leftindex, 1);
+			if (!$lock->db->set($this->_leftindex, $lock->db->escape_identifiers($this->_leftindex), FALSE)->update($object->table)) {
+				return FALSE;
+			}
+			foreach (array($object, $node) as $current) {
+				if (!$current || !$current->exists()) { continue; }
+				$fresh = $current->get_clone(TRUE)->no_cache();
+				$fresh->db->stop_cache()->flush_cache()->reset_query();
+				$fresh->skip_validation(FALSE)->where($current->primary_key, $current->{$current->primary_key})->get(1);
+				if (!$fresh->exists()) { return FALSE; }
+				foreach (array($this->_leftindex, $this->_rightindex, $this->_rootfield) as $field) {
+					if (in_array($field, $current->fields)) { $current->{$field} = $fresh->{$field}; }
+				}
+			}
+			$result = $callback();
+			if ($result === FALSE || !$db->trans_status()) { return FALSE; }
+			if (!$db->trans_commit()) { return FALSE; }
+			$finished = TRUE;
+			$object->clear_cache();
+			$object->clear_cache('relation-query:*');
+			return $result;
+		} finally {
+			$this->_rootindex = $root;
+			if (!$finished) {
+				$db->dm_set('_trans_status', FALSE);
+				$db->trans_rollback();
+				if (!$depth) { $db->dm_set('_trans_status', $status); }
+			}
+		}
+	}
+
 	private function _shiftRLValues($object, $first, $delta)
 	{
 		// we need a valid object
@@ -1266,7 +1339,7 @@ class DMZ_Nestedsets {
 
 			// select the range
 			$object->where($this->_leftindex.' >=', $first);
-			$object->update(array($this->_leftindex => $this->_leftindex.$delta), FALSE);
+			if (!$object->update(array($this->_leftindex => $this->_leftindex.$delta), FALSE)) { return FALSE; }
 
 			// if we have multiple roots
 			if ( in_array($this->_rootfield, $object->fields) && ! is_null($this->_rootindex) )
@@ -1278,7 +1351,7 @@ class DMZ_Nestedsets {
 			// select the range
 			$object->where($this->_rightindex.' >=', $first);
 
-			$object->update(array($this->_rightindex => $this->_rightindex.$delta), FALSE);
+			if (!$object->update(array($this->_rightindex => $this->_rightindex.$delta), FALSE)) { return FALSE; }
 		}
 
 		// return the object
@@ -1318,7 +1391,7 @@ class DMZ_Nestedsets {
 			// set the delta
 			$delta = $delta >= 0 ? (' + '.$delta) : (' - '.(abs($delta)));
 
-			$object->update(array($this->_leftindex => $this->_leftindex.$delta, $this->_rightindex => $this->_rightindex.$delta), FALSE);
+			if (!$object->update(array($this->_leftindex => $this->_leftindex.$delta, $this->_rightindex => $this->_rightindex.$delta), FALSE)) { return FALSE; }
 		}
 
 		// return the object
@@ -1337,7 +1410,7 @@ class DMZ_Nestedsets {
 	private function _insertNew($object)
 	{
 		// for now, just save the object
-		$object->save();
+		if (!$object->save()) { return FALSE; }
 
 		// return the object
 		return $object;
@@ -1355,6 +1428,11 @@ class DMZ_Nestedsets {
 	 */
 	private function _moveSubtree($object, $node, $destination_id)
 	{
+		if (!$object->exists() || !$node->exists()
+			|| ($destination_id >= $object->{$this->_leftindex} && $destination_id <= $object->{$this->_rightindex})) {
+			return FALSE;
+		}
+
 		// if we have multiple roots
 		if ( in_array($this->_rootfield, $object->fields) )
 		{
@@ -1373,7 +1451,7 @@ class DMZ_Nestedsets {
 		$right_id = $object->{$this->_rightindex};
 
 		// shift to make some space
-		$this->_shiftRLValues($node, $destination_id, $treesize);
+		if ($this->_shiftRLValues($node, $destination_id, $treesize) === FALSE) { return FALSE; }
 
 		// correct pointers if there were shifted to
 		if ($object->{$this->_leftindex} >= $destination_id)
@@ -1383,13 +1461,13 @@ class DMZ_Nestedsets {
 		}
 
 		// enough room now, start the move
-		$this->_shiftRLRange($node, $left_id, $right_id, $destination_id - $left_id);
+		if ($this->_shiftRLRange($node, $left_id, $right_id, $destination_id - $left_id) === FALSE) { return FALSE; }
 
 		// and correct index values after the source
-		$this->_shiftRLValues($object, $right_id + 1, -$treesize);
+		if ($this->_shiftRLValues($object, $right_id + 1, -$treesize) === FALSE) { return FALSE; }
 
 		// return the object
-		return $object->get_by_id($object->{$object->primary_key});
+		return $object->where($object->primary_key, $object->{$object->primary_key})->get(1);
 	}
 
 }

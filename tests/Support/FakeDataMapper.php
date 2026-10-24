@@ -53,10 +53,7 @@ class FakeDataMapper extends DataMapper
         $this->_field_tracking = array('matches' => array());
 
         // Provide minimal database stub to satisfy DataMapper expectations
-        $this->db = (object) array(
-            'queries' => array(),
-            'query_times' => array(),
-        );
+        $this->db = new FakeQueryState();
     }
 
     /**
@@ -185,6 +182,16 @@ class FakeDataMapper extends DataMapper
         }
         $this->mockRows = $clonedData;
         $this->all = $clonedData;
+    }
+
+    public function _new_instance($class = NULL)
+    {
+        return $class ? new $class() : new static();
+    }
+
+    public function _pluck_column($field, $limit = NULL, $offset = NULL)
+    {
+        return NULL;
     }
 
     /**

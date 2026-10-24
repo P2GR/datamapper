@@ -4,7 +4,7 @@ const base = process.env.DOCS_BASE ?? '/';
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: 'DataMapper ORM 2.0',
+  title: 'DataMapper ORM 2.2.0',
   description: 'Modern Active Record ORM for CodeIgniter 3.x with Query Builder, eager loading, and advanced features',
   
   // Base URL if deploying to GitHub Pages
@@ -53,7 +53,7 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/getting-started/introduction' },
       {
-        text: 'DataMapper 2.0',
+        text: 'DataMapper 2.2.0',
         items: [
           {
             text: 'Plan Your Upgrade',
@@ -95,7 +95,7 @@ export default defineConfig({
       },
       { text: 'API Reference', link: '/reference/quick-reference' },
       { 
-        text: 'v2.1.1',
+        text: 'v2.2.0',
         items: [
           { text: 'Changelog', link: '/help/changelog' },
           { text: 'Contributing', link: '/help/contributing' },
@@ -155,7 +155,7 @@ export default defineConfig({
           ]
         },
         {
-          text: 'DataMapper 2.0',
+          text: 'DataMapper 2.2.0',
           collapsed: false,
           items: [
             {

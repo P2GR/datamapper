@@ -12,7 +12,7 @@
  * @author     DataMapper Development Team
  * @license    MIT License
  * @link       http://datamapper.wanwizard.eu/
- * @version    2.1.1
+ * @version    2.2.0
  */
 
 if (!function_exists('dmz_log_message')) {
@@ -80,6 +80,8 @@ class DMZ_QueryBuilder {
      * @var array
      */
     protected $eager_constraints = array();
+    protected $eager_path = '';
+    protected $eager_loaded_paths = array();
     
     /**
      * Query limit
@@ -1000,6 +1002,12 @@ class DMZ_QueryBuilder {
      */
     public function pluck($field)
     {
+        if (empty($this->eager_loads)) {
+            $values = $this->model->_pluck_column($field, $this->_limit, $this->_offset);
+            if ($values !== NULL) {
+                return $values;
+            }
+        }
         return $this->collect()->pluck($field);
     }
 
@@ -1016,6 +1024,12 @@ class DMZ_QueryBuilder {
      */
     public function value($field, $default = NULL)
     {
+        if (empty($this->eager_loads)) {
+            $values = $this->model->_pluck_column($field, 1, $this->_offset);
+            if ($values !== NULL) {
+                return isset($values[0]) ? $values[0] : $default;
+            }
+        }
         $previousLimit = $this->_limit;
         $previousOffset = $this->_offset;
 
@@ -1142,7 +1156,8 @@ class DMZ_QueryBuilder {
      * @return DataMapper|object
      */
     public function first_or_new(array $attributes = array(), array $values = array()) {
-        $query = new self($this->model);
+        $query = clone $this;
+        $query->model = $this->model->get_clone(TRUE);
         foreach ($attributes as $field => $value) {
             if ($value === NULL) {
                 $query->where_null($field);
@@ -1173,12 +1188,7 @@ class DMZ_QueryBuilder {
             return $model;
         }
 
-        if ($model->save()) {
-            return $model;
-        }
-
-        dmz_log_message('error', 'first_or_create failed to save model', array('model' => get_class($model), 'attributes' => $attributes));
-        return FALSE;
+        return $this->_create_or_find($model, $attributes);
     }
 
     /**
@@ -1193,7 +1203,13 @@ class DMZ_QueryBuilder {
 
         if ($model instanceof DataMapper) {
             $this->_fill_model($model, $values);
-
+            if (!$model->exists()) {
+                $created = $this->_create_or_find($model, $attributes);
+                if (!$created || $created === $model) {
+                    return $created;
+                }
+                $model = $this->_fill_model($created, $values);
+            }
             if ($model->save()) {
                 return $model;
             }
@@ -1203,6 +1219,67 @@ class DMZ_QueryBuilder {
         }
 
         return $model;
+    }
+
+    protected function _create_or_find($model, array $attributes)
+    {
+        $db = $model->db;
+        $debug = $db->db_debug;
+        $status = $db->dm_get('_trans_status');
+        $depth = (int) $db->dm_get('_trans_depth');
+        $driver = $db->dbdriver ?? '';
+        $subdriver = $db->subdriver ?? '';
+        $savepoint = $db->dm_get('_trans_depth') > 0
+            && (in_array($driver, array('mysql', 'mysqli', 'postgre', 'sqlite', 'sqlite3'), TRUE)
+                || ($driver === 'pdo' && in_array($subdriver, array('mysql', 'pgsql', 'sqlite'), TRUE)));
+        if ($savepoint && !$db->simple_query('SAVEPOINT dmz_create')) {
+            $db->dm_set('_trans_status', FALSE);
+            return FALSE;
+        }
+        $saved = FALSE;
+        $exception = NULL;
+        try {
+            $db->db_debug = FALSE;
+            $saved = $model->save();
+        } catch (Throwable $error) {
+            if (!$model->_save_error()) { throw $error; }
+            $exception = $error;
+        } finally {
+            $db->db_debug = $debug;
+            while ($db->dm_get('_trans_depth') > $depth) {
+                if (!$db->trans_rollback()) {
+                    throw new DataMapper_Database_Exception('Failed to roll back model creation.');
+                }
+            }
+            if ($savepoint) {
+                if ((!$saved && !$db->simple_query('ROLLBACK TO SAVEPOINT dmz_create'))
+                    || !$db->simple_query('RELEASE SAVEPOINT dmz_create')) {
+                    $db->dm_set('_trans_status', FALSE);
+                    throw new DataMapper_Database_Exception('Failed to complete model creation savepoint.');
+                }
+            }
+        }
+        if ($saved) {
+            return $model;
+        }
+        $error = $model->_save_error();
+        $unique = in_array((string) ($error['code'] ?? ''), array('1062', '23505', '1555', '2067', '2601', '2627'), TRUE)
+            || preg_match('/\b(duplicate (entry|key)|unique (constraint|index)|primary key constraint)\b/i', $error['message'] ?? '');
+        if ($unique) {
+            $query = clone $this;
+            $query->model = $this->model->get_clone(TRUE)->no_cache();
+            $existing = $query->first_or_new($attributes);
+            if ($existing->exists()) {
+                $db->dm_set('_trans_status', $status);
+                return $existing;
+            }
+        }
+        if ($exception !== NULL) { throw $exception; }
+        if ($debug && !empty($error['code'])) {
+            $db->display_error(array($error['code'], $error['message']));
+        }
+        dmz_log_message('error', 'Failed to create model', array('model' => get_class($model)));
+        return FALSE;
     }
 
     /**
@@ -1263,8 +1340,7 @@ class DMZ_QueryBuilder {
      */
     protected function _new_model_instance(array $attributes)
     {
-        $class = get_class($this->model);
-        $model = new $class();
+        $model = $this->model->_new_instance();
         $this->_fill_model($model, $attributes);
         return $model;
     }
@@ -1291,7 +1367,7 @@ class DMZ_QueryBuilder {
     }
 
     /**
-     * Run an aggregate query, falling back to collection aggregation for test doubles.
+     * Run an aggregate query through the database.
      *
      * @param string $function sum, avg, min, or max
      * @param string $field Field name
@@ -1303,48 +1379,27 @@ class DMZ_QueryBuilder {
         $db_method = 'select_' . $function;
         $alias = '_dmz_aggregate_value';
 
-        if (isset($this->model->db) && is_object($this->model->db) && method_exists($this->model->db, $db_method)) {
-            try {
-                $model = $this->model->get_clone();
-                $model->{$db_method}($field, $alias)->get();
-
-                $first = (!empty($model->all) && isset($model->all[0])) ? $model->all[0] :
-                         (!empty($model->all) ? reset($model->all) : NULL);
-
-                if ($first && isset($first->{$alias})) {
-                    if ($function === 'avg' && is_numeric($first->{$alias})) {
-                        return (float) $first->{$alias};
-                    }
-
-                    return is_numeric($first->{$alias}) ? $first->{$alias} + 0 : $first->{$alias};
-                }
-
-                return $default;
-            } catch (Exception $e) {
-                dmz_log_message('error', 'Aggregate query failed', array('function' => $function, 'field' => $field, 'error' => $e->getMessage()));
-                throw $e;
+        try {
+            $model = $this->model->get_clone(TRUE);
+            foreach (array('qb_select', 'qb_no_escape', 'qb_cache_select', 'qb_cache_no_escape') as $property) {
+                $model->db->dm_set($property, array());
             }
+            $model->{$db_method}($field, $alias);
+            $query = $model->get_raw();
+            if (!$query) {
+                throw new DataMapper_Database_Exception('Aggregate query failed.');
+            }
+            $row = $query->row();
+            $value = $row ? ($row->{$alias} ?? NULL) : NULL;
+            $query->free_result();
+            if ($value === NULL) {
+                return $default;
+            }
+            return $function === 'avg' ? (float) $value : (is_numeric($value) ? $value + 0 : $value);
+        } catch (Exception $e) {
+            dmz_log_message('error', 'Aggregate query failed', array('function' => $function, 'field' => $field, 'error' => $e->getMessage()));
+            throw $e;
         }
-
-        $collection = $this->collect();
-        if ($function === 'sum') {
-            return $collection->sum($field);
-        }
-
-        if ($function === 'avg') {
-            $value = $collection->avg($field);
-            return ($value === NULL) ? NULL : (float) $value;
-        }
-
-        if ($function === 'min') {
-            return $collection->min($field);
-        }
-
-        if ($function === 'max') {
-            return $collection->max($field);
-        }
-
-        return $default;
     }
     
     /**
@@ -1353,8 +1408,20 @@ class DMZ_QueryBuilder {
      * @return bool
      */
     public function exists() {
-        $model_copy = $this->model->get_clone();
-        return $model_copy->count() > 0;
+        $model_copy = $this->model->get_clone(TRUE);
+        foreach (array('qb_select', 'qb_cache_select', 'qb_groupby', 'qb_cache_groupby', 'qb_having', 'qb_cache_having') as $property) {
+            if ($model_copy->db->dm_get($property)) {
+                return $this->count() > 0;
+            }
+        }
+        $model_copy->select('1', FALSE);
+        $query = $model_copy->get_raw(1);
+        if (!$query) {
+            throw new DataMapper_Database_Exception('Existence query failed.');
+        }
+        $exists = $query->row() !== NULL;
+        $query->free_result();
+        return $exists;
     }
     
     /**
@@ -1363,8 +1430,12 @@ class DMZ_QueryBuilder {
      * @return int
      */
     public function count() {
-        $model_copy = $this->model->get_clone();
-        return $model_copy->count();
+        $model_copy = $this->model->get_clone(TRUE);
+        $count = $model_copy->count();
+        if (!$model_copy->_query_was_successful()) {
+            throw new DataMapper_Database_Exception('Count query failed.');
+        }
+        return $count;
     }
     
     /**
@@ -1583,13 +1654,24 @@ class DMZ_QueryBuilder {
         $normalized = $this->_normalize_relation_path($relation);
         $alias = $this->_reserve_relation_count_alias($relation);
 
+        if (!in_array($operator, array('=', '!=', '<>', '<', '<=', '>', '>='), TRUE) || !is_numeric($count)) {
+            throw new InvalidArgumentException('Relation counts require a comparison operator and numeric count.');
+        }
         $this->model->include_related_count($normalized, $alias, $callback);
-
-        $clause = $alias . ' ' . $operator;
-        if (strtolower($boolean) === 'or') {
-            $this->model->or_having($clause, $count);
+        $select = $this->model->db->dm_get('qb_select');
+        $count_select = array_pop($select);
+        $this->model->db->dm_set('qb_select', $select);
+        $cached_select = (array) $this->model->db->dm_get('qb_cache_select');
+        $this->model->db->dm_set('qb_cache_select', array_values(array_diff($cached_select, array($count_select))));
+        $subquery = preg_replace('/\s+AS\s+' . preg_quote($alias, '/') . '$/i', '', $count_select);
+        $method = strtolower($boolean) === 'or' ? 'or_where' : 'where';
+        $exists = (($operator === '>=' && $count == 1) || ($operator === '>' && $count == 0));
+        $not_exists = (($operator === '<' && $count == 1) || (in_array($operator, array('=', '<='), TRUE) && $count == 0));
+        $existence_query = preg_replace('/^\(\s*SELECT\s+COUNT\(\*\)\s+AS\s+count\s+FROM\b/i', '(SELECT 1 FROM', $subquery, 1, $replaced);
+        if (($exists || $not_exists) && $replaced && !preg_match('/\b(GROUP BY|HAVING|LIMIT|OFFSET)\b/i', $subquery)) {
+            $this->model->{$method}(($not_exists ? 'NOT EXISTS ' : 'EXISTS ') . $existence_query, NULL, FALSE);
         } else {
-            $this->model->having($clause, $count);
+            $this->model->{$method}($subquery . ' ' . $operator, $count);
         }
 
         return $this;
@@ -1631,6 +1713,8 @@ class DMZ_QueryBuilder {
      * @param DMZ_Collection $results
      */
     protected function _load_eager_relations($results) {
+        $this->eager_loaded_paths = array();
+        $this->eager_path = '';
         if ($results->count() === 0) {
             return;
         }
@@ -1733,6 +1817,10 @@ class DMZ_QueryBuilder {
             return;
         }
         
+        $path = $this->eager_path . $relation;
+        if (isset($this->eager_loaded_paths[$path])) {
+            return;
+        }
         $first_model = $results->first();
         if (!$first_model) {
             return;
@@ -1767,7 +1855,7 @@ class DMZ_QueryBuilder {
         }
         
         // Create related model instance
-        $related_model = new $related_class();
+        $related_model = $first_model->_new_instance($related_class);
         $relation_config['_dm_parent_key'] = $first_model->primary_key;
         $relation_config['_dm_related_key'] = $related_model->primary_key;
         $relation_config['_dm_parent_alias'] = $relation_config['join_self_as'];
@@ -1800,6 +1888,7 @@ class DMZ_QueryBuilder {
             // One-to-many or one-to-one with foreign key
             $this->_load_with_foreign_key($results, $relation, $relation_config, $parent_ids, $is_has_many);
         }
+        $this->eager_loaded_paths[$path] = TRUE;
     }
     
     /**
@@ -1812,117 +1901,10 @@ class DMZ_QueryBuilder {
      * @return bool
      */
     protected function _is_many_to_many($model, $relation, $config, $is_has_one = FALSE) {
-        // If join_table is explicitly set to a non-empty value, it's many-to-many
-        if (isset($config['join_table']) && !empty($config['join_table'])) {
-            dmz_log_message('debug', "Relation '{$relation}' is many-to-many (join_table explicitly set)");
-            return TRUE;
-        }
-        
-        // NOTE: Do NOT check join_self_as / join_other_as here!
-        // DataMapper's _relationship() method sets these defaults for ALL relationships,
-        // not just many-to-many ones. They are just naming hints, not indicators of join table usage.
-        
-        // PRIORITY CHECK: For has_one relationships, check if FK column exists in parent table FIRST
-        // If the FK column exists, this is NOT a many-to-many relationship - use FK-based loading
-        // This check must happen BEFORE checking for join table existence to avoid false positives
-        if ($is_has_one || isset($model->has_one[$relation])) {
-            $fk_column = $config['join_other_as'] . '_id';
-            
-            // Check if FK column exists in parent model's fields (case-insensitive)
-            if (!empty($model->fields) && is_array($model->fields)) {
-                $fk_column_lower = strtolower($fk_column);
-                foreach ($model->fields as $field) {
-                    if (strtolower($field) === $fk_column_lower) {
-                        dmz_log_message('debug', "Relation '{$relation}' has FK column '{$field}' in parent table - NOT many-to-many");
-                        return FALSE;
-                    }
-                }
-            }
-        }
-        
-        // AUTO-DETECTION: Even if join table isn't explicitly configured,
-        // check if a join table exists following DataMapper naming convention
-        // This maintains backward compatibility with models that don't explicitly configure join tables
-        $parent_table = $model->table;
-        $related_class = $config['class'];
-        
-        dmz_log_message('debug', "Auto-detecting join table for '{$relation}'", array(
-            'parent_table' => $parent_table,
-            'related_class' => $related_class
-        ));
-        
-        // Capitalize class name if needed
-        if (!class_exists($related_class)) {
-            $capitalized = ucfirst($related_class);
-            if (class_exists($capitalized)) {
-                $related_class = $capitalized;
-                dmz_log_message('debug', "Capitalized class name to '{$related_class}'");
-            }
-        }
-        
-        $related_metadata = $this->_get_model_metadata($related_class);
-        $related_table = ($related_metadata !== NULL && isset($related_metadata['table'])) ? $related_metadata['table'] : NULL;
-		
-        if ($related_table === NULL) {
-            $related_model = new $related_class();
-            $related_table = $related_model->table;
-        }
-
-        $related_model = isset($related_model) ? $related_model : new $related_class();
-        $related_fk = $config['join_self_as'] . '_id';
-        if (!empty($related_model->fields) && in_array($related_fk, $related_model->fields)) {
-            return FALSE;
-        }
-        
-        // Try both orderings (alphabetical is DataMapper convention)
-        $join_table_1 = $parent_table . '_' . $related_table;
-        $join_table_2 = $related_table . '_' . $parent_table;
-        
-        dmz_log_message('debug', "Checking for join tables", array(
-            'option_1' => $join_table_1,
-            'option_2' => $join_table_2
-        ));
-        
-        // Check cache first
-        $db = $model->db;
-        $db_name = $db->database;
-        
-        $cache_key_1 = $db_name . '.' . $join_table_1;
-        $cache_key_2 = $db_name . '.' . $join_table_2;
-        
-        // Check if we've already verified either table exists
-        if (isset(self::$_table_exists_cache[$cache_key_1])) {
-            $result = self::$_table_exists_cache[$cache_key_1];
-            dmz_log_message('debug', "Found '{$join_table_1}' in cache", array('exists' => $result));
-            return $result;
-        }
-        if (isset(self::$_table_exists_cache[$cache_key_2])) {
-            $result = self::$_table_exists_cache[$cache_key_2];
-            dmz_log_message('debug', "Found '{$join_table_2}' in cache", array('exists' => $result));
-            return $result;
-        }
-        
-        // Not in cache - check database (only once thanks to caching!)
-        $exists_1 = $db->table_exists($join_table_1);
-        $exists_2 = !$exists_1 ? $db->table_exists($join_table_2) : FALSE;
-        
-        dmz_log_message('debug', "Database join table check", array(
-            'table_1' => $join_table_1,
-            'exists_1' => $exists_1,
-            'table_2' => $join_table_2,
-            'exists_2' => $exists_2
-        ));
-        
-        // Cache the results for future queries
-        self::$_table_exists_cache[$cache_key_1] = $exists_1;
-        if (!$exists_1) {
-            self::$_table_exists_cache[$cache_key_2] = $exists_2;
-        }
-        
-        $is_many_to_many = $exists_1 || $exists_2;
-        dmz_log_message('debug', "Relation '{$relation}' detected as " . ($is_many_to_many ? 'MANY-TO-MANY' : 'ONE-TO-MANY'));
-        
-        return $is_many_to_many;
+        $class = $config['class'];
+        $related = new $class();
+        $table = $model->_get_relationship_table($related, $relation);
+        return $table !== $model->table && $table !== $related->table;
     }
 
     /**
@@ -1985,36 +1967,19 @@ class DMZ_QueryBuilder {
             }
         }
         
-        $related_model = new $related_class();
+        $related_model = $first_model->_new_instance($related_class);
         $related_table = $related_model->table;
         $related_alias = $config['_dm_related_alias'];
         $related_primary_key = $config['_dm_related_key'];
         
-        // Determine join table
-        $join_table = isset($config['join_table']) ? 
-                     $config['join_table'] : 
-                     $this->_get_join_table($parent_table, $related_table, $first_model->db);
-        
-        // Safety check: ensure join table is not empty
-        if (empty($join_table)) {
-            // Fallback: manually construct join table name
-            $join_table = $this->_get_join_table($parent_table, $related_table, $first_model->db);
-            
-            // If still empty, log error and return
-            if (empty($join_table)) {
-                dmz_log_message('error', "Could not determine join table for relation '{$relation}'", array(
-                    'parent_table' => $parent_table,
-                    'related_table' => $related_table
-                ));
-                return;
-            }
-        }
-        
+        $join_table = $first_model->_get_relationship_table($related_model, $relation);
+
         // Build query to get related records through join table
-        $db = $first_model->db;
+        $db = $first_model->get_clone(TRUE)->db;
         
         // Reset query builder to ensure clean state
         $db->reset_query();
+        $db->stop_cache()->flush_cache();
         
         // Query: SELECT related.*, join.parent_id FROM related 
         //        JOIN join_table ON related.id = join.related_id 
@@ -2026,7 +1991,7 @@ class DMZ_QueryBuilder {
         
         // Apply eager loading constraints FIRST (to capture soft delete scope from user)
         // For many-to-many, we pass the DB instance directly since we're using manual queries
-        $related_instance = new $related_class();
+        $related_instance = $related_model;
         $wrapper = $this->_apply_eager_constraints_to_db($db, $relation, $related_table, $this->_get_deleted_at_column($related_instance));
         $eager_limit = $this->_consume_eager_limit($db);
         
@@ -2036,30 +2001,37 @@ class DMZ_QueryBuilder {
         $this->_apply_soft_delete_scope_to_db($db, $related_instance, $related_table, $wrapper);
         
         // Execute query
-        $query = $db->get();
-		if (!$query) {
-			throw new DataMapper_Database_Exception('Many-to-many related query failed during eager loading.');
-		}
-        
-        // Group results by parent ID
         $grouped = array();
-        
-        // Check if query succeeded
-        if ($query && $query->num_rows() > 0) {
-            foreach ($query->result() as $row) {
-                $parent_id = $row->_dm_parent_id;
-                unset($row->_dm_parent_id);
-                
-                // Create model instance (don't disable auto-populate yet - needed for nested loading)
-                $item = new $related_class();
-                $item->_populate($row);
-                
-                if (!isset($grouped[$parent_id])) {
-                    $grouped[$parent_id] = array();
+        try {
+            foreach ($eager_limit === NULL ? array(NULL) : $parent_ids as $parent_id) {
+                if ($eager_limit !== NULL && $eager_limit['limit'] === 0) { continue; }
+                $query_db = $eager_limit === NULL ? $db : clone $db;
+                if ($eager_limit !== NULL) {
+                    $query_db->where($join_table . '.' . $parent_alias . '_id', $parent_id)
+                        ->limit($eager_limit['limit'], $eager_limit['offset']);
                 }
-                $grouped[$parent_id][] = $item;
+                $query = $query_db->get();
+                if (!$query) {
+                    throw new DataMapper_Database_Exception('Many-to-many related query failed during eager loading.');
+                }
+                foreach ($query->result() as $row) {
+                    $parent_id = $row->_dm_parent_id;
+                    unset($row->_dm_parent_id);
+                    $item = $first_model->_new_instance($related_class);
+                    $item->_populate($row);
+                    if (!isset($grouped[$parent_id])) {
+                        $grouped[$parent_id] = array();
+                    }
+                    $grouped[$parent_id][] = $item;
+                }
+                $query->free_result();
+            }
+        } finally {
+            if ($eager_limit !== NULL) {
+                $db->reset_query();
             }
         }
+        $eager_limit = NULL;
         
         // Assign to parent models
         foreach ($results->to_array() as $model) {
@@ -2097,7 +2069,7 @@ class DMZ_QueryBuilder {
     protected function _load_with_foreign_key($results, $relation, $config, $parent_ids, $is_has_many) {
         $first_model = $results->first();
         $related_class = $config['class'];
-        $related_model = new $related_class();
+        $related_model = $first_model->_new_instance($related_class);
         $parent_primary_key = $config['_dm_parent_key'];
         $related_primary_key = $config['_dm_related_key'];
         $foreign_key = $this->_resolve_model_field($related_model->fields, $config['_dm_parent_alias'] . '_id');
@@ -2114,24 +2086,32 @@ class DMZ_QueryBuilder {
             $eager_limit = $this->_consume_eager_limit($related_model->db);
             
             // Execute query
-            $related_records = $related_model->get();
-			if (!$related_records->_query_was_successful()) {
-				throw new DataMapper_Database_Exception('Related query failed during eager loading.');
-			}
+            $records = array();
+            foreach ($eager_limit === NULL ? array(NULL) : $parent_ids as $parent_id) {
+                if ($eager_limit !== NULL && $eager_limit['limit'] === 0) { continue; }
+                $query = $eager_limit === NULL ? $related_model : $related_model->get_clone(TRUE);
+                if ($eager_limit !== NULL) {
+                    $query->where($foreign_key, $parent_id)->limit($eager_limit['limit'], $eager_limit['offset']);
+                }
+                $query->get();
+                if (!$query->_query_was_successful()) {
+                    throw new DataMapper_Database_Exception('Related query failed during eager loading.');
+                }
+                foreach ($query->all as $record) { $records[] = $record; }
+            }
+            $eager_limit = NULL;
             
             // NOTE: Don't disable auto-populate here - it will prevent nested eager loading
             // Auto-populate will be disabled at the very end, after all nested relations are loaded
             
             // Group by foreign key
             $grouped = array();
-            if (isset($related_records->all)) {
-                foreach ($related_records->all as $record) {
-                    $key = $record->{$foreign_key};
-                    if (!isset($grouped[$key])) {
-                        $grouped[$key] = array();
-                    }
-                    $grouped[$key][] = $record;
+            foreach ($records as $record) {
+                $key = $record->{$foreign_key};
+                if (!isset($grouped[$key])) {
+                    $grouped[$key] = array();
                 }
+                $grouped[$key][] = $record;
             }
             
             // Assign to parent models
@@ -2233,6 +2213,7 @@ class DMZ_QueryBuilder {
      * @return void
      */
     protected function _apply_eager_constraints($model, $relation) {
+        $relation = $this->eager_path . $relation;
         if (!isset($this->eager_constraints[$relation])) {
             return; // No constraints for this relation
         }
@@ -2241,7 +2222,9 @@ class DMZ_QueryBuilder {
         
         if (is_callable($constraint)) {
             // Call the constraint callback, passing the model as the query builder
+            $offset = method_exists($model->db, 'dm_get') ? count((array) $model->db->dm_get('qb_where')) : 0;
             call_user_func($constraint, $model);
+            DataMapper::_group_query_conditions($model->db, $offset);
         }
     }
 
@@ -2294,6 +2277,7 @@ class DMZ_QueryBuilder {
      * @return DMZ_DB_Constraint_Wrapper|null The wrapper instance (to check soft delete scope)
      */
     protected function _apply_eager_constraints_to_db($db, $relation, $table_prefix = '', $soft_delete_column = 'deleted_at') {
+        $relation = $this->eager_path . $relation;
         if (!isset($this->eager_constraints[$relation])) {
             return NULL; // No constraints for this relation
         }
@@ -2303,7 +2287,9 @@ class DMZ_QueryBuilder {
         if (is_callable($constraint)) {
             // Create a temporary wrapper to provide DataMapper-like interface to DB
             $wrapper = new DMZ_DB_Constraint_Wrapper($db, $table_prefix, $soft_delete_column);
+            $offset = method_exists($db, 'dm_get') ? count((array) $db->dm_get('qb_where')) : 0;
             call_user_func($constraint, $wrapper);
+            DataMapper::_group_query_conditions($db, $offset);
             return $wrapper; // Return wrapper so caller can check soft delete scope
         }
         
@@ -2347,6 +2333,7 @@ class DMZ_QueryBuilder {
                 $deleted_col = $this->_get_deleted_at_column($model);
                 if ($deleted_col) {
                     $column_name = !empty($table_prefix) ? $table_prefix . '.' . $deleted_col : $deleted_col;
+                    DataMapper::_group_query_conditions($db);
                     $db->where($column_name . ' IS NOT NULL', NULL, FALSE);
                 }
                 return;
@@ -2367,6 +2354,7 @@ class DMZ_QueryBuilder {
             $deleted_col = $this->_get_deleted_at_column($model);
             if ($deleted_col) {
                 $column_name = !empty($table_prefix) ? $table_prefix . '.' . $deleted_col : $deleted_col;
+                DataMapper::_group_query_conditions($db);
                 $db->where($column_name . ' IS NOT NULL', NULL, FALSE);
             }
             return;
@@ -2383,6 +2371,7 @@ class DMZ_QueryBuilder {
             $deleted_col = $table_prefix . '.' . $deleted_col;
         }
 
+        DataMapper::_group_query_conditions($db);
         $db->where($deleted_col, NULL);
     }
 
@@ -2399,7 +2388,9 @@ class DMZ_QueryBuilder {
         }
 
         $method = new ReflectionMethod($model, '_soft_delete_is_enabled');
-        $method->setAccessible(TRUE);
+        if (PHP_VERSION_ID < 80100) {
+            $method->setAccessible(TRUE);
+        }
         return (bool) $method->invoke($model);
     }
 
@@ -2418,27 +2409,7 @@ class DMZ_QueryBuilder {
      */
     protected function _assign_eager_relation($model, $relation, $value)
     {
-        if (isset($model->{$relation})
-            && $model->{$relation} !== NULL
-            && !$model->{$relation} instanceof DataMapper
-            && !$model->{$relation} instanceof DMZ_Collection)
-        {
-            if (!isset($model->_dm_conflicted_attributes) || !is_array($model->_dm_conflicted_attributes)) {
-                $model->_dm_conflicted_attributes = array();
-            }
-
-            if (!array_key_exists($relation, $model->_dm_conflicted_attributes)) {
-                $model->_dm_conflicted_attributes[$relation] = $model->{$relation};
-
-                dmz_log_message('debug', 'DataMapper eager-load relation name collision detected', array(
-                    'model' => get_class($model),
-                    'relation' => $relation,
-                    'original_type' => gettype($model->{$relation})
-                ));
-            }
-        }
-
-        $model->{$relation} = $value;
+        $model->_set_eager_relation($relation, $value);
     }
     
     /**
@@ -2502,17 +2473,57 @@ class DMZ_QueryBuilder {
         if (!empty($related_models)) {
             $related_collection = new DMZ_Collection($related_models);
             
-            // Check if there are more levels of nesting
-            if (strpos($nested_relation, '.') !== FALSE) {
-                // Recursively load nested relations
-                $this->_load_nested_relation($related_collection, $nested_relation);
-            } else {
-                // Just one more level, load it directly
+            $previous_path = $this->eager_path;
+            $this->eager_path .= $first_relation . '.';
+            try {
                 $this->_load_relation($related_collection, $nested_relation);
+            } finally {
+                $this->eager_path = $previous_path;
             }
         }
     }
     
+    protected function _eager_batch_callback($callback = NULL)
+    {
+        return function ($rows) use ($callback) {
+            if (!empty($this->eager_loads)) {
+                $this->_load_eager_relations($rows);
+            }
+            return $callback === NULL ? NULL : call_user_func($callback, $rows);
+        };
+    }
+
+    public function chunk($size, $callback)
+    {
+        if (!is_callable($callback)) {
+            throw new DataMapper_Exception('Chunk callback must be callable');
+        }
+        return $this->model->chunk($size, $this->_eager_batch_callback($callback));
+    }
+
+    public function chunk_by_id($size, $callback, $column = NULL, $alias = NULL)
+    {
+        if (!is_callable($callback)) {
+            throw new DataMapper_Exception('chunk_by_id callback must be callable');
+        }
+        return $this->model->chunk_by_id($size, $this->_eager_batch_callback($callback), $column, $alias);
+    }
+
+    public function lazy($chunk_size = 1000)
+    {
+        return $this->model->lazy($chunk_size)->_with_eager_loader($this->_eager_batch_callback());
+    }
+
+    public function lazy_by_id($chunk_size = 1000, $column = NULL)
+    {
+        return $this->model->lazy_by_id($chunk_size, $column)->_with_eager_loader($this->_eager_batch_callback());
+    }
+
+    public function cursor()
+    {
+        yield from $this->lazy();
+    }
+
     /**
      * Magic method to delegate to DataMapper
      *
@@ -2555,7 +2566,7 @@ class DMZ_QueryBuilder {
  * Implements IteratorAggregate and Countable for native PHP iteration.
  * Compatible with PHP 8.0 - 8.5
  */
-class DMZ_Collection implements IteratorAggregate, Countable {
+class DMZ_Collection implements IteratorAggregate, Countable, JsonSerializable {
     
     /**
      * Collection items
@@ -3265,7 +3276,11 @@ class DMZ_Collection implements IteratorAggregate, Countable {
             $depth = $args[1];
         }
 
-        return json_encode($this->items, $options, $depth);
+        return json_encode($this, $options, $depth);
+    }
+
+    public function jsonSerialize(): array {
+        return $this->items;
     }
     
     /**

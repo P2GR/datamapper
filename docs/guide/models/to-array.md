@@ -90,8 +90,8 @@ foreach ($users as $user) {
 print_r($result);
 ```
 
-::: tip DataMapper 2.1
-Prefer the new eager-loading syntax when you need related data in 2.1:
+::: tip DataMapper 2.2.0
+Prefer the new eager-loading syntax when you need related data in 2.2.0:
 
 ```php
 $user = (new User())

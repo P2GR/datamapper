@@ -1,10 +1,15 @@
 # Eager Loading with Constraints
 
-**DataMapper 2.1:** Apply WHERE conditions, ordering, and limits to eager-loaded relationships while maintaining N+1 prevention!
+**DataMapper 2.2.0:** Filter, order, and limit eager-loaded relationships.
 
 Eager loading constraints allow you to filter, sort, and limit related records at the database level, reducing data transfer and improving performance without losing the benefits of eager loading.
 
-`limit()` and its offset are applied independently to each parent's related result group. Filtering and ordering still run in the single batched related query; DataMapper removes the global SQL limit and slices each hydrated parent group for portable behavior across CI3 database drivers.
+`limit()` and its offset apply independently to each parent's related records.
+Unlimited relationships use a batched query. Limited child and join-table
+relationships use one SQL query per parent, with the limit applied before
+hydration. This portable approach bounds transferred rows and memory; its query
+count grows with the number of parents. Keep parent batches small when using
+limited relationships.
 
 ## Table of Contents
 
@@ -210,7 +215,7 @@ Constraint callbacks are for filtering (WHERE, ORDER BY, LIMIT), not for nesting
 
 ## Soft Delete Control
 
-**Automatic Soft Delete Filtering:** DataMapper 2.1 automatically excludes soft-deleted records from eager-loaded relationships!
+**Automatic Soft Delete Filtering:** DataMapper 2.2.0 automatically excludes soft-deleted records from eager-loaded relationships!
 
 ### Default Behavior (Excludes Deleted)
 

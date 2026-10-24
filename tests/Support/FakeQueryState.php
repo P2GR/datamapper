@@ -4,6 +4,9 @@ namespace Tests\Support;
 
 class FakeQueryState
 {
+    public $db_debug = FALSE;
+    public $queries = array();
+    public $query_times = array();
     /**
      * @var array<string, mixed>
      */
@@ -32,6 +35,11 @@ class FakeQueryState
     {
         return array_key_exists($key, $this->state) ? $this->state[$key] : NULL;
     }
+    public function dm_set($key, $value) { $this->state[$key] = $value; }
+    public function dm_call_method($method, ...$args)
+    {
+        return $method === '_reset_select' ? $this->reset_query() : NULL;
+    }
 
     /**
      * @param string $key
@@ -50,4 +58,12 @@ class FakeQueryState
     {
         return $this->state;
     }
+
+    public function reset_query()
+    {
+        $this->__construct();
+        return $this;
+    }
+    public function stop_cache() { return $this; }
+    public function flush_cache() { return $this; }
 }

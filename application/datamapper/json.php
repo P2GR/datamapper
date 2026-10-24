@@ -10,7 +10,7 @@
  * @category	DMZ
  * @author  	Phil DeJarnett
  * @link    	https://github.com/P2GR/datamapper2
- * @version 	2.1.1
+ * @version 	2.2.0
  */
 
 // --------------------------------------------------------------------------
@@ -261,6 +261,17 @@ class DMZ_Json {
 	 */
 	protected function _apply_json_serialization_control($object, $result)
 	{
+		// $appends — include computed accessor values
+		$appends = isset($object->appends) ? $object->appends : array();
+		foreach ($appends as $accessor)
+		{
+			$method = 'get_' . $accessor . '_attribute';
+			if (method_exists($object, $method))
+			{
+				$result[$accessor] = $object->{$method}();
+			}
+		}
+
 		// $visible acts as a whitelist
 		$visible = isset($object->visible) ? $object->visible : array();
 		if ( ! empty($visible))
@@ -273,17 +284,6 @@ class DMZ_Json {
 		if ( ! empty($hidden))
 		{
 			$result = array_diff_key($result, array_flip($hidden));
-		}
-
-		// $appends — include computed accessor values
-		$appends = isset($object->appends) ? $object->appends : array();
-		foreach ($appends as $accessor)
-		{
-			$method = 'get_' . $accessor . '_attribute';
-			if (method_exists($object, $method))
-			{
-				$result[$accessor] = $object->{$method}();
-			}
 		}
 
 		return $result;

@@ -1,14 +1,16 @@
 ﻿# What's New in DataMapper 2.1
 
-DataMapper 2.1 adds query, collection, cache, casting, timestamp, soft-delete, and streaming helpers while keeping the classic DataMapper API available.
+DataMapper 2.2.0 fixes correctness and efficiency issues in eager loading, queries, streaming, caching, transactions, casting and serialization. See the [changelog](/help/changelog#_2-2-0-2026-10-24) and [upgrade notes](/guide/getting-started/upgrading#version-2-2-0-upgrade) for the release details.
+
+The modern query, collection, cache, casting, timestamp, soft-delete and streaming helpers remain available alongside the classic DataMapper API.
 
 ## Overview
 
 ::: info Backward Compatible
-Existing DataMapper-style models and controllers can continue to use the classic API while you adopt 2.1 helpers gradually.
+Existing DataMapper-style models and controllers can continue to use the classic API while you adopt 2.2.0 helpers gradually.
 :::
 
-DataMapper 2.1 focuses on three key areas:
+DataMapper 2.2.0 focuses on three key areas:
 
 1. **Developer Experience** - Chainable model syntax
 2. **Performance** - Eager loading and caching
@@ -40,7 +42,7 @@ foreach ($users as $user) {
 }
 ```
 
-For a single relation, eager loading changes the query pattern from `1 + N` to one parent query plus one relation query. Multiple relation paths add their own relation queries.
+For a single unlimited relation, eager loading changes the query pattern from `1 + N` to one parent query plus one relation query. Per-parent limits use one limited SQL query per parent to bound memory and transferred rows. Multiple relation paths add their own relation queries.
 
 [Learn More →](/guide/datamapper-2/eager-loading)
 
@@ -395,7 +397,7 @@ $users = $query->get();
 
 ## Comparison Table
 
-| Feature | DataMapper 1.x | DataMapper 2.1 |
+| Feature | DataMapper 1.x | DataMapper 2.2.0 |
 |---------|----------------|----------------|
 | **Syntax** | Traditional | Modern query builder + Traditional |
 | **Eager Loading** | Basic | With constraints |
@@ -418,7 +420,7 @@ $users = $query->get();
 
 ## Legacy API Quick Reference
 
-| If you used this in 1.x… | Use this in 2.1 | Why it’s better |
+| If you used this in 1.x… | Use this in 2.2.0 | Why it’s better |
 |--------------------------|-----------------|-----------------|
 | `$user->include_related('company')` | `(new User())->with('company')` | Loads full related objects, supports constraints, fewer queries |
 | `$user->include_related('company', 'name')` | Access via accessor/attribute on eager-loaded relation (`$user->company->name`) | Keeps data normalized, no column collisions |
@@ -431,7 +433,7 @@ These replacements are additive—you can adopt them gradually while legacy code
 
 ## Migration Path
 
-You can adopt 2.1 features gradually:
+You can adopt 2.2.0 features gradually:
 
 ### Phase 1: Drop-in Replacement
 ```php
@@ -465,7 +467,7 @@ $users = (new User())->with('post')->get();
 
 ## Real-World Impact
 
-### Before DataMapper 2.1
+### Classic DataMapper
 
 ```php
 // E-commerce: Get customers with recent orders
@@ -487,7 +489,7 @@ foreach ($customers as $customer) {
 // Total: 51 queries (1 + 50)
 ```
 
-### After DataMapper 2.1
+### Modern DataMapper
 
 ```php
 // Same functionality, with query count dependent on the relationship graph.

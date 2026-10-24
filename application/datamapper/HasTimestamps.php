@@ -32,29 +32,10 @@ namespace DataMapper\Traits {
  * 
  * @package DataMapper
  * @category Traits
- * @version 2.1.1
+ * @version 2.2.0
  */
 trait HasTimestamps
 {
-    /**
-     * The name of the "created at" column
-     * @var string
-     */
-    protected $created_at_column = 'created_at';
-    
-    /**
-     * The name of the "updated at" column
-     * @var string
-     */
-    protected $updated_at_column = 'updated_at';
-    
-    /**
-     * The format for timestamp values
-     * Options: 'Y-m-d H:i:s' (MySQL), 'U' (Unix timestamp), 'c' (ISO 8601)
-     * @var string
-     */
-    protected $timestamp_format = 'Y-m-d H:i:s';
-    
     /**
      * Hook into DataMapper's save process to add timestamps
      * This method is called by DataMapper before validation

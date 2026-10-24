@@ -371,7 +371,7 @@ if ($product->smart_refresh(60)) {
 
 ## Refresh and Attribute Casting
 
-::: tip DataMapper 2.1
+::: tip DataMapper 2.2.0
 `refresh()` works seamlessly with attribute casting. Reloaded data is automatically casted:
 
 ```php
@@ -526,7 +526,7 @@ foreach ($products as $product) {
 
 ## Refresh with Timestamps
 
-::: tip HasTimestamps Trait (DataMapper 2.1)
+::: tip HasTimestamps Trait (DataMapper 2.2.0)
 When using the `HasTimestamps` trait, check `updated_at` to see if refresh is needed:
 
 ```php

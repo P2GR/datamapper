@@ -169,6 +169,63 @@ class SoftDeleteBehaviorTest extends TestCase
         $this->assertTrue($model->delete());
         $this->assertTrue($model->db->delete_called);
     }
+
+    public function testNonPublicSoftDeleteSettingsReadWithoutDeprecations(): void
+    {
+        $cases = array(
+            array(new class extends SoftDeleteScopeSettingsStub { private $soft_delete = FALSE; private $softDelete = TRUE; }, FALSE),
+            array(new class extends SoftDeleteScopeSettingsStub { protected $soft_delete = TRUE; protected $softDelete = FALSE; }, TRUE),
+            array(new class extends SoftDeleteScopeSettingsStub { private $softDelete = TRUE; }, TRUE),
+            array(new class extends SoftDeleteScopeSettingsStub { protected $softDelete = FALSE; }, FALSE),
+            array(new class extends SoftDeleteWriteSettingsStub { private $soft_delete_writes = TRUE; private $softDeleteWrites = FALSE; }, TRUE),
+            array(new class extends SoftDeleteWriteSettingsStub { protected $soft_delete_writes = FALSE; protected $softDeleteWrites = TRUE; }, FALSE),
+            array(new class extends SoftDeleteWriteSettingsStub { private $softDeleteWrites = TRUE; }, TRUE),
+            array(new class extends SoftDeleteWriteSettingsStub { protected $softDeleteWrites = FALSE; }, FALSE),
+            array(new class extends SoftDeleteTraitWriteSettingsStub { private $soft_delete_writes = TRUE; private $softDeleteWrites = FALSE; }, TRUE),
+            array(new class extends SoftDeleteTraitWriteSettingsStub { protected $soft_delete_writes = FALSE; protected $softDeleteWrites = TRUE; }, FALSE),
+            array(new class extends SoftDeleteTraitWriteSettingsStub { private $softDeleteWrites = TRUE; }, TRUE),
+            array(new class extends SoftDeleteTraitWriteSettingsStub { protected $softDeleteWrites = FALSE; }, FALSE),
+        );
+        $builder = new SoftDeleteQuerySettingsStub();
+
+        set_error_handler(static function ($severity, $message, $file, $line) {
+            throw new ErrorException($message, 0, $severity, $file, $line);
+        }, E_DEPRECATED | E_USER_DEPRECATED);
+        try {
+            foreach ($cases as list($model, $expected)) {
+                $this->assertSame($expected, $model->readSetting());
+                if ($model instanceof SoftDeleteScopeSettingsStub) {
+                    $this->assertSame($expected, $builder->readSetting($model));
+                }
+            }
+        } finally {
+            restore_error_handler();
+        }
+    }
+}
+
+class SoftDeleteScopeSettingsStub extends DataMapper
+{
+    use SoftDeletes;
+    public function __construct() {}
+    public function readSetting() { return $this->_soft_delete_is_enabled(); }
+}
+
+class SoftDeleteWriteSettingsStub extends DataMapper
+{
+    public function __construct() {}
+    public function readSetting() { return $this->_soft_delete_writes_enabled(); }
+}
+
+class SoftDeleteTraitWriteSettingsStub extends SoftDeleteWriteSettingsStub
+{
+    use SoftDeletes;
+}
+
+class SoftDeleteQuerySettingsStub extends DMZ_QueryBuilder
+{
+    public function __construct() {}
+    public function readSetting($model) { return $this->_soft_delete_model_is_enabled($model); }
 }
 
 class SoftDeleteModelStub extends DataMapper

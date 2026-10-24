@@ -30,6 +30,9 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	 * @var string Key prefix
 	 */
 	protected $prefix = 'dmz:';
+
+	/** @var array|false Classes allowed when decoding cached values. */
+	protected $allowed_classes = ['stdClass', 'DateTime', 'DateTimeImmutable'];
 	
 	/**
 	 * @var array Cache statistics
@@ -50,11 +53,12 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	 * @param array $config Configuration options
 	 *                      - host: Redis host (default: 127.0.0.1)
 	 *                      - port: Redis port (default: 6379)
-	 *                      - password: Redis password (optional)
+	 *                      - password: Redis password or [username, password] (optional)
 	 *                      - database: Redis database number (default: 0)
 	 *                      - prefix: Key prefix (default: 'dmz:')
 	 *                      - timeout: Connection timeout (default: 2.5)
-	 * @throws DataMapper_Exception If Redis extension not available or connection fails
+	 *                      - allowed_classes: Class-name allowlist, or FALSE to reject all objects
+	 * @throws DataMapper_Exception If configuration, connection, authentication, or database selection fails
 	 */
 	public function __construct($config = [])
 	{
@@ -70,8 +74,18 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		$host = isset($config['host']) ? $config['host'] : '127.0.0.1';
 		$port = isset($config['port']) ? $config['port'] : 6379;
 		$timeout = isset($config['timeout']) ? $config['timeout'] : 2.5;
+		if (array_key_exists('allowed_classes', $config)) {
+			$allowed_classes = $config['allowed_classes'];
+			if ($allowed_classes !== FALSE && (!is_array($allowed_classes) || array_filter($allowed_classes, static function ($class) {
+				return !is_string($class) || $class === '';
+			}))) {
+				throw new DataMapper_Exception('Redis allowed_classes must be FALSE or an array of class names');
+			}
+			$this->allowed_classes = $allowed_classes;
+		}
 		
 		// Connect to Redis
+		$error = 'Redis connection failed';
 		try {
 			$connected = $this->redis->connect($host, $port, $timeout);
 			
@@ -81,12 +95,18 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 			
 			// Authenticate if password provided
 			if (isset($config['password']) && $config['password'] !== '') {
-				$this->redis->auth($config['password']);
+				$error = 'Redis authentication failed';
+				if (!$this->redis->auth($config['password'])) {
+					throw new DataMapper_Exception($error);
+				}
 			}
 			
 			// Select database
 			if (isset($config['database'])) {
-				$this->redis->select($config['database']);
+				$error = 'Redis database selection failed';
+				if (!$this->redis->select($config['database'])) {
+					throw new DataMapper_Exception($error);
+				}
 			}
 			
 			// Set key prefix
@@ -98,7 +118,8 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 			if ($e instanceof DataMapper_Exception) {
 				throw $e;
 			}
-			throw new DataMapper_Exception('Redis connection error: ' . $e->getMessage(), 0, $e);
+			// Client exception details can contain credentials and are logged by DataMapper.
+			throw new DataMapper_Exception($error);
 		}
 	}
 	
@@ -118,7 +139,7 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		}
 		
 		$this->stats['hits']++;
-		return unserialize($value);
+		return unserialize($value, ['allowed_classes' => $this->allowed_classes]);
 	}
 	
 	/**
@@ -199,20 +220,26 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		$deleted = 0;
 		$this->last_pattern_delete_failed = FALSE;
 		$iterator = NULL;
+		$this->redis->clearLastError();
 		
 		// Use SCAN to iterate through keys matching pattern
 		do {
 			$keys = $this->redis->scan($iterator, $this->prefix . $pattern, 100);
 			if ($keys === FALSE) {
-				$this->last_pattern_delete_failed = TRUE;
-				break;
+				if ($this->redis->getLastError() !== NULL) {
+					$this->last_pattern_delete_failed = TRUE;
+					break;
+				}
+				// An empty SCAN batch does not mean the cursor has finished.
+				continue;
 			}
 			foreach ($keys as $key) {
-				if ($this->redis->del($key) === FALSE) {
+				$result = $this->redis->del($key);
+				if ($result === FALSE) {
 					$this->last_pattern_delete_failed = TRUE;
 					continue;
 				}
-				$deleted++;
+				$deleted += $result;
 			}
 		} while ($iterator !== 0 && $iterator !== '0');
 		
@@ -226,15 +253,26 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	 */
 	public function get_stats()
 	{
-		$info = $this->redis->info();
+		try {
+			$info = $this->redis->info();
+		} catch (\Exception $e) {
+			$info = FALSE;
+		}
+		if (!is_array($info)) {
+			return array_merge($this->stats, ['driver' => 'redis']);
+		}
 		
 		// Count keys with our prefix
 		$keyCount = 0;
 		$iterator = NULL;
+		$this->redis->clearLastError();
 		do {
 			$keys = $this->redis->scan($iterator, $this->prefix . '*', 1000);
 			if ($keys === FALSE) {
-				break;
+				if ($this->redis->getLastError() !== NULL) {
+					break;
+				}
+				continue;
 			}
 			$keyCount += count($keys);
 		} while ($iterator !== 0 && $iterator !== '0');
@@ -250,27 +288,45 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 	}
 
 	/**
-	 * Increment a numeric cache value
+	 * Increment a numeric cache value with a one-hour TTL.
 	 *
 	 * @param string $key Cache key
 	 * @param int $offset Amount to increment by (default: 1)
-	 * @return int New value after increment
+	 * @return int|false New value after increment, or FALSE on failure
 	 */
 	public function increment($key, $offset = 1)
 	{
-		return $this->redis->incrBy($this->prefix . $key, $offset);
+		$key = $this->prefix . $key;
+		if ($this->redis->multi() === FALSE) {
+			return FALSE;
+		}
+		try {
+			if ($this->redis->incrBy($key, $offset) === FALSE || $this->redis->expire($key, 3600) === FALSE) {
+				$this->redis->discard();
+				return FALSE;
+			}
+			$results = $this->redis->exec();
+		} catch (\Throwable $e) {
+			try {
+				$this->redis->discard();
+			} catch (\Throwable $discard_error) {
+				// Keep the original command failure if cleanup is also denied.
+			}
+			throw $e;
+		}
+		return $results !== FALSE && $results[1] ? $results[0] : FALSE;
 	}
 	
 	/**
-	 * Decrement a numeric cache value
+	 * Decrement a numeric cache value with a one-hour TTL.
 	 *
 	 * @param string $key Cache key
 	 * @param int $offset Amount to decrement by (default: 1)
-	 * @return int New value after decrement
+	 * @return int|false New value after decrement, or FALSE on failure
 	 */
 	public function decrement($key, $offset = 1)
 	{
-		return $this->redis->decrBy($this->prefix . $key, $offset);
+		return $this->increment($key, -$offset);
 	}
 	
 	/**
@@ -290,7 +346,7 @@ class DMZ_RedisCache implements DMZ_CacheInterface
 		$result = [];
 		foreach ($keys as $i => $key) {
 			if ($values[$i] !== false) {
-				$result[$key] = unserialize($values[$i]);
+				$result[$key] = unserialize($values[$i], ['allowed_classes' => $this->allowed_classes]);
 				$this->stats['hits']++;
 			} else {
 				$this->stats['misses']++;

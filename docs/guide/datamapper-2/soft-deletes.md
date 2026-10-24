@@ -1,8 +1,8 @@
-# Soft Deletes (DataMapper 2.1)
+# Soft Deletes (DataMapper 2.2.0)
 
 Safely "delete" records by marking them as deleted instead of removing them from the database. This keeps relational data intact, powers undo workflows, and satisfies audit/compliance requirements.
 
-**DataMapper 2.1:** Soft-delete scopes are trait-based. The trait is read-only by default; declare `protected $soft_delete_writes = TRUE` when `delete()` should set `deleted_at` instead of physically removing the row.
+**DataMapper 2.2.0:** Soft-delete scopes are trait-based. The trait is read-only by default; declare `protected $soft_delete_writes = TRUE` when `delete()` should set `deleted_at` instead of physically removing the row.
 
 ## Why Soft Deletes?
 

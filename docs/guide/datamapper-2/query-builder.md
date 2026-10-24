@@ -1,6 +1,6 @@
-# Query Builder & Collections (DataMapper 2.1)
+# Query Builder & Collections (DataMapper 2.2.0)
 
-DataMapper 2.1 adds chainable query helpers directly to your models. Classic DataMapper calls still work, and you can opt into eager loading, result helpers, and collections where they make the code clearer.
+DataMapper 2.2.0 adds chainable query helpers directly to your models. Classic DataMapper calls still work, and you can opt into eager loading, result helpers, and collections where they make the code clearer.
 
 ::: tip TL;DR
 - Keep your existing controllers intact while adding builder calls where you need them.
@@ -144,6 +144,9 @@ $posts = (new Post())
     })
     ->get();
 ```
+Limited child relationships use one SQL query per parent to bound rows and
+memory. Unlimited relationships remain batched.
+
 ::: info Need deeper patterns?
 See `guide/datamapper-2/eager-loading.md` for constraint callbacks, benchmarking tips, and troubleshooting N+1 issues.
 :::
@@ -211,6 +214,15 @@ $invoice = (new Invoice())
 
 $allUsers = (new User())->all();           // convenience alias
 ```
+
+`first_or_create()` and `update_or_create()` recover when another request creates
+the matching record after the initial lookup. Add a unique database constraint
+covering the identifying attributes; these helpers do not create constraints.
+Validation failures and cancelled events remain failures. Existing return types
+and model event behavior are retained.
+
+Relationship filters such as `has()` filter records without adding a count
+column. Use `include_related_count()` when the count itself is needed.
 
 ## Working with Collections
 Collections wrap result sets in `DMZ_Collection`, giving you over 50 helpers while keeping DataMapper objects intact.

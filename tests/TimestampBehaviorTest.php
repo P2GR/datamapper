@@ -83,6 +83,8 @@ class TimestampModelStub extends DataMapper
 
 class TimestampDatabaseStub
 {
+    public function dm_get($property) { return NULL; }
+    public function escape_identifiers($field) { return $field; }
     public $where_calls = array();
     public $updated_data;
     public $update_result = TRUE;

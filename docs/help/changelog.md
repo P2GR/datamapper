@@ -5,7 +5,37 @@ All notable changes to DataMapper ORM will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.2.0] - 2026-10-24
+
+**Eager Loading:**
+
+- Fixed missing nested relations and constraints, column collisions, and incorrect join metadata; per-parent limits now bound rows in SQL.
+
+**Queries & Streaming:**
+
+- Fixed OR grouping in soft-delete and relationship filters, lost eager constraints, and lazy operation ordering and NULL handling.
+- Fixed silent batch and aggregate failures; reduced unnecessary hydration and relationship count queries.
+
+**Models & Casting:**
+
+- Fixed lost database connections, concurrent creation conflicts, mutable cast snapshots, custom trait settings, and integer/decimal precision loss.
+
+**Caching & Transactions:**
+
+- Fixed stale or cross-query cache results, premature transaction invalidation, incomplete write invalidation, and absolute production-cache paths.
+- Fixed Redis authentication, prefix scans, deletion counts, and restricted statistics; decoding uses a configurable class allowlist and counters expire after one hour.
+
+**Serialization & Input:**
+
+- Fixed hidden/appended fields and ORM internals leaking into JSON, internal-property mass assignment, unsafe counter amounts, and unescaped checkbox labels.
+
+**JSON & Nested Sets:**
+
+- Fixed JSON containment paths and negation, lost numeric object keys, and failed tree writes leaving partial changes.
+
+**Compatibility & Tooling:**
+
+- Fixed PHP 8.5 reflection deprecations and documentation dependency vulnerabilities; added real CI3 database regression coverage.
 
 ## [2.1.1] - 2026-09-03
 
@@ -252,7 +282,7 @@ Key changes:
 
 | Version | PHP Version | CI Version | Support Status |
 |---------|-------------|------------|----------------|
-| 2.1.x   | 8.0 - 8.5   | 3.1.0+     | Active |
+| 2.2.x   | 8.0 - 8.5   | 3.1.0+     | Active |
 | 2.0.x   | 7.2 - 8.3   | 3.1.0+     | Maintenance |
 | 1.8.x   | 5.3 - 7.4   | 2.x, 3.x   | Security Only |
 | 1.7.x   | 5.2 - 7.4   | 2.x        | End of Life |

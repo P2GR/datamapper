@@ -1,4 +1,4 @@
-# DataMapper ORM v2.1.1
+# DataMapper ORM v2.2.0
 
 [![CI](https://img.shields.io/github/actions/workflow/status/P2GR/datamapper/ci.yml?branch=master&label=CI&logo=github)](https://github.com/P2GR/datamapper/actions/workflows/ci.yml)
 [![PHP Version](https://img.shields.io/badge/PHP-8.0--8.5-blue)](https://php.net)
@@ -9,9 +9,13 @@ A powerful Object-Relational Mapper (ORM) for CodeIgniter 3 with modern features
 
 ## About
 
-DataMapper ORM provides an elegant Active Record implementation for CodeIgniter 3, allowing you to interact with your database using objects instead of writing SQL queries. Version 2.1 introduces modern features while maintaining compatibility with existing DataMapper 1.x code.
+DataMapper ORM provides an elegant Active Record implementation for CodeIgniter 3, allowing you to interact with your database using objects instead of writing SQL queries. Version 2.2.0 hardens the modern helpers while keeping the classic DataMapper API available.
 
-## What's New in v2.1
+## What's New in v2.2.0
+
+Eager loading, caching, transactions, streaming, casting and serialization receive correctness and efficiency fixes. See the short [changelog](CHANGELOG.md#220---2026-10-24) and [upgrade notes](https://datamapper.mss54.com/guide/getting-started/upgrading#version-2-2-0-upgrade) before deployment.
+
+## Modern Features
 
 ### Query & Performance
 - **[Query Builder](https://datamapper.mss54.com/guide/datamapper-2/query-builder)** — Modern chainable query syntax
@@ -178,8 +182,22 @@ Full documentation: **[datamapper.mss54.com](https://datamapper.mss54.com)**
 - [Getting Started](https://datamapper.mss54.com/guide/getting-started/installation)
 - [Query Builder](https://datamapper.mss54.com/guide/datamapper-2/query-builder)
 - [Eager Loading](https://datamapper.mss54.com/guide/datamapper-2/eager-loading)
-- [DataMapper 2.1 Features](https://datamapper.mss54.com/guide/datamapper-2/)
+- [DataMapper 2.2.0 Features](https://datamapper.mss54.com/guide/datamapper-2/)
 - [Quick Reference](https://datamapper.mss54.com/reference/quick-reference)
+
+## Tests
+
+The integration tests use an isolated SQLite database and the shipped DataMapper
+database interceptor with CodeIgniter 3.1.13:
+
+```bash
+composer install
+git clone --depth 1 --branch 3.1.13 https://github.com/bcit-ci/CodeIgniter.git tests/.ci3
+vendor/bin/phpunit -c tests/phpunit.xml
+```
+
+Enable PHP's `sqlite3` extension. To test another CI3 installation, set
+`CI3_SYSTEM_PATH` to its `system` directory. No application database is used.
 
 ## Credits
 
@@ -188,7 +206,7 @@ Full documentation: **[datamapper.mss54.com](https://datamapper.mss54.com)**
 - **Simon Stenhouse (Stensi)** — Original DataMapper creator
 - **Harro Verton (WanWizard)** — DataMapper 1.x maintenance and improvements
 
-### DataMapper 2.1
+### DataMapper 2.2.0
 
 - **[P2GR](https://github.com/P2GR)** — Version 2.1 development and maintenance
 - **[KayElliot](https://github.com/kayelliot)** — Version 2.1 development and maintenance

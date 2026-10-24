@@ -30,7 +30,7 @@ namespace DataMapper\Traits {
  *
  * @package DataMapper
  * @category Traits
- * @version 2.1.1
+ * @version 2.2.0
  */
 trait SoftDeletes
 {
@@ -46,7 +46,9 @@ trait SoftDeletes
 			if (property_exists($this, $property))
 			{
 				$reflection = new \ReflectionProperty($this, $property);
-				$reflection->setAccessible(TRUE);
+				if (PHP_VERSION_ID < 80100) {
+					$reflection->setAccessible(TRUE);
+				}
 				return (bool) $reflection->getValue($this);
 			}
 		}
@@ -54,13 +56,6 @@ trait SoftDeletes
 		return FALSE;
 	}
 
-	/**
-	 * The name of the "deleted at" column.
-	 * Override in your model to customize.
-	 *
-	 * @var string
-	 */
-	protected $deleted_at_column = 'deleted_at';
 	/**
 	 * Get the name of the "deleted at" column.
 	 *

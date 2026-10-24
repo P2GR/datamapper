@@ -1,5 +1,7 @@
 # DataMapper 2.1 Release Audit
 
+This is the historical audit for 2.1.1. For the current 2.2.0 release, see the [changelog](/help/changelog#_2-2-0-2026-10-24) and [upgrade notes](/guide/getting-started/upgrading#version-2-2-0-upgrade).
+
 ## Executive Summary
 
 DataMapper has a substantial modern ORM surface on top of its CodeIgniter 3 and DataMapper 1.x base: query-builder helpers, mass assignment, casts, dirty tracking, model events, soft deletes, timestamps, eager loading, caching, and collection/streaming helpers. This is a credible foundation, but it is not yet safe to present as a uniformly reliable Eloquent-style ORM.

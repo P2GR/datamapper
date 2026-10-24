@@ -263,7 +263,7 @@ $alarm->where_join_field('user', 'wasfired', FALSE)->get();
 
 You can also perform some more advanced options when selecting columns, by including columns from related models or from the join table.
 
-::: tip DataMapper 2.1
+::: tip DataMapper 2.2.0
 `include_related()` is still available for legacy code, but new applications should prefer the query builder `with()` eager-loading API introduced in 2.1:
 
 ```php

@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Extract DMZ_VERSION
         id: version
@@ -41,6 +43,15 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Extract release notes
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          awk -v version="${{ steps.version.outputs.version }}" '
+            /^## \[/ { if (found) exit; found = index($0, "## [" version "]") == 1; next }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          grep -q '^\*\*' release-notes.md
+
       - name: Create tag
         if: steps.check_tag.outputs.exists == 'false'
         run: |
@@ -54,5 +65,5 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
-          generate_release_notes: true
+          body_path: release-notes.md
           prerelease: ${{ contains(steps.version.outputs.version, 'alpha') || contains(steps.version.outputs.version, 'beta') || contains(steps.version.outputs.version, 'rc') }}

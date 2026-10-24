@@ -169,6 +169,7 @@ class LazyKeysetMapper extends FakeDataMapper
 
     public function get($limit = NULL, $offset = NULL)
     {
+        $this->_last_query_succeeded = TRUE;
         $threshold = NULL;
         foreach ($this->queryLog as $operation) {
             if ($operation[0] === 'where' && $operation[1] === $this->primary_key . ' >') {

@@ -183,7 +183,7 @@ echo json_encode($data);
 // }
 ```
 
-::: tip DataMapper 2.1
+::: tip DataMapper 2.2.0
 With eager loading the same response becomes much simpler:
 
 ```php

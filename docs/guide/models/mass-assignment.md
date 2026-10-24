@@ -1,6 +1,6 @@
 # Mass Assignment
 
-Safely populating models from request data is crucial for avoiding privilege escalation bugs. DataMapper 2.1 brings first-class mass-assignment controls inspired by Laravel so you can opt in the attributes you expect and block everything else.
+Safely populating models from request data is crucial for avoiding privilege escalation bugs. DataMapper 2.2.0 brings first-class mass-assignment controls inspired by Laravel so you can opt in the attributes you expect and block everything else.
 
 ## Define Fillable Attributes
 
@@ -20,7 +20,10 @@ $user->fill($input)->save();
 `fill()` returns the model instance, so you can keep chaining (`$user->fill($payload)->skip_validation()->save();`). Attributes not present in `$fillable` are silently ignored.
 
 ::: warning Default Guard
-The configured primary key is always guarded. Add it to `$fillable` (or remove it from `$guarded`) only when you explicitly want incoming data to overwrite the identifier.
+The default `$guarded = array('id')` also protects a custom configured primary
+key. An explicit `$fillable` list takes precedence, and a custom `$guarded` list
+replaces the default. Include the primary key in your custom guard list unless
+incoming data should be allowed to overwrite it.
 :::
 
 ## Guard Sensitive Columns
@@ -44,6 +47,10 @@ Set `$guarded = array('*');` to block everything by default and selectively call
 ## Force Fill Trusted Data
 
 `force_fill()` skips both `$fillable` and `$guarded`. This is useful for seeders, factories, migrations, or other code paths where you fully control the input.
+
+Both `fill()` and `force_fill()` accept database fields and application-defined
+mutators. They ignore ORM settings such as `table`, `fields` and `primary_key`;
+disabling guards does not turn configuration properties into assignable attributes.
 
 ```php
 $user = new User();
