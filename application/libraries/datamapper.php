@@ -580,7 +580,7 @@ class DataMapper implements IteratorAggregate, JsonSerializable {
 	 */
 	public function __construct($id = NULL)
 	{
-		return $this->DataMapper($id);
+		$this->DataMapper($id);
 	}
 
 	public function DataMapper($id = NULL)
